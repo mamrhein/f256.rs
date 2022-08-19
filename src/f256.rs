@@ -151,20 +151,6 @@ impl f256 {
     /// is going to be tested, it is generally faster to use the specific
     /// predicate instead.
     pub const fn classify(self) -> FpCategory {
-        // A previous implementation tried to only use bitmask-based checks,
-        // using f256::to_bits to transmute the float to its bit repr and match on that.
-        // Unfortunately, floating point numbers can be much worse than that.
-        // This also needs to not result in recursive evaluations of f256::to_bits.
-        //
-        // On some processors, in some cases, LLVM will "helpfully" lower floating point ops,
-        // in spite of a request for them using f32 and f256, to things like x87 operations.
-        // These have an f256's mantissa, but can have a larger than normal exponent.
-        // FIXME(jubilee): Using x87 operations is never necessary in order to function
-        // on x86 processors for Rust-to-Rust calls, so this issue should not happen.
-        // Code generation should be adjusted to use non-C calling conventions, avoiding this.
-        //
-        // Thus, a value may compare unequal to infinity, despite having a "full" exponent mask.
-        // And it may not be NaN, as it can simply be an "overextended" finite value.
         if self.is_nan() {
             FpCategory::Nan
         } else {
@@ -235,7 +221,7 @@ impl f256 {
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
-    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[must_use]
     #[inline]
     pub fn recip(self) -> f256 {
         1.0 / self
@@ -267,7 +253,7 @@ impl f256 {
     /// This follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
     /// This also matches the behavior of libm’s fmax.
-    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    #[must_use]
     #[inline]
     pub fn max(self, other: f256) -> f256 {
         unimplemented!()
@@ -279,7 +265,7 @@ impl f256 {
     /// This follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
     /// This also matches the behavior of libm’s fmin.
-    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    #[must_use]
     #[inline]
     pub fn min(self, other: f256) -> f256 {
         unimplemented!()
@@ -296,7 +282,7 @@ impl f256 {
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
     /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
-    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    #[must_use]
     #[inline]
     pub fn maximum(self, other: f256) -> f256 {
         if self > other {
@@ -325,7 +311,7 @@ impl f256 {
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
     /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
-    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    #[must_use]
     #[inline]
     pub fn minimum(self, other: f256) -> f256 {
         if self < other {
@@ -474,8 +460,7 @@ impl f256 {
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
+    #[must_use]
     #[inline]
     pub const fn to_be_bytes(self) -> [u8; 8] {
         self.to_bits().to_be_bytes()
@@ -486,8 +471,7 @@ impl f256 {
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
+    #[must_use]
     #[inline]
     pub const fn to_le_bytes(self) -> [u8; 8] {
         self.to_bits().to_le_bytes()
@@ -504,8 +488,7 @@ impl f256 {
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
+    #[must_use]
     #[inline]
     pub const fn to_ne_bytes(self) -> [u8; 8] {
         self.to_bits().to_ne_bytes()
@@ -539,8 +522,6 @@ impl f256 {
     /// let value = f256::from_le_bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
     /// assert_eq!(value, 12.5);
     /// ```
-    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use]
     #[inline]
     pub const fn from_le_bytes(bytes: [u8; 8]) -> Self {
@@ -569,8 +550,6 @@ impl f256 {
     /// });
     /// assert_eq!(value, 12.5);
     /// ```
-    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use]
     #[inline]
     pub const fn from_ne_bytes(bytes: [u8; 8]) -> Self {
@@ -654,7 +633,7 @@ impl f256 {
     ///
     /// ```
     /// ```
-    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[must_use]
     #[inline]
     pub fn clamp(self, min: f256, max: f256) -> f256 {
         assert!(min <= max);
