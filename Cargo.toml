@@ -1,0 +1,20 @@
+[package]
+name = "f256"
+version = "0.0.0"
+edition = "2021"
+authors = ["Michael Amrhein <michael@adrhinum.de>"]
+description = "Octuple-precision floating-point arithmetic."
+readme = "README.md"
+homepage = "https://github.com/mamrhein/fpdec.rs"
+repository = "https://github.com/mamrhein/fpdec.rs"
+documentation = "https://docs.rs/fpdec/"
+license-file = "LICENSE.TXT"
+keywords = ["number", "precision", "floating-point", "arithmetics"]
+categories = ["data-structures", "mathematics"]
+
+[dependencies]
+num-traits = { version = "0.2.0", optional = true }
+
+[features]
+default = ["std"]
+std = []
