@@ -7,28 +7,46 @@
 // $Source$
 // $Revision$
 
-use crate::rawfloat::RawFloat;
-use crate::u256::u256;
-use std::num::FpCategory;
+use core::num::FpCategory;
 
-const PREC_LEVEL: u32 = 8;
-const TOTAL_BITS: u32 = 1_u32 << PREC_LEVEL;
-const EXP_BITS: u32 = 4 * PREC_LEVEL - 13;
-const EXP_MAX: u32 = (1_u32 << EXP_BITS) - 1;
-const EXP_BIAS: u32 = EXP_MAX >> 1;
-const EMAX: i32 = EXP_BIAS as i32;
-const EMIN: i32 = 1 - EMAX;
-const FRACTION_BITS: u32 = TOTAL_BITS - EXP_BITS - 1;
-const HI_TOTAL_BITS: u32 = TOTAL_BITS >> 1;
-const HI_SIGN_SHIFT: u32 = HI_TOTAL_BITS - 1;
-const HI_FRACTION_BITS: u32 = FRACTION_BITS - HI_TOTAL_BITS;
-const HI_FRACTION_BIAS: u128 = 1_u128 << HI_FRACTION_BITS;
-const HI_FRACTION_MASK: u128 = HI_FRACTION_BIAS - 1;
-const HI_EXP_MASK: u128 = (EXP_MAX as u128) << HI_FRACTION_BITS;
-const HI_SIGN_MASK: u128 = 1_u128 << 127;
-const NAN_HI: u128 = HI_EXP_MASK + 1;
-const INF_HI: u128 = HI_EXP_MASK;
-const NEG_INF_HI: u128 = HI_SIGN_MASK | HI_EXP_MASK;
+use crate::{rawfloat::RawFloat, u256::u256};
+
+/// Precision level in relation to single precision float (f32) = 8
+pub(crate) const PREC_LEVEL: u32 = 8;
+/// Total number of bits = 256
+pub(crate) const TOTAL_BITS: u32 = 1_u32 << PREC_LEVEL;
+/// Number of exponent bits = 19
+pub(crate) const EXP_BITS: u32 = 4 * PREC_LEVEL - 13;
+/// Maximum value of biased base 2 exponent = 0x7ffff = 524287
+pub(crate) const EXP_MAX: u32 = (1_u32 << EXP_BITS) - 1;
+/// Base 2 exponent bias = 0x3ffff = 262143
+pub(crate) const EXP_BIAS: u32 = EXP_MAX >> 1;
+/// Maximum value of base 2 exponent = 0x3ffff = 262143
+pub(crate) const EMAX: i32 = EXP_BIAS as i32;
+/// Minimum value of base 2 exponent = -262142
+pub(crate) const EMIN: i32 = 1 - EMAX;
+/// Number of fraction bits = 236
+pub(crate) const FRACTION_BITS: u32 = TOTAL_BITS - EXP_BITS - 1;
+/// Number of bits in hi u128
+pub(crate) const HI_TOTAL_BITS: u32 = TOTAL_BITS >> 1;
+/// Number of bits to shift right for sign = 127
+pub(crate) const HI_SIGN_SHIFT: u32 = HI_TOTAL_BITS - 1;
+/// Number of fraction bits in hi u128 = 108
+pub(crate) const HI_FRACTION_BITS: u32 = FRACTION_BITS - HI_TOTAL_BITS;
+/// Fraction bias in hi u128 = 1e108 = 0x1000000000000000000000000000
+pub(crate) const HI_FRACTION_BIAS: u128 = 1_u128 << HI_FRACTION_BITS;
+/// Fraction mask in hi u128 = 0xfffffffffffffffffffffffffff
+pub(crate) const HI_FRACTION_MASK: u128 = HI_FRACTION_BIAS - 1;
+/// Exponent mask in hi u128 = 0x7ffff000000000000000000000000000
+pub(crate) const HI_EXP_MASK: u128 = (EXP_MAX as u128) << HI_FRACTION_BITS;
+/// Sign mask in hi u128 = 0x80000000000000000000000000000000
+pub(crate) const HI_SIGN_MASK: u128 = 1_u128 << HI_SIGN_SHIFT;
+/// Value of hi u128 for NaN = 0x7ffff000000000000000000000000001
+pub(crate) const NAN_HI: u128 = HI_EXP_MASK + 1;
+/// Value of hi u128 for Inf = 0x7ffff000000000000000000000000000
+pub(crate) const INF_HI: u128 = HI_EXP_MASK;
+/// Value of hi u128 for -Inf = 0xfffff000000000000000000000000000
+pub(crate) const NEG_INF_HI: u128 = HI_SIGN_MASK | HI_EXP_MASK;
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
@@ -40,32 +58,45 @@ impl f256 {
     /// The radix or base of the internal representation of `f256`.
     pub const RADIX: u32 = 2;
 
-    /// Number of significant digits in base 2.
+    /// Number of significant digits in base 2: 237.
     pub const MANTISSA_DIGITS: u32 = FRACTION_BITS + 1;
 
-    /// Number of significant digits in base 2.
+    /// Number of significant digits in base 2: 237.
     pub const SIGNIFICANT_DIGITS: u32 = FRACTION_BITS + 1;
 
     /// Approximate number of significant digits in base 10.
     pub const DIGITS: u32 = 71;
 
-    /// This is the difference between `1.0` and the next larger representable
-    /// number.
-    // pub const EPSILON: f256 = TODO: 2.2204460492503131e-16_f256;
+    /// The difference between `1.0` and the next larger representable number:
+    /// 2^-236 ≈ 9.055679e-72.
+    pub const EPSILON: Self = Self::from_bits(
+        ((EXP_BIAS - FRACTION_BITS) as u128) << HI_FRACTION_BITS,
+        0,
+    );
 
-    /// Smallest finite `f256` value.
-    // pub const MIN: f256 = TODO: -1.7976931348623157e+308_f256;
+    /// Smallest finite `f256` value: 2^261907 - 2^262144≈ -1.6113 × 10^78913.
+    // TODO: replace by -MAX when Neg implemented
+    pub const MIN: f256 = Self::from_bits(
+        1 << HI_SIGN_SHIFT
+            | ((EXP_MAX as u128 - 1) << HI_FRACTION_BITS)
+            | HI_FRACTION_MASK,
+        u128::MAX,
+    );
 
-    /// Smallest positive normal `f256` value.
-    // pub const MIN_POSITIVE: f256 = TODO: 2.2250738585072014e-308_f256;
+    /// Smallest positive normal `f256` value: 2^−262142 ≈ 2.4824 × 10^−78913.
+    pub const MIN_POSITIVE: f256 = Self::from_bits(HI_FRACTION_BIAS, 0);
 
-    /// Largest finite `f256` value.
-    // pub const MAX: f256 = TODO: 1.7976931348623157e+308_f256;
+    /// Largest finite `f256` value:  2^262144 − 2^261907 ≈ 1.6113 × 10^78913.
+    pub const MAX: f256 = Self::from_bits(
+        ((EXP_MAX as u128 - 1) << HI_FRACTION_BITS) | HI_FRACTION_MASK,
+        u128::MAX,
+    );
 
-    /// One greater than the minimum possible normal power of 2 exponent.
+    /// One greater than the minimum possible normal power of 2 exponent:
+    /// -262142.
     pub const MIN_EXP: i32 = EMIN;
 
-    /// Maximum possible power of 2 exponent.
+    /// Maximum possible power of 2 exponent: 262143.
     pub const MAX_EXP: i32 = EMAX;
 
     /// Minimum possible normal power of 10 exponent.
@@ -80,16 +111,53 @@ impl f256 {
     /// bit patterns are considered to be NaN. Furthermore, the standard makes a
     /// difference between a "signaling" and a "quiet" NaN, and allows
     /// inspecting its "payload" (the unspecified bits in the bit pattern).
-    /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
-    /// and the stability of its representation over Rust versions and target
-    /// platforms isn't guaranteed.
-    pub const NAN: f256 = f256::from_bits(NAN_HI, 0);
+    /// This implementation does not make such a difference and uses exactly one
+    /// bit pattern for NaN.
+    pub const NAN: Self = Self::from_bits(NAN_HI, 0);
 
     /// Infinity (∞).
-    pub const INFINITY: f256 = f256::from_bits(INF_HI, 0);
+    pub const INFINITY: Self = Self::from_bits(INF_HI, 0);
 
     /// Negative infinity (−∞).
-    pub const NEG_INFINITY: f256 = f256::from_bits(NEG_INF_HI, 0);
+    pub const NEG_INFINITY: Self = Self::from_bits(NEG_INF_HI, 0);
+
+    /// Additive identity
+    pub const ZERO: Self = Self {
+        bits: u256 { hi: 0, lo: 0 },
+    };
+
+    /// Multiplicative identity
+    pub const ONE: Self = Self {
+        bits: u256 {
+            hi: (EXP_BIAS as u128) << HI_FRACTION_BITS,
+            lo: 0,
+        },
+    };
+
+    /// Multiplicative negator
+    // TODO: replace by -ONE
+    pub const NEG_ONE: Self = Self {
+        bits: u256 {
+            hi: 1 << HI_SIGN_SHIFT | (EXP_BIAS as u128) << HI_FRACTION_BITS,
+            lo: 0,
+        },
+    };
+
+    /// Equivalent of 2.0
+    pub const TWO: Self = Self {
+        bits: u256 {
+            hi: ((1 + EXP_BIAS) as u128) << HI_FRACTION_BITS,
+            lo: 0,
+        },
+    };
+
+    /// Equivalent of 10.0
+    pub const TEN: Self = Self {
+        bits: u256 {
+            hi: ((3 + EXP_BIAS) as u128) << HI_FRACTION_BITS,
+            lo: 1 << 234,
+        },
+    };
 
     /// Raw transmutation from `(u128, u128)`.
     #[inline]
@@ -102,7 +170,7 @@ impl f256 {
     /// Raw transmutation to `(u128, u128)`.
     #[inline]
     const fn to_bits(&self) -> (u128, u128) {
-        (*self.bits.hi, *self.bits.lo)
+        (self.bits.hi, self.bits.lo)
     }
 
     /// Returns the sign bit of `self`: 0 = positive, 1 = negative.
@@ -117,12 +185,13 @@ impl f256 {
     pub const fn is_nan(self) -> bool {
         self.bits.hi == NAN_HI
     }
-    /// Returns `true` if this value is positive infinity or negative infinity, and
-    /// `false` otherwise.
+
+    /// Returns `true` if this value is positive infinity or negative infinity,
+    /// and `false` otherwise.
     #[must_use]
     #[inline]
     pub const fn is_infinite(self) -> bool {
-        (self.bits.hi & (HI_EXP_MASK ^ 0)) == HI_EXP_MASK
+        (self.bits.hi & HI_EXP_MASK) == HI_EXP_MASK
     }
 
     /// Returns `true` if this number is neither infinite nor NaN.
@@ -132,7 +201,7 @@ impl f256 {
         (self.bits.hi & HI_EXP_MASK) != HI_EXP_MASK
     }
 
-    /// Returns `true` if the number is [subnormal].
+    /// Returns `true` if the number is subnormal.
     #[must_use]
     #[inline]
     pub const fn is_subnormal(self) -> bool {
@@ -140,7 +209,7 @@ impl f256 {
     }
 
     /// Returns `true` if the number is neither zero, infinite,
-    /// [subnormal], or NaN.
+    /// subnormal, or NaN.
     #[must_use]
     #[inline]
     pub const fn is_normal(self) -> bool {
@@ -150,82 +219,44 @@ impl f256 {
     /// Returns the floating point category of the number. If only one property
     /// is going to be tested, it is generally faster to use the specific
     /// predicate instead.
-    pub const fn classify(self) -> FpCategory {
-        if self.is_nan() {
-            FpCategory::Nan
-        } else {
-            // However, std can't simply compare to zero to check for zero, either,
-            // as correctness requires avoiding equality tests that may be Subnormal == -0.0
-            // because it may be wrong under "denormals are zero" and "flush to zero" modes.
-            // Most of std's targets don't use those, but they are used for thumbv7neon.
-            // So, this does use bitpattern matching for the rest.
-
-            // SAFETY: f256 to u64 is fine. Usually.
-            // If control flow has gotten this far, the value is definitely in one of the categories
-            // that f256::partial_classify can correctly analyze.
-            unsafe { f256::partial_classify(self) }
-        }
-    }
-
-    const fn classify_bits(b: u64) -> FpCategory {
-        const EXP_MASK: u64 = 0x7ff0000000000000;
-        const MAN_MASK: u64 = 0x000fffffffffffff;
-
-        match (b & MAN_MASK, b & EXP_MASK) {
-            (0, EXP_MASK) => FpCategory::Infinite,
-            (_, EXP_MASK) => FpCategory::Nan,
-            (0, 0) => FpCategory::Zero,
-            (_, 0) => FpCategory::Subnormal,
+    #[allow(unsafe_code)]
+    pub const fn classify(&self) -> FpCategory {
+        match (
+            self.bits.hi & HI_EXP_MASK,
+            self.bits.hi & HI_FRACTION_MASK,
+            self.bits.lo,
+        ) {
+            (HI_EXP_MASK, 0, _) => FpCategory::Infinite,
+            (HI_EXP_MASK, NAN_HI, _) => FpCategory::Nan,
+            (0, 0, 0) => FpCategory::Zero,
+            (0, ..) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
         }
     }
 
-    /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
-    /// positive sign bit and positive infinity. Note that IEEE-745 doesn't assign any
-    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
-    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
-    /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
-    /// See [explanation of NaN as a special value](f32) for more info.
+    /// Returns `true` if `self` has a positive sign, including `+0.0`, positive
+    /// infinity and NaN.
     #[must_use]
     #[inline]
     pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
     }
 
-    #[must_use]
-    #[inline]
-    #[doc(hidden)]
-    pub fn is_positive(self) -> bool {
-        self.is_sign_positive()
-    }
-
-    /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
-    /// negative sign bit and negative infinity. Note that IEEE-745 doesn't assign any
-    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
-    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
-    /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
-    /// See [explanation of NaN as a special value](f32) for more info.
+    /// Returns `true` if `self` has a negative sign, including `-0.0`and
+    /// negative infinity.
     #[must_use]
     #[inline]
     pub const fn is_sign_negative(self) -> bool {
-        // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
-        // applies to zeros and NaNs as well.
         self.sign() == 1
     }
 
-    #[must_use]
-    #[inline]
-    #[doc(hidden)]
-    pub fn is_negative(self) -> bool {
-        self.is_sign_negative()
-    }
-
     /// Takes the reciprocal (inverse) of a number, `1/x`.
-    #[must_use]
-    #[inline]
-    pub fn recip(self) -> f256 {
-        1.0 / self
-    }
+    // TODO: uncomment when Div implemented
+    // #[must_use]
+    // #[inline]
+    // pub fn recip(self) -> f256 {
+    //     Self::ONE / self
+    // }
 
     /// Converts radians to degrees.
     // #[must_use = "this returns the result of the operation, \
@@ -250,9 +281,10 @@ impl f256 {
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmax.
+    /// This follows the IEEE-754 2008 semantics for maxNum, except for handling
+    /// of signaling NaNs; this function handles all NaNs the same way and
+    /// avoids maxNum's problems with associativity. This also matches the
+    /// behavior of libm’s fmax.
     #[must_use]
     #[inline]
     pub fn max(self, other: f256) -> f256 {
@@ -262,9 +294,10 @@ impl f256 {
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmin.
+    /// This follows the IEEE-754 2008 semantics for minNum, except for handling
+    /// of signaling NaNs; this function handles all NaNs the same way and
+    /// avoids minNum's problems with associativity. This also matches the
+    /// behavior of libm’s fmin.
     #[must_use]
     #[inline]
     pub fn min(self, other: f256) -> f256 {
@@ -276,12 +309,14 @@ impl f256 {
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f256::max`] which only returns NaN when *both* arguments are NaN.
     ///
-    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
-    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the semantics specified in IEEE 754-2019.
+    /// If one of the arguments is NaN, then NaN is returned. Otherwise this
+    /// returns the greater of the two numbers. For this operation, -0.0 is
+    /// considered to be less than +0.0. Note that this follows the
+    /// semantics specified in IEEE 754-2019.
     ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that
+    /// the bitpattern of a NaN operand is conserved; see [explanation of
+    /// NaN as a special value](f32) for more info.
     #[must_use]
     #[inline]
     pub fn maximum(self, other: f256) -> f256 {
@@ -305,12 +340,14 @@ impl f256 {
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f256::min`] which only returns NaN when *both* arguments are NaN.
     ///
-    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
-    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the semantics specified in IEEE 754-2019.
+    /// If one of the arguments is NaN, then NaN is returned. Otherwise this
+    /// returns the lesser of the two numbers. For this operation, -0.0 is
+    /// considered to be less than +0.0. Note that this follows the
+    /// semantics specified in IEEE 754-2019.
     ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that
+    /// the bitpattern of a NaN operand is conserved; see [explanation of
+    /// NaN as a special value](f32) for more info.
     #[must_use]
     #[inline]
     pub fn minimum(self, other: f256) -> f256 {
@@ -331,7 +368,8 @@ impl f256 {
 
     /// Raw transmutation to `u64`.
     ///
-    /// This is currently identical to `transmute::<f256, u64>(self)` on all platforms.
+    /// This is currently identical to `transmute::<f256, u64>(self)` on all
+    /// platforms.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -341,49 +379,52 @@ impl f256 {
     // #[must_use = "this returns the result of the operation, \
     //               without modifying the original"]
     // #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    // #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    // #[inline]
+    // #[rustc_const_unstable(feature = "const_float_bits_conv", issue =
+    // "72447")] #[inline]
     // pub const fn to_bits(self) -> u64 {
-    //     // SAFETY: `u64` is a plain old datatype so we can always transmute to it.
-    //     // ...sorta.
+    //     // SAFETY: `u64` is a plain old datatype so we can always transmute
+    // to it.     // ...sorta.
     //     //
     //     // See the SAFETY comment in f256::from_bits for more.
-    //     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    //     const fn ct_f256_to_u64(ct: f256) -> u64 {
+    //     #[rustc_const_unstable(feature = "const_float_bits_conv", issue =
+    // "72447")]     const fn ct_f256_to_u64(ct: f256) -> u64 {
     //         match ct.classify() {
     //             FpCategory::Nan => {
-    //                 panic!("const-eval error: cannot use f256::to_bits on a NaN")
-    //             }
+    //                 panic!("const-eval error: cannot use f256::to_bits on a
+    // NaN")             }
     //             FpCategory::Subnormal => {
-    //                 panic!("const-eval error: cannot use f256::to_bits on a subnormal number")
-    //             }
-    //             FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
-    //                 // SAFETY: We have a normal floating point number. Now we transmute, i.e. do a bitcopy.
-    //                 unsafe { mem::transmute::<f256, u64>(ct) }
-    //             }
+    //                 panic!("const-eval error: cannot use f256::to_bits on a
+    // subnormal number")             }
+    //             FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero
+    // => {                 // SAFETY: We have a normal floating point
+    // number. Now we transmute, i.e. do a bitcopy.                 unsafe {
+    // mem::transmute::<f256, u64>(ct) }             }
     //         }
     //     }
     //     // SAFETY: `u64` is a plain old datatype so we can always... uh...
     //     // ...look, just pretend you forgot what you just read.
     //     // Stability concerns.
     //     let rt_f256_to_u64 = |rt| unsafe { mem::transmute::<f256, u64>(rt) };
-    //     // SAFETY: We use internal implementations that either always work or fail at compile time.
-    //     unsafe { intrinsics::const_eval_select((self,), ct_f256_to_u64, rt_f256_to_u64) }
+    //     // SAFETY: We use internal implementations that either always work or
+    // fail at compile time.     unsafe {
+    // intrinsics::const_eval_select((self,), ct_f256_to_u64, rt_f256_to_u64) }
     // }
 
     /// Raw transmutation from `u64`.
     ///
-    /// This is currently identical to `transmute::<u64, f256>(v)` on all platforms.
-    /// It turns out this is incredibly portable, for two reasons:
+    /// This is currently identical to `transmute::<u64, f256>(v)` on all
+    /// platforms. It turns out this is incredibly portable, for two
+    /// reasons:
     ///
     /// * Floats and Ints have the same endianness on all supported platforms.
     /// * IEEE-754 very precisely specifies the bit layout of floats.
     ///
     /// However there is one caveat: prior to the 2008 version of IEEE-754, how
-    /// to interpret the NaN signaling bit wasn't actually specified. Most platforms
-    /// (notably x86 and ARM) picked the interpretation that was ultimately
-    /// standardized in 2008, but some didn't (notably MIPS). As a result, all
-    /// signaling NaNs on MIPS are quiet NaNs on x86, and vice-versa.
+    /// to interpret the NaN signaling bit wasn't actually specified. Most
+    /// platforms (notably x86 and ARM) picked the interpretation that was
+    /// ultimately standardized in 2008, but some didn't (notably MIPS). As
+    /// a result, all signaling NaNs on MIPS are quiet NaNs on x86, and
+    /// vice-versa.
     ///
     /// Rather than trying to preserve signaling-ness cross-platform, this
     /// implementation favors preserving the exact bits. This means that
@@ -408,21 +449,22 @@ impl f256 {
     // ...sorta.
     //
     // It turns out that at runtime, it is possible for a floating point number
-    // to be subject to floating point modes that alter nonzero subnormal numbers
-    // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
-    // This is not a problem usually, but at least one tier2 platform for Rust
-    // actually exhibits an FTZ behavior by default: thumbv7neon
-    // aka "the Neon FPU in AArch32 state"
+    // to be subject to floating point modes that alter nonzero subnormal
+    // numbers to zero on reads and writes, aka "denormals are zero" and
+    // "flush to zero". This is not a problem usually, but at least one
+    // tier2 platform for Rust actually exhibits an FTZ behavior by default:
+    // thumbv7neon aka "the Neon FPU in AArch32 state"
     //
-    // Even with this, not all instructions exhibit the FTZ behaviors on thumbv7neon,
-    // so this should load the same bits if LLVM emits the "correct" instructions,
-    // but LLVM sometimes makes interesting choices about float optimization,
-    // and other FPUs may do similar. Thus, it is wise to indulge luxuriously in caution.
+    // Even with this, not all instructions exhibit the FTZ behaviors on
+    // thumbv7neon, so this should load the same bits if LLVM emits the
+    // "correct" instructions, but LLVM sometimes makes interesting choices
+    // about float optimization, and other FPUs may do similar. Thus, it is
+    // wise to indulge luxuriously in caution.
     //
-    // In addition, on x86 targets with SSE or SSE2 disabled and the x87 FPU enabled,
-    // i.e. not soft-float, the way Rust does parameter passing can actually alter
-    // a number that is "not infinity" to have the same exponent as infinity,
-    // in a slightly unpredictable manner.
+    // In addition, on x86 targets with SSE or SSE2 disabled and the x87 FPU
+    // enabled, i.e. not soft-float, the way Rust does parameter passing can
+    // actually alter a number that is "not infinity" to have the same
+    // exponent as infinity, in a slightly unpredictable manner.
     //
     // And, of course evaluating to a NaN value is fairly nondeterministic.
     // More precisely: when NaN should be returned is knowable, but which NaN?
@@ -430,19 +472,19 @@ impl f256 {
     // This function, however, allows observing the bitstring of a NaN,
     // thus introspection on CTFE.
     //
-    // In order to preserve, at least for the moment, const-to-runtime equivalence,
-    // reject any of these possible situations from happening.
-    // #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-    //     const fn ct_u64_to_f256(ct: u64) -> f256 {
+    // In order to preserve, at least for the moment, const-to-runtime
+    // equivalence, reject any of these possible situations from happening.
+    // #[rustc_const_unstable(feature = "const_float_bits_conv", issue =
+    // "72447")]     const fn ct_u64_to_f256(ct: u64) -> f256 {
     //         match f256::classify_bits(ct) {
     //             FpCategory::Subnormal => {
-    //                 panic!("const-eval error: cannot use f256::from_bits on a subnormal number")
-    //             }
+    //                 panic!("const-eval error: cannot use f256::from_bits on a
+    // subnormal number")             }
     //             FpCategory::Nan => {
-    //                 panic!("const-eval error: cannot use f256::from_bits on NaN")
-    //             }
-    //             FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
-    //                 // SAFETY: It's not a frumious number
+    //                 panic!("const-eval error: cannot use f256::from_bits on
+    // NaN")             }
+    //             FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero
+    // => {                 // SAFETY: It's not a frumious number
     //                 unsafe { mem::transmute::<u64, f256>(ct) }
     //             }
     //         }
@@ -451,12 +493,13 @@ impl f256 {
     //     // ...look, just pretend you forgot what you just read.
     //     // Stability concerns.
     //     let rt_u64_to_f256 = |rt| unsafe { mem::transmute::<u64, f256>(rt) };
-    //     // SAFETY: We use internal implementations that either always work or fail at compile time.
-    //     unsafe { intrinsics::const_eval_select((v,), ct_u64_to_f256, rt_u64_to_f256) }
+    //     // SAFETY: We use internal implementations that either always work or
+    // fail at compile time.     unsafe {
+    // intrinsics::const_eval_select((v,), ct_u64_to_f256, rt_u64_to_f256) }
     // }
 
-    /// Return the memory representation of this floating point number as a byte array in
-    /// big-endian (network) byte order.
+    /// Return the memory representation of this floating point number as a byte
+    /// array in big-endian (network) byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -466,8 +509,8 @@ impl f256 {
         self.to_bits().to_be_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
-    /// little-endian byte order.
+    /// Return the memory representation of this floating point number as a byte
+    /// array in little-endian byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -477,8 +520,8 @@ impl f256 {
         self.to_bits().to_le_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
-    /// native byte order.
+    /// Return the memory representation of this floating point number as a byte
+    /// array in native byte order.
     ///
     /// As the target platform's native endianness is used, portable code
     /// should use [`to_be_bytes`] or [`to_le_bytes`], as appropriate, instead.
@@ -494,7 +537,8 @@ impl f256 {
         self.to_bits().to_ne_bytes()
     }
 
-    /// Create a floating point value from its representation as a byte array in big endian.
+    /// Create a floating point value from its representation as a byte array in
+    /// big endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -502,7 +546,8 @@ impl f256 {
     /// # Examples
     ///
     /// ```
-    /// let value = f256::from_be_bytes([0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    /// let value =
+    ///     f256::from_be_bytes([0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
     /// assert_eq!(value, 12.5);
     /// ```
     #[must_use]
@@ -511,7 +556,8 @@ impl f256 {
         unimplemented!()
     }
 
-    /// Create a floating point value from its representation as a byte array in little endian.
+    /// Create a floating point value from its representation as a byte array in
+    /// little endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -519,7 +565,8 @@ impl f256 {
     /// # Examples
     ///
     /// ```
-    /// let value = f256::from_le_bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
+    /// let value =
+    ///     f256::from_le_bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
     /// assert_eq!(value, 12.5);
     /// ```
     #[must_use]
@@ -528,7 +575,8 @@ impl f256 {
         unimplemented!()
     }
 
-    /// Create a floating point value from its representation as a byte array in native endian.
+    /// Create a floating point value from its representation as a byte array in
+    /// native endian.
     ///
     /// As the target platform's native endianness is used, portable code
     /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
@@ -561,7 +609,8 @@ impl f256 {
     /// Unlike the standard partial comparison between floating point numbers,
     /// this comparison always produces an ordering in accordance to
     /// the `totalOrder` predicate as defined in the IEEE 754 (2008 revision)
-    /// floating point standard. The values are ordered in the following sequence:
+    /// floating point standard. The values are ordered in the following
+    /// sequence:
     ///
     /// - negative quiet NaN
     /// - negative signaling NaN
@@ -586,7 +635,7 @@ impl f256 {
     /// the older, non-conformant (e.g. MIPS) hardware implementations.
     #[must_use]
     #[inline]
-    pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
+    pub fn total_cmp(&self, other: &Self) -> core::cmp::Ordering {
         let mut left = self.to_bits() as i64;
         let mut right = other.to_bits() as i64;
 
@@ -658,5 +707,36 @@ impl f256 {
                 - FRACTION_BITS as i32,
             normalized: false,
         }
+    }
+
+    fn encode(is_negative: bool, raw: &mut RawFloat) -> Self {
+        if !raw.normalized {
+            raw.normalize();
+        }
+        let mut hi = raw.fraction.hi
+            & (raw.exponent << HI_FRACTION_BITS)
+            & (is_negative << HI_SIGN_SHIFT);
+        let lo = raw.fraction.lo;
+        Self {
+            bits: u256 { hi, lo },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_nan() {
+        assert!(f256::NAN.is_nan());
+        assert!(!f256::INFINITY.is_nan());
+        assert!(!f256::NEG_INFINITY.is_nan());
+    }
+
+    fn test_inf() {
+        assert!(f256::INFINITY.is_infinite());
+        assert!(f256::NEG_INFINITY.is_infinite());
+        assert!(!f256::INFINITY.is_finite());
+        assert!(!f256::NEG_INFINITY.is_finite());
     }
 }
