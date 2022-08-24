@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use crate::u256::u256;
+use crate::uint256::u256;
 
 /// Internal representation of an unsigned finite `f256` value
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

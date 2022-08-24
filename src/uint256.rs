@@ -317,7 +317,7 @@ impl ShrAssign<usize> for u256 {
 
 #[cfg(test)]
 mod u256_shift_tests {
-    use crate::u256::u256;
+    use crate::uint256::u256;
 
     #[test]
     fn test_shl() {

@@ -15,7 +15,8 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![warn(trivial_casts, trivial_numeric_casts)]
-#![warn(unused)]
+// TODO: switch to #![warn(unused)]
+#![allow(unused)]
 #![allow(dead_code)]
 // activate some clippy lints
 #![warn(clippy::cast_possible_truncation)]
@@ -56,18 +57,9 @@
 #![warn(clippy::used_underscore_binding)]
 #![warn(clippy::wildcard_imports)]
 
-mod f256;
-mod rawfloat;
-mod u256;
 mod arith;
+mod float256;
+mod rawfloat;
+mod uint256;
 
-pub use f256::f256;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2_f64 + 2_f64;
-        assert_eq!(result, 4_f64);
-    }
-}
+pub use float256::f256;

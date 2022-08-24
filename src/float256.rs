@@ -9,7 +9,7 @@
 
 use core::num::FpCategory;
 
-use crate::{rawfloat::RawFloat, u256::u256};
+use crate::{rawfloat::RawFloat, uint256::u256};
 
 /// Precision level in relation to single precision float (f32) = 8
 pub(crate) const PREC_LEVEL: u32 = 8;
@@ -723,7 +723,7 @@ impl f256 {
         }
         let biased_exp = raw.exponent + EXP_BIAS as i32 + FRACTION_BITS as i32;
         let shifted_exp = (biased_exp as u128) << HI_FRACTION_BITS;
-        let mut hi = raw.significand.hi
+        let hi = raw.significand.hi
             & shifted_exp
             & ((is_negative as u128) << HI_SIGN_SHIFT);
         let lo = raw.significand.lo;
