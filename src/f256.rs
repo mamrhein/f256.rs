@@ -151,31 +151,17 @@ impl f256 {
         },
     };
 
-    /// Equivalent of 10.0
-    pub const TEN: Self = Self {
-        bits: u256 {
-            hi: ((3 + EXP_BIAS) as u128) << HI_FRACTION_BITS,
-            lo: 1 << 234,
-        },
-    };
-
-    /// Raw transmutation from `(u128, u128)`.
-    #[inline]
-    const fn from_bits(hi: u128, lo: u128) -> Self {
-        Self {
-            bits: u256 { hi, lo },
-        }
-    }
-
-    /// Raw transmutation to `(u128, u128)`.
-    #[inline]
-    const fn to_bits(&self) -> (u128, u128) {
-        (self.bits.hi, self.bits.lo)
-    }
+    /// TODO: Equivalent of 10.0
+    // pub const TEN: Self = Self {
+    //     bits: u256 {
+    //         hi: ((1 + EXP_BIAS) as u128) << HI_FRACTION_BITS,
+    //         lo: 0,
+    //     },
+    // };
 
     /// Returns the sign bit of `self`: 0 = positive, 1 = negative.
     #[inline]
-    fn sign(&self) -> u32 {
+    const fn sign(&self) -> u32 {
         (self.bits.hi >> HI_SIGN_SHIFT) as u32
     }
 
@@ -320,19 +306,20 @@ impl f256 {
     #[must_use]
     #[inline]
     pub fn maximum(self, other: f256) -> f256 {
-        if self > other {
-            self
-        } else if other > self {
-            other
-        } else if self == other {
-            if self.is_sign_positive() && other.is_sign_negative() {
-                self
-            } else {
-                other
-            }
-        } else {
-            self + other
-        }
+        // if self > other {
+        //     self
+        // } else if other > self {
+        //     other
+        // } else if self == other {
+        //     if self.is_sign_positive() && other.is_sign_negative() {
+        //         self
+        //     } else {
+        //         other
+        //     }
+        // } else {
+        //     self + other
+        // }
+        unimplemented!()
     }
 
     /// Returns the minimum of the two numbers, propagating NaN.
@@ -351,19 +338,20 @@ impl f256 {
     #[must_use]
     #[inline]
     pub fn minimum(self, other: f256) -> f256 {
-        if self < other {
-            self
-        } else if other < self {
-            other
-        } else if self == other {
-            if self.is_sign_negative() && other.is_sign_positive() {
-                self
-            } else {
-                other
-            }
-        } else {
-            self + other
-        }
+        // if self < other {
+        //     self
+        // } else if other < self {
+        //     other
+        // } else if self == other {
+        //     if self.is_sign_negative() && other.is_sign_positive() {
+        //         self
+        //     } else {
+        //         other
+        //     }
+        // } else {
+        //     self + other
+        // }
+        unimplemented!()
     }
 
     /// Raw transmutation to `u64`.
@@ -409,6 +397,13 @@ impl f256 {
     // fail at compile time.     unsafe {
     // intrinsics::const_eval_select((self,), ct_f256_to_u64, rt_f256_to_u64) }
     // }
+
+    /// Raw transmutation to `[u64; 4]`.
+    #[inline]
+    const fn to_bits(&self) -> [u64; 4] {
+        // (self.bits.hi, self.bits.lo)
+        unimplemented!()
+    }
 
     /// Raw transmutation from `u64`.
     ///
@@ -498,6 +493,14 @@ impl f256 {
     // intrinsics::const_eval_select((v,), ct_u64_to_f256, rt_u64_to_f256) }
     // }
 
+    /// Raw transmutation from `[u64; 4]`.
+    #[inline]
+    const fn from_bits(hi: u128, lo: u128) -> Self {
+        Self {
+            bits: u256 { hi, lo },
+        }
+    }
+
     /// Return the memory representation of this floating point number as a byte
     /// array in big-endian (network) byte order.
     ///
@@ -506,7 +509,8 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn to_be_bytes(self) -> [u8; 8] {
-        self.to_bits().to_be_bytes()
+        // self.to_bits().to_be_bytes()'
+        unimplemented!()
     }
 
     /// Return the memory representation of this floating point number as a byte
@@ -517,7 +521,8 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn to_le_bytes(self) -> [u8; 8] {
-        self.to_bits().to_le_bytes()
+        // self.to_bits().to_le_bytes()
+        unimplemented!()
     }
 
     /// Return the memory representation of this floating point number as a byte
@@ -534,7 +539,8 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn to_ne_bytes(self) -> [u8; 8] {
-        self.to_bits().to_ne_bytes()
+        // self.to_bits().to_ne_bytes()
+        unimplemented!()
     }
 
     /// Create a floating point value from its representation as a byte array in
@@ -636,8 +642,8 @@ impl f256 {
     #[must_use]
     #[inline]
     pub fn total_cmp(&self, other: &Self) -> core::cmp::Ordering {
-        let mut left = self.to_bits() as i64;
-        let mut right = other.to_bits() as i64;
+        // let mut left = self.to_bits() as i64;
+        // let mut right = other.to_bits() as i64;
 
         // In case of negatives, flip all the bits except the sign
         // to achieve a similar layout as two's complement integers
@@ -661,10 +667,11 @@ impl f256 {
         // the integer, so we "fill" the mask with sign bits, and then
         // convert to unsigned to push one more zero bit.
         // On positive values, the mask is all zeros, so it's a no-op.
-        left ^= (((left >> 63) as u64) >> 1) as i64;
-        right ^= (((right >> 63) as u64) >> 1) as i64;
-
-        left.cmp(&right)
+        // left ^= (((left >> 63) as u64) >> 1) as i64;
+        // right ^= (((right >> 63) as u64) >> 1) as i64;
+        //
+        // left.cmp(&right)
+        unimplemented!()
     }
     /// Restrict a value to a certain interval unless it is NaN.
     ///
@@ -685,20 +692,21 @@ impl f256 {
     #[must_use]
     #[inline]
     pub fn clamp(self, min: f256, max: f256) -> f256 {
-        assert!(min <= max);
-        let mut x = self;
-        if x < min {
-            x = min;
-        }
-        if x > max {
-            x = max;
-        }
-        x
+        // assert!(min <= max);
+        // let mut x = self;
+        // if x < min {
+        //     x = min;
+        // }
+        // if x > max {
+        //     x = max;
+        // }
+        // x
+        unimplemented!()
     }
 
     fn decode(&self) -> RawFloat {
         RawFloat {
-            fraction: u256 {
+            significand: u256 {
                 hi: (self.bits.hi & HI_FRACTION_MASK),
                 lo: self.bits.lo,
             },
@@ -713,10 +721,12 @@ impl f256 {
         if !raw.normalized {
             raw.normalize();
         }
-        let mut hi = raw.fraction.hi
-            & (raw.exponent << HI_FRACTION_BITS)
-            & (is_negative << HI_SIGN_SHIFT);
-        let lo = raw.fraction.lo;
+        let biased_exp = raw.exponent + EXP_BIAS as i32 + FRACTION_BITS as i32;
+        let shifted_exp = (biased_exp as u128) << HI_FRACTION_BITS;
+        let mut hi = raw.significand.hi
+            & shifted_exp
+            & ((is_negative as u128) << HI_SIGN_SHIFT);
+        let lo = raw.significand.lo;
         Self {
             bits: u256 { hi, lo },
         }
@@ -727,12 +737,14 @@ impl f256 {
 mod tests {
     use super::*;
 
+    #[test]
     fn test_nan() {
         assert!(f256::NAN.is_nan());
         assert!(!f256::INFINITY.is_nan());
         assert!(!f256::NEG_INFINITY.is_nan());
     }
 
+    #[test]
     fn test_inf() {
         assert!(f256::INFINITY.is_infinite());
         assert!(f256::NEG_INFINITY.is_infinite());
