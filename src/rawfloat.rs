@@ -7,25 +7,21 @@
 // $Source$
 // $Revision$
 
-use crate::{f256::FRACTION_BITS, u256::u256};
+use crate::u256::u256;
 
 /// Internal representation of an unsigned finite `f256` value
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct RawFloat {
-    pub(crate) fraction: u256,
+    pub(crate) significand: u256,
     pub(crate) exponent: i32,
     pub(crate) normalized: bool,
 }
 
 impl RawFloat {
     pub(crate) fn normalize(&mut self) {
-        let shift = FRACTION_BITS - self.fraction.msb();
-        if shift > 0 {
-            self.fraction >>= shift;
-        } else {
-            self.fraction <<= shift;
-        }
-        self.exponent -= shift;
+        let shift = self.significand.msb();
+        self.significand <<= shift;
+        self.exponent += shift as i32;
         self.normalized = true;
     }
 }
