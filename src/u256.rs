@@ -7,12 +7,14 @@
 // $Source$
 // $Revision$
 
+use std::ops::{Shl, ShlAssign, Shr, ShrAssign};
+
 /// Return the index of the most significant bit of an u128.
 /// The given u128 must not be zero!
-fn u128_msb(mut u: u128) -> u32 {
+fn u128_msb(mut u: u128) -> usize {
     debug_assert_ne!(u, 0);
     const IDX_MAP: [u8; 16] = [0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
-    let mut n: u8 = 0;
+    let mut n: usize = 0;
     if u & 0xffffffffffffffff0000000000000000_u128 != 0 {
         n = 64;
         u >>= 64;
@@ -33,7 +35,7 @@ fn u128_msb(mut u: u128) -> u32 {
         n += 4;
         u >>= 4;
     };
-    n + IDX_MAP[u as usize] - 1
+    n + IDX_MAP[u as usize] as usize - 1
 }
 
 #[inline(always)]
@@ -184,8 +186,8 @@ fn u256_idiv_u128(xh: &mut u128, xl: &mut u128, y: u128) -> u128 {
 //     p: u8,
 //     y: i128,
 // ) -> Option<(i128, i128)> {
-//     let (mut xh, mut xl) = u128_mul_u128(x.unsigned_abs(), ten_pow(p) as u128);
-//     let r = u256_idiv_u128(&mut xh, &mut xl, y.unsigned_abs());
+//     let (mut xh, mut xl) = u128_mul_u128(x.unsigned_abs(), ten_pow(p) as
+// u128);     let r = u256_idiv_u128(&mut xh, &mut xl, y.unsigned_abs());
 //     if xh != 0 || xl > i128::MAX as u128 {
 //         return None;
 //     }
@@ -212,11 +214,11 @@ fn u256_idiv_u128(xh: &mut u128, xl: &mut u128, y: u128) -> u128 {
 /// r, if non-zero, has the same sign as y and `0 <= abs(r) < abs(y)`, or return
 /// `None` if |q| > i128::MAX.
 // #[doc(hidden)]
-// pub fn i256_div_mod_floor(x1: i128, x2: i128, y: i128) -> Option<(i128, i128)> {
-//     debug_assert!(y > 0);
-//     let (mut xh, mut xl) = u128_mul_u128(x1.unsigned_abs(), x2.unsigned_abs());
-//     let r = u256_idiv_u128(&mut xh, &mut xl, y.unsigned_abs());
-//     if xh != 0 || xl > i128::MAX as u128 {
+// pub fn i256_div_mod_floor(x1: i128, x2: i128, y: i128) -> Option<(i128,
+// i128)> {     debug_assert!(y > 0);
+//     let (mut xh, mut xl) = u128_mul_u128(x1.unsigned_abs(),
+// x2.unsigned_abs());     let r = u256_idiv_u128(&mut xh, &mut xl,
+// y.unsigned_abs());     if xh != 0 || xl > i128::MAX as u128 {
 //         return None;
 //     }
 //     // xl <= i128::MAX, so xl as i128 is safe.
@@ -241,12 +243,159 @@ pub(crate) struct u256 {
 impl u256 {
     /// Returns the index of the most significant bit of `self`.
     /// `self` must not be zero!
-    fn msb(&self) -> u32 {
+    pub(crate) fn msb(&self) -> usize {
         debug_assert!(self.hi != 0 || self.lo != 0);
         if self.hi == 0 {
             u128_msb(self.lo)
         } else {
             u128_msb(self.hi) + 128
         }
+    }
+}
+
+impl Shl<usize> for u256 {
+    type Output = Self;
+
+    fn shl(self, rhs: usize) -> Self::Output {
+        if rhs >= 128 {
+            Self::Output {
+                hi: self.lo << (rhs - 128),
+                lo: 0,
+            }
+        } else {
+            Self::Output {
+                hi: self.hi << rhs | self.lo >> (128 - rhs),
+                lo: self.lo << rhs,
+            }
+        }
+    }
+}
+
+impl ShlAssign<usize> for u256 {
+    fn shl_assign(&mut self, rhs: usize) {
+        if rhs >= 128 {
+            self.hi = self.lo << (rhs - 128);
+            self.lo = 0;
+        } else {
+            self.hi <<= rhs;
+            self.hi |= self.lo >> (128 - rhs);
+            self.lo <<= rhs;
+        }
+    }
+}
+
+impl Shr<usize> for u256 {
+    type Output = Self;
+
+    fn shr(self, rhs: usize) -> Self::Output {
+        if rhs >= 128 {
+            Self::Output {
+                hi: 0,
+                lo: self.hi >> (rhs - 128),
+            }
+        } else {
+            Self::Output {
+                hi: self.hi >> rhs,
+                lo: self.hi << (128 - rhs) | self.lo >> rhs,
+            }
+        }
+    }
+}
+
+impl ShrAssign<usize> for u256 {
+    fn shr_assign(&mut self, rhs: usize) {
+        if rhs >= 128 {
+            self.lo = self.hi >> (rhs - 128);
+            self.hi = 0;
+        } else {
+            self.lo >>= rhs;
+            self.lo |= self.hi << (128 - rhs);
+            self.hi >>= rhs;
+        }
+    }
+}
+
+#[cfg(test)]
+mod u256_shift_tests {
+    use crate::u256::u256;
+
+    #[test]
+    fn test_shl() {
+        let u = u256 {
+            hi: u128::MAX,
+            lo: u128::MAX,
+        };
+        let v = u << 132;
+        assert_eq!(
+            v,
+            u256 {
+                hi: u128::MAX << 4,
+                lo: 0,
+            }
+        );
+        let v = u << 7;
+        assert_eq!(
+            v,
+            u256 {
+                hi: u128::MAX,
+                lo: u.lo << 7,
+            }
+        );
+    }
+
+    #[test]
+    fn test_shr() {
+        let u = u256 {
+            hi: u128::MAX,
+            lo: u128::MAX,
+        };
+        let v = u >> 140;
+        assert_eq!(
+            v,
+            u256 {
+                hi: 0,
+                lo: u128::MAX >> 12,
+            }
+        );
+        let v = u >> 3;
+        assert_eq!(
+            v,
+            u256 {
+                hi: u.hi >> 3,
+                lo: u128::MAX,
+            }
+        );
+    }
+
+    #[test]
+    fn test_shl_assign() {
+        let mut u = u256 {
+            hi: 0x23,
+            lo: u128::MAX - 1,
+        };
+        u <<= 4;
+        assert_eq!(
+            u,
+            u256 {
+                hi: 0x23f,
+                lo: 0xffffffffffffffffffffffffffffffe0,
+            }
+        );
+    }
+
+    #[test]
+    fn test_shr_assign() {
+        let mut u = u256 {
+            hi: u128::MAX - 25,
+            lo: u128::MAX - 1,
+        };
+        u >>= 27;
+        assert_eq!(
+            u,
+            u256 {
+                hi: 0x1fffffffffffffffffffffffff,
+                lo: 0xfffffcdfffffffffffffffffffffffff,
+            }
+        );
     }
 }
