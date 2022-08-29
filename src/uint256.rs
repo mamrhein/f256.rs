@@ -7,7 +7,11 @@
 // $Source$
 // $Revision$
 
-use std::ops::{Shl, ShlAssign, Shr, ShrAssign};
+use core::{
+    cmp::Ordering,
+    mem::size_of,
+    ops::{Shl, ShlAssign, Shr, ShrAssign},
+};
 
 /// Return the index of the most significant bit of an u128.
 /// The given u128 must not be zero!
@@ -240,15 +244,100 @@ pub(crate) struct u256 {
     pub(crate) lo: u128,
 }
 
+/// Rounding indicator
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Round {
+    UP,
+    TIE,
+    DOWN,
+    NONE,
+}
+
 impl u256 {
+    /// Return true, if `self` == 0.
+    #[inline]
+    pub(crate) fn is_zero(&self) -> bool {
+        self.hi == 0 && self.lo == 0
+    }
+
     /// Returns the index of the most significant bit of `self`.
-    /// `self` must not be zero!
+    /// Pre-condition: `self` must not be zero!
     pub(crate) fn msb(&self) -> usize {
-        debug_assert!(self.hi != 0 || self.lo != 0);
+        debug_assert!(!self.is_zero());
         if self.hi == 0 {
             u128_msb(self.lo)
         } else {
             u128_msb(self.hi) + 128
+        }
+    }
+
+    /// Add 1 to `self` inplace.
+    #[inline]
+    pub(crate) fn incr(&mut self) {
+        self.lo = self.lo.wrapping_add(1_u128);
+        self.hi = self.hi.wrapping_add((self.lo < other.lo) as u128);
+        self.hi = self.hi.wrapping_add(other.hi);
+    }
+
+    /// Add `other` to `self` inplace.
+    #[inline]
+    pub(crate) fn iadd(&mut self, other: &u256) {
+        self.lo = self.lo.wrapping_add(other.lo);
+        self.hi = self.hi.wrapping_add((self.lo < other.lo) as u128);
+        self.hi = self.hi.wrapping_add(other.hi);
+    }
+
+    // TODO: change when [feature(bigint_helper_methods)] got stable
+    // pub(crate) fn iadd(&mut self, &other: u256) {
+    //     let mut carry = false;
+    //     (self.lo, carry) = self.lo.carrying_add(other.lo, carry);
+    //     (self.hi, carry) = self.hi.carrying_add(other.lo, carry);
+    // }
+
+    /// Subtract `other` from `self` inplace.
+    #[inline]
+    pub(crate) fn isub(&mut self, other: &u256) {
+        self.lo = self.lo.wrapping_sub(other.lo);
+        self.hi = self.hi.wrapping_sub((self.lo > other.lo) as u128);
+        self.hi = self.hi.wrapping_sub(other.hi);
+    }
+
+    // TODO: change when [feature(bigint_helper_methods)] got stable
+    // pub(crate) fn isub(&mut self, &other: u256) {
+    //     let mut borrow = false;
+    //     (self.lo, borrow) = self.lo.borrowing_add(other.lo, borrow);
+    //     (self.hi, borrow) = self.hi.borrowing_add(other.lo, borrow);
+    // }
+
+    /// Divide `self` inplace by `2^p` and return rounding indicator.
+    pub(crate) fn idiv_pow2(&mut self, mut p: u32) -> Round {
+        debug_assert_ne!(p, 0);
+        debug_assert!(p < size_of::<u256>() as u32);
+        if p > 128 {
+            p -= 128;
+            let tie = 1 << (p - 1);
+            let hi_rem = self.hi & ((1 << p) - 1);
+            let r = match hi_rem.cmp(&tie) {
+                Ordering::Less => Round::DOWN,
+                Ordering::Equal if self.lo == 0 => Round::TIE,
+                _ => Round::UP,
+            };
+            self.lo = self.hi >> p;
+            self.hi = 0;
+            r
+        } else {
+            let tie = 1 << (p - 1);
+            let lo_rem = self.hi & ((1 << p) - 1);
+            let r = match lo_rem.cmp(&tie) {
+                Ordering::Less if lo_rem == 0 => Round::NONE,
+                Ordering::Less => Round::DOWN,
+                Ordering::Equal => Round::TIE,
+                _ => Round::UP,
+            };
+            self.lo >>= p;
+            self.lo |= self.hi << (128 - p);
+            self.hi >>= p;
+            r
         }
     }
 }
@@ -257,29 +346,40 @@ impl Shl<usize> for u256 {
     type Output = Self;
 
     fn shl(self, rhs: usize) -> Self::Output {
-        if rhs >= 128 {
-            Self::Output {
-                hi: self.lo << (rhs - 128),
-                lo: 0,
-            }
-        } else {
-            Self::Output {
+        assert!(rhs <= 255, "Attempt to shift left with overflow.");
+        match rhs {
+            0 => self,
+            1..=127 => Self::Output {
                 hi: self.hi << rhs | self.lo >> (128 - rhs),
                 lo: self.lo << rhs,
-            }
+            },
+            128 => Self::Output { hi: self.lo, lo: 0 },
+            _ => Self::Output {
+                hi: self.lo << (rhs - 128),
+                lo: 0,
+            },
         }
     }
 }
 
 impl ShlAssign<usize> for u256 {
     fn shl_assign(&mut self, rhs: usize) {
-        if rhs >= 128 {
-            self.hi = self.lo << (rhs - 128);
-            self.lo = 0;
-        } else {
-            self.hi <<= rhs;
-            self.hi |= self.lo >> (128 - rhs);
-            self.lo <<= rhs;
+        assert!(rhs <= 255, "Attempt to shift left with overflow.");
+        match rhs {
+            0 => {}
+            1..=127 => {
+                self.hi <<= rhs;
+                self.hi |= self.lo >> (128 - rhs);
+                self.lo <<= rhs;
+            }
+            128 => {
+                self.hi = self.lo;
+                self.lo = 0;
+            }
+            _ => {
+                self.hi = self.lo << (rhs - 128);
+                self.lo = 0;
+            }
         }
     }
 }
@@ -288,29 +388,40 @@ impl Shr<usize> for u256 {
     type Output = Self;
 
     fn shr(self, rhs: usize) -> Self::Output {
-        if rhs >= 128 {
-            Self::Output {
-                hi: 0,
-                lo: self.hi >> (rhs - 128),
-            }
-        } else {
-            Self::Output {
+        assert!(rhs <= 255, "Attempt to shift right with overflow.");
+        match rhs {
+            0 => self,
+            1..=127 => Self::Output {
                 hi: self.hi >> rhs,
                 lo: self.hi << (128 - rhs) | self.lo >> rhs,
-            }
+            },
+            128 => Self::Output { hi: 0, lo: self.hi },
+            _ => Self::Output {
+                hi: 0,
+                lo: self.hi >> (rhs - 128),
+            },
         }
     }
 }
 
 impl ShrAssign<usize> for u256 {
     fn shr_assign(&mut self, rhs: usize) {
-        if rhs >= 128 {
-            self.lo = self.hi >> (rhs - 128);
-            self.hi = 0;
-        } else {
-            self.lo >>= rhs;
-            self.lo |= self.hi << (128 - rhs);
-            self.hi >>= rhs;
+        assert!(rhs <= 255, "Attempt to shift right with overflow.");
+        match rhs {
+            0 => {}
+            1..=127 => {
+                self.lo >>= rhs;
+                self.lo |= self.hi << (128 - rhs);
+                self.hi >>= rhs;
+            }
+            128 => {
+                self.lo = self.hi;
+                self.hi = 0;
+            }
+            _ => {
+                self.lo = self.hi >> (rhs - 128);
+                self.hi = 0;
+            }
         }
     }
 }
@@ -325,6 +436,23 @@ mod u256_shift_tests {
             hi: u128::MAX,
             lo: u128::MAX,
         };
+        assert_eq!(u << 0, u);
+        let v = u << 7;
+        assert_eq!(
+            v,
+            u256 {
+                hi: u128::MAX,
+                lo: u.lo << 7,
+            }
+        );
+        let v = u << 128;
+        assert_eq!(
+            v,
+            u256 {
+                hi: u128::MAX,
+                lo: 0,
+            }
+        );
         let v = u << 132;
         assert_eq!(
             v,
@@ -333,12 +461,12 @@ mod u256_shift_tests {
                 lo: 0,
             }
         );
-        let v = u << 7;
+        let v = u << 255;
         assert_eq!(
             v,
             u256 {
-                hi: u128::MAX,
-                lo: u.lo << 7,
+                hi: 1 << 127,
+                lo: 0,
             }
         );
     }
@@ -349,14 +477,7 @@ mod u256_shift_tests {
             hi: u128::MAX,
             lo: u128::MAX,
         };
-        let v = u >> 140;
-        assert_eq!(
-            v,
-            u256 {
-                hi: 0,
-                lo: u128::MAX >> 12,
-            }
-        );
+        assert_eq!(u >> 0, u);
         let v = u >> 3;
         assert_eq!(
             v,
@@ -365,14 +486,33 @@ mod u256_shift_tests {
                 lo: u128::MAX,
             }
         );
+        let v = u >> 128;
+        assert_eq!(
+            v,
+            u256 {
+                hi: 0,
+                lo: u128::MAX,
+            }
+        );
+        let v = u >> 140;
+        assert_eq!(
+            v,
+            u256 {
+                hi: 0,
+                lo: u128::MAX >> 12,
+            }
+        );
     }
 
     #[test]
     fn test_shl_assign() {
-        let mut u = u256 {
+        let o = u256 {
             hi: 0x23,
             lo: u128::MAX - 1,
         };
+        let mut u = o;
+        u <<= 0;
+        assert_eq!(u, o);
         u <<= 4;
         assert_eq!(
             u,
@@ -381,14 +521,27 @@ mod u256_shift_tests {
                 lo: 0xffffffffffffffffffffffffffffffe0,
             }
         );
+        u <<= 128;
+        assert_eq!(
+            u,
+            u256 {
+                hi: 0xffffffffffffffffffffffffffffffe0,
+                lo: 0
+            }
+        );
+        u <<= 133;
+        assert_eq!(u, u256 { hi: 0, lo: 0 });
     }
 
     #[test]
     fn test_shr_assign() {
-        let mut u = u256 {
+        let o = u256 {
             hi: u128::MAX - 25,
             lo: u128::MAX - 1,
         };
+        let mut u = o;
+        u >>= 0;
+        assert_eq!(u, o);
         u >>= 27;
         assert_eq!(
             u,
@@ -397,5 +550,16 @@ mod u256_shift_tests {
                 lo: 0xfffffcdfffffffffffffffffffffffff,
             }
         );
+        u >>= 128;
+        assert_eq!(
+            u,
+            u256 {
+                hi: 0,
+                lo: 0x1fffffffffffffffffffffffff
+            }
+        );
+        u = o;
+        u >>= 255;
+        assert_eq!(u, u256 { hi: 0, lo: 1 });
     }
 }
