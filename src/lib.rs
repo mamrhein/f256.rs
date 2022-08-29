@@ -57,9 +57,8 @@
 #![warn(clippy::used_underscore_binding)]
 #![warn(clippy::wildcard_imports)]
 
-mod arith;
 mod float256;
-mod rawfloat;
+mod from_float;
 mod uint256;
 
 pub use float256::f256;
