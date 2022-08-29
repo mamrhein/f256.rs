@@ -57,6 +57,7 @@
 #![warn(clippy::used_underscore_binding)]
 #![warn(clippy::wildcard_imports)]
 
+mod binops;
 mod float256;
 mod from_float;
 mod uint256;
