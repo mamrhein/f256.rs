@@ -9,7 +9,7 @@
 
 use core::num::FpCategory;
 
-use crate::{rawfloat::RawFloat, uint256::u256};
+use crate::uint256::{u256, Round};
 
 /// Precision level in relation to single precision float (f32) = 8
 pub(crate) const PREC_LEVEL: u32 = 8;
@@ -25,8 +25,10 @@ pub(crate) const EXP_BIAS: u32 = EXP_MAX >> 1;
 pub(crate) const EMAX: i32 = EXP_BIAS as i32;
 /// Minimum value of base 2 exponent = -262142
 pub(crate) const EMIN: i32 = 1 - EMAX;
+/// Number of significand bits = 237
+pub(crate) const SIGNIFICAND_BITS: u32 = TOTAL_BITS - EXP_BITS;
 /// Number of fraction bits = 236
-pub(crate) const FRACTION_BITS: u32 = TOTAL_BITS - EXP_BITS - 1;
+pub(crate) const FRACTION_BITS: u32 = SIGNIFICAND_BITS - 1;
 /// Number of bits in hi u128
 pub(crate) const HI_TOTAL_BITS: u32 = TOTAL_BITS >> 1;
 /// Number of bits to shift right for sign = 127
@@ -51,7 +53,7 @@ pub(crate) const NEG_INF_HI: u128 = HI_SIGN_MASK | HI_EXP_MASK;
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 pub struct f256 {
-    bits: u256,
+    pub(crate) bits: u256,
 }
 
 impl f256 {
@@ -74,7 +76,7 @@ impl f256 {
         0,
     );
 
-    /// Smallest finite `f256` value: 2^261907 - 2^262144≈ -1.6113 × 10^78913.
+    /// Smallest finite `f256` value: 2^261907 - 2^262144 ≈ -1.6113 × 10^78913.
     // TODO: replace by -MAX when Neg implemented
     pub const MIN: f256 = Self::from_bits(
         1 << HI_SIGN_SHIFT
@@ -126,6 +128,14 @@ impl f256 {
         bits: u256 { hi: 0, lo: 0 },
     };
 
+    /// Negative additive identity
+    pub const NEG_ZERO: Self = Self {
+        bits: u256 {
+            hi: 1 << HI_SIGN_SHIFT,
+            lo: 0,
+        },
+    };
+
     /// Multiplicative identity
     pub const ONE: Self = Self {
         bits: u256 {
@@ -161,8 +171,43 @@ impl f256 {
 
     /// Returns the sign bit of `self`: 0 = positive, 1 = negative.
     #[inline]
-    const fn sign(&self) -> u32 {
+    pub(crate) const fn sign(&self) -> u32 {
         (self.bits.hi >> HI_SIGN_SHIFT) as u32
+    }
+
+    /// Returns the biased exponent of `self`.
+    #[inline]
+    pub(crate) fn exponent(&self) -> u32 {
+        ((self.bits.hi & HI_EXP_MASK) >> HI_FRACTION_BITS) as u32
+    }
+
+    /// Returns the fraction of `self`.
+    /// Pre-condition: `self` is finite!
+    #[inline]
+    pub(crate) fn fraction(&self) -> u256 {
+        debug_assert!(
+            self.is_finite(),
+            "Attempt to extract fraction from Infinity or NaN."
+        );
+        u256 {
+            hi: self.bits.hi & HI_FRACTION_MASK,
+            lo: self.bits.lo,
+        }
+    }
+
+    /// Returns the significand of `self`.
+    /// Pre-condition: `self` is finite!
+    #[inline]
+    pub(crate) fn significand(&self) -> u256 {
+        debug_assert!(
+            self.is_finite(),
+            "Attempt to extract significand from Infinity or NaN."
+        );
+        let hi_bias = ((self.exponent() != 0) as u128) << HI_FRACTION_BITS;
+        u256 {
+            hi: (self.bits.hi & HI_FRACTION_MASK) | hi_bias,
+            lo: self.bits.lo,
+        }
     }
 
     /// Returns `true` if this value is NaN.
@@ -218,6 +263,13 @@ impl f256 {
             (0, ..) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
         }
+    }
+
+    /// Returns `true` if `self` is equal to `+0.0` or `-0.0`.
+    #[must_use]
+    #[inline]
+    pub const fn is_zero(self) -> bool {
+        (self.bits.hi << 1) == 0 && self.bits.lo == 0
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, positive
@@ -704,31 +756,26 @@ impl f256 {
         unimplemented!()
     }
 
-    fn decode(&self) -> RawFloat {
-        RawFloat {
-            significand: u256 {
-                hi: (self.bits.hi & HI_FRACTION_MASK),
-                lo: self.bits.lo,
-            },
-            exponent: ((self.bits.hi & HI_EXP_MASK) >> HI_FRACTION_BITS) as i32
-                - EXP_BIAS as i32
-                - FRACTION_BITS as i32,
-            normalized: false,
-        }
+    /// Extract sign, biased exponent and signicand from `self`.
+    pub(crate) fn decode(&self) -> (u32, u32, u256) {
+        (self.sign(), self.exponent(), self.significand())
     }
 
-    fn encode(is_negative: bool, raw: &mut RawFloat) -> Self {
-        if !raw.normalized {
-            raw.normalize();
-        }
-        let biased_exp = raw.exponent + EXP_BIAS as i32 + FRACTION_BITS as i32;
-        let shifted_exp = (biased_exp as u128) << HI_FRACTION_BITS;
-        let hi = raw.significand.hi
-            & shifted_exp
-            & ((is_negative as u128) << HI_SIGN_SHIFT);
-        let lo = raw.significand.lo;
+    /// Reconstruct a `f256` from sign, biased exponent and significand.
+    /// Pre-condition: exponent and significand must be normalized!
+    pub(crate) fn encode(sign: u32, exponent: u32, significand: &u256) -> Self {
+        debug_assert!(sign == 0 || sign == 1);
+        debug_assert!(exponent <= EXP_MAX);
+        debug_assert!(
+            exponent == 0 || (significand.hi >> HI_FRACTION_BITS) <= 1
+        );
         Self {
-            bits: u256 { hi, lo },
+            bits: u256 {
+                hi: (sign as u128) << HI_SIGN_SHIFT
+                    | ((exponent as u128) << HI_FRACTION_BITS)
+                    | (significand.hi & HI_FRACTION_MASK),
+                lo: significand.lo,
+            },
         }
     }
 }
