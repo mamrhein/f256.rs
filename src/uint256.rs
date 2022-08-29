@@ -275,8 +275,7 @@ impl u256 {
     #[inline]
     pub(crate) fn incr(&mut self) {
         self.lo = self.lo.wrapping_add(1_u128);
-        self.hi = self.hi.wrapping_add((self.lo < other.lo) as u128);
-        self.hi = self.hi.wrapping_add(other.hi);
+        self.hi = self.hi.wrapping_add((self.lo == 0) as u128);
     }
 
     /// Add `other` to `self` inplace.
