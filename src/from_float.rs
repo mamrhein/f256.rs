@@ -7,64 +7,105 @@
 // $Source$
 // $Revision$
 
-use crate::{f256, float256, uint256::u256};
+use crate::{f256, float256, uint256::u256, Float256Repr};
 
-impl From<f64> for f256 {
-    fn from(f: f64) -> Self {
+trait Float: Copy + Clone {
+    /// Precision level in relation to single precision float (f32)
+    const PREC_LEVEL: u32;
+    /// Total number of bits
+    const TOTAL_BITS: u32 = 1_u32 << Self::PREC_LEVEL;
+    /// Number of exponent bits
+    const EXP_BITS: u32 = 4 * Self::PREC_LEVEL - 13;
+    /// Number of significand bits
+    const SIGNIFICAND_BITS: u32 = Self::TOTAL_BITS - Self::EXP_BITS;
+    /// Number of fraction bits
+    const FRACTION_BITS: u32 = Self::SIGNIFICAND_BITS - 1;
+    /// Maximum value of biased base 2 exponent
+    const EXP_MAX: u32 = (1_u32 << Self::EXP_BITS) - 1;
+    /// Base 2 exponent bias (incl. radix adjustment)
+    const EXP_BIAS: u32 = (Self::EXP_MAX >> 1) + Self::FRACTION_BITS;
+    /// Fraction mask
+    const FRACTION_MASK: u64 = (1_u64 << Self::FRACTION_BITS) - 1;
+    /// Fraction bias
+    const FRACTION_BIAS: u64 = 1_u64 << Self::FRACTION_BITS;
+    /// Number of bits to shift right for sign
+    const SIGN_SHIFT: u32 = Self::TOTAL_BITS - 1;
+    /// Raw transmutation to u64.
+    fn to_bits(self) -> u64;
+    /// Returns true if the number is neither zero, infinite, subnormal, or NaN.
+    fn is_normal(self) -> bool;
+}
+
+impl Float for f32 {
+    const PREC_LEVEL: u32 = 5;
+
+    #[inline]
+    fn to_bits(self) -> u64 {
+        self.to_bits() as u64
+    }
+
+    #[inline]
+    fn is_normal(self) -> bool {
+        self.is_normal()
+    }
+}
+
+impl Float for f64 {
+    const PREC_LEVEL: u32 = 6;
+
+    #[inline]
+    fn to_bits(self) -> u64 {
+        self.to_bits()
+    }
+
+    #[inline]
+    fn is_normal(self) -> bool {
+        self.is_normal()
+    }
+}
+
+impl<F: Float> From<F> for f256 {
+    fn from(f: F) -> Self {
         let bits = f.to_bits();
-        // sign bit at pos 63
-        let sign = (bits >> 63) as u32;
-        // biased exponent at bit pos 52 .. 62
-        let biased_exp = ((bits >> 52) & 0x7ff) as u32;
-        // fraction at bit pos 0 .. 51
-        let fraction = bits & 0xfffffffffffff;
-        // check special values
-        if biased_exp == 0x7ff {
-            return if fraction != 0 {
+        let sign = (bits >> F::SIGN_SHIFT) as u32;
+        let biased_exp =
+            ((bits >> F::FRACTION_BITS as u64) & F::EXP_MAX as u64) as u32;
+        let fraction = bits & F::FRACTION_MASK;
+
+        return if f.is_normal() {
+            let exp = biased_exp as i32 - F::EXP_BIAS as i32;
+            let significand = u256 {
+                hi: 0,
+                lo: (fraction | F::FRACTION_BIAS) as u128,
+            };
+            f256 {
+                repr: Float256Repr::encode(sign, exp, significand),
+            }
+        } else if biased_exp == 0 {
+            if fraction == 0 {
+                // +/- zero
+                [f256::ZERO, f256::NEG_ZERO][sign as usize]
+            } else {
+                // subnormal
+                f256 {
+                    repr: Float256Repr::encode(
+                        sign,
+                        -(F::EXP_BIAS as i32),
+                        u256 {
+                            hi: 0,
+                            lo: fraction as u128,
+                        },
+                    ),
+                }
+            }
+        } else {
+            if fraction != 0 {
                 f256::NAN
             } else {
                 // +/- inf
-                f256 {
-                    bits: u256 {
-                        hi: ((sign as u128) << float256::HI_SIGN_SHIFT)
-                            | ((float256::EXP_MAX as u128)
-                                << float256::HI_FRACTION_BITS),
-                        lo: 0,
-                    },
-                }
-            };
-        }
-        if biased_exp == 0 {
-            return if fraction == 0 {
-                // +/- zero
-                f256 {
-                    bits: u256 {
-                        hi: ((sign as u128) << float256::HI_SIGN_SHIFT),
-                        lo: 0,
-                    },
-                }
-            } else {
-                // subnormal f64
-                f256 {
-                    bits: u256 {
-                        hi: ((sign as u128) << float256::HI_SIGN_SHIFT)
-                            | ((fraction as u128)
-                                << (float256::HI_FRACTION_BITS - 52)),
-                        lo: 0,
-                    },
-                }
-            };
-        }
-        // normal f64
-        f256 {
-            bits: u256 {
-                hi: ((sign as u128) << float256::HI_SIGN_SHIFT)
-                    | (((biased_exp + (float256::EXP_BIAS - 0x3ff)) as u128)
-                        << float256::HI_FRACTION_BITS)
-                    | ((fraction as u128) << (float256::HI_FRACTION_BITS - 52)),
-                lo: 0,
-            },
-        }
+                [f256::INFINITY, f256::NEG_INFINITY][sign as usize]
+            }
+        };
     }
 }
 
