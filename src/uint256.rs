@@ -244,31 +244,28 @@ pub(crate) struct u256 {
     pub(crate) lo: u128,
 }
 
-/// Rounding indicator
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Round {
-    UP,
-    TIE,
-    DOWN,
-    NONE,
-}
-
 impl u256 {
+    /// The size of this integer type in bits.
+    pub(crate) const BITS: u32 = size_of::<u256>() as u32 * 8;
+
     /// Return true, if `self` == 0.
     #[inline]
-    pub(crate) fn is_zero(&self) -> bool {
+    pub(crate) const fn is_zero(&self) -> bool {
         self.hi == 0 && self.lo == 0
+    }
+
+    /// Returns the number of leading zeros in the binary representation of
+    /// `self`.
+    pub(crate) const fn leading_zeros(&self) -> u32 {
+        return self.hi.leading_zeros()
+            + (self.hi == 0) as u32 * self.lo.leading_zeros();
     }
 
     /// Returns the index of the most significant bit of `self`.
     /// Pre-condition: `self` must not be zero!
-    pub(crate) fn msb(&self) -> usize {
+    pub(crate) fn msb(&self) -> u32 {
         debug_assert!(!self.is_zero());
-        if self.hi == 0 {
-            u128_msb(self.lo)
-        } else {
-            u128_msb(self.hi) + 128
-        }
+        Self::BITS - self.leading_zeros() - 1
     }
 
     /// Add 1 to `self` inplace.
@@ -308,35 +305,28 @@ impl u256 {
     //     (self.hi, borrow) = self.hi.borrowing_add(other.lo, borrow);
     // }
 
-    /// Divide `self` inplace by `2^p` and return rounding indicator.
-    pub(crate) fn idiv_pow2(&mut self, mut p: u32) -> Round {
+    /// Divide `self` inplace by `2^p` and round (tie to even).
+    pub(crate) fn idiv_pow2(&mut self, mut p: u32) {
         debug_assert_ne!(p, 0);
         debug_assert!(p < size_of::<u256>() as u32);
         if p > 128 {
             p -= 128;
             let tie = 1 << (p - 1);
             let hi_rem = self.hi & ((1 << p) - 1);
-            let r = match hi_rem.cmp(&tie) {
-                Ordering::Less => Round::DOWN,
-                Ordering::Equal if self.lo == 0 => Round::TIE,
-                _ => Round::UP,
-            };
             self.lo = self.hi >> p;
             self.hi = 0;
-            r
+            if hi_rem > tie || (hi_rem == tie && (self.lo & 1_u128) == 1) {
+                self.incr();
+            }
         } else {
             let tie = 1 << (p - 1);
             let lo_rem = self.hi & ((1 << p) - 1);
-            let r = match lo_rem.cmp(&tie) {
-                Ordering::Less if lo_rem == 0 => Round::NONE,
-                Ordering::Less => Round::DOWN,
-                Ordering::Equal => Round::TIE,
-                _ => Round::UP,
-            };
             self.lo >>= p;
             self.lo |= self.hi << (128 - p);
             self.hi >>= p;
-            r
+            if lo_rem > tie || (lo_rem == tie && (self.lo & 1_u128) == 1) {
+                self.incr();
+            }
         }
     }
 }
@@ -345,27 +335,28 @@ impl Shl<usize> for u256 {
     type Output = Self;
 
     fn shl(self, rhs: usize) -> Self::Output {
-        assert!(rhs <= 255, "Attempt to shift left with overflow.");
+        const LIMIT: usize = u256::BITS as usize - 1;
+        assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
         match rhs {
-            0 => self,
             1..=127 => Self::Output {
                 hi: self.hi << rhs | self.lo >> (128 - rhs),
                 lo: self.lo << rhs,
             },
             128 => Self::Output { hi: self.lo, lo: 0 },
-            _ => Self::Output {
+            129..=255 => Self::Output {
                 hi: self.lo << (rhs - 128),
                 lo: 0,
             },
+            _ => self,
         }
     }
 }
 
 impl ShlAssign<usize> for u256 {
     fn shl_assign(&mut self, rhs: usize) {
-        assert!(rhs <= 255, "Attempt to shift left with overflow.");
+        const LIMIT: usize = u256::BITS as usize - 1;
+        assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
         match rhs {
-            0 => {}
             1..=127 => {
                 self.hi <<= rhs;
                 self.hi |= self.lo >> (128 - rhs);
@@ -375,10 +366,11 @@ impl ShlAssign<usize> for u256 {
                 self.hi = self.lo;
                 self.lo = 0;
             }
-            _ => {
+            129..=255 => {
                 self.hi = self.lo << (rhs - 128);
                 self.lo = 0;
             }
+            _ => {}
         }
     }
 }
@@ -387,27 +379,28 @@ impl Shr<usize> for u256 {
     type Output = Self;
 
     fn shr(self, rhs: usize) -> Self::Output {
-        assert!(rhs <= 255, "Attempt to shift right with overflow.");
+        const LIMIT: usize = u256::BITS as usize - 1;
+        assert!(rhs <= LIMIT, "Attempt to shift right with overflow.");
         match rhs {
-            0 => self,
             1..=127 => Self::Output {
                 hi: self.hi >> rhs,
                 lo: self.hi << (128 - rhs) | self.lo >> rhs,
             },
             128 => Self::Output { hi: 0, lo: self.hi },
-            _ => Self::Output {
+            129..=255 => Self::Output {
                 hi: 0,
                 lo: self.hi >> (rhs - 128),
             },
+            _ => self,
         }
     }
 }
 
 impl ShrAssign<usize> for u256 {
     fn shr_assign(&mut self, rhs: usize) {
-        assert!(rhs <= 255, "Attempt to shift right with overflow.");
+        const LIMIT: usize = u256::BITS as usize - 1;
+        assert!(rhs <= LIMIT, "Attempt to shift right with overflow.");
         match rhs {
-            0 => {}
             1..=127 => {
                 self.lo >>= rhs;
                 self.lo |= self.hi << (128 - rhs);
@@ -417,10 +410,11 @@ impl ShrAssign<usize> for u256 {
                 self.lo = self.hi;
                 self.hi = 0;
             }
-            _ => {
+            129..=255 => {
                 self.lo = self.hi >> (rhs - 128);
                 self.hi = 0;
             }
+            _ => {}
         }
     }
 }

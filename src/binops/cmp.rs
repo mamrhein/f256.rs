@@ -14,7 +14,7 @@ impl PartialEq for f256 {
         if self.is_nan() || other.is_nan() {
             return false;
         }
-        self.bits == other.bits
+        self.repr == other.repr
     }
 }
 
