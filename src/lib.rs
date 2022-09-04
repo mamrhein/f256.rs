@@ -245,44 +245,44 @@ impl f256 {
     }
 
     /// Returns the reciprocal (inverse) of `self`.
-    // TODO: uncomment when Div implemented
-    // #[must_use]
-    // #[inline]
-    // pub fn recip(self) -> Self {
-    //     Self::ONE / self
-    // }
+    #[must_use]
+    #[inline]
+    pub fn recip(self) -> Self {
+        // TODO: uncomment when Div implemented
+        // Self::ONE / self
+        unimplemented!()
+    }
 
     /// Converts radians to degrees.
-    // #[must_use = "this returns the result of the operation, \
-    //               without modifying the original"]
-    // #[inline]
-    // pub fn to_degrees(self) -> Self {
-    // The division here is correctly rounded with respect to the true
-    // value of 180/π. (This differs from f32, where a constant must be
-    // used to ensure a correctly rounded result.)
-    //     self * (180.0f256 / consts::PI)
-    // }
+    #[must_use]
+    #[inline]
+    pub fn to_degrees(self) -> Self {
+        // self * (180.0f256 / consts::PI)
+        unimplemented!()
+    }
 
     /// Converts degrees to radians.
-    // #[must_use = "this returns the result of the operation, \
-    //               without modifying the original"]
-    // #[inline]
-    // pub fn to_radians(self) -> Self {
-    //     let value: Self = consts::PI;
-    //     self * (value / 180.0)
-    // }
+    #[must_use]
+    #[inline]
+    pub fn to_radians(self) -> Self {
+        // let value: Self = consts::PI;
+        // self * (value / 180.0)
+        unimplemented!()
+    }
 
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
     /// This follows the IEEE-754 2008 semantics for maxNum, except for handling
     /// of signaling NaNs; this function handles all NaNs the same way and
-    /// avoids maxNum's problems with associativity. This also matches the
-    /// behavior of libm’s fmax.
+    /// avoids maxNum's problems with associativity.
     #[must_use]
     #[inline]
     pub fn max(self, other: Self) -> Self {
-        unimplemented!()
+        if other > self || self.is_nan() {
+            return other;
+        }
+        self
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -290,76 +290,14 @@ impl f256 {
     /// If one of the arguments is NaN, then the other argument is returned.
     /// This follows the IEEE-754 2008 semantics for minNum, except for handling
     /// of signaling NaNs; this function handles all NaNs the same way and
-    /// avoids minNum's problems with associativity. This also matches the
-    /// behavior of libm’s fmin.
+    /// avoids minNum's problems with associativity.
     #[must_use]
     #[inline]
     pub fn min(self, other: Self) -> Self {
-        unimplemented!()
-    }
-
-    /// Returns the maximum of the two numbers, propagating NaN.
-    ///
-    /// This returns NaN when *either* argument is NaN, as opposed to
-    /// [`f256::max`] which only returns NaN when *both* arguments are NaN.
-    ///
-    /// If one of the arguments is NaN, then NaN is returned. Otherwise this
-    /// returns the greater of the two numbers. For this operation, -0.0 is
-    /// considered to be less than +0.0. Note that this follows the
-    /// semantics specified in IEEE 754-2019.
-    ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that
-    /// the bitpattern of a NaN operand is conserved; see [explanation of
-    /// NaN as a special value](f32) for more info.
-    #[must_use]
-    #[inline]
-    pub fn maximum(self, other: Self) -> Self {
-        // if self > other {
-        //     self
-        // } else if other > self {
-        //     other
-        // } else if self == other {
-        //     if self.is_sign_positive() && other.is_sign_negative() {
-        //         self
-        //     } else {
-        //         other
-        //     }
-        // } else {
-        //     self + other
-        // }
-        unimplemented!()
-    }
-
-    /// Returns the minimum of the two numbers, propagating NaN.
-    ///
-    /// This returns NaN when *either* argument is NaN, as opposed to
-    /// [`f256::min`] which only returns NaN when *both* arguments are NaN.
-    ///
-    /// If one of the arguments is NaN, then NaN is returned. Otherwise this
-    /// returns the lesser of the two numbers. For this operation, -0.0 is
-    /// considered to be less than +0.0. Note that this follows the
-    /// semantics specified in IEEE 754-2019.
-    ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that
-    /// the bitpattern of a NaN operand is conserved; see [explanation of
-    /// NaN as a special value](f32) for more info.
-    #[must_use]
-    #[inline]
-    pub fn minimum(self, other: Self) -> Self {
-        // if self < other {
-        //     self
-        // } else if other < self {
-        //     other
-        // } else if self == other {
-        //     if self.is_sign_negative() && other.is_sign_positive() {
-        //         self
-        //     } else {
-        //         other
-        //     }
-        // } else {
-        //     self + other
-        // }
-        unimplemented!()
+        if other < self || self.is_nan() {
+            return other;
+        }
+        self
     }
 
     /// Raw transmutation to `u64`.
