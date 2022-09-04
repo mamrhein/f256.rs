@@ -43,12 +43,12 @@ fn u128_msb(mut u: u128) -> usize {
 }
 
 #[inline(always)]
-fn u128_hi(u: u128) -> u128 {
+const fn u128_hi(u: u128) -> u128 {
     u >> 64
 }
 
 #[inline(always)]
-fn u128_lo(u: u128) -> u128 {
+const fn u128_lo(u: u128) -> u128 {
     u & 0xffffffffffffffff
 }
 
@@ -327,6 +327,50 @@ impl u256 {
             if lo_rem > tie || (lo_rem == tie && (self.lo & 1_u128) == 1) {
                 self.incr();
             }
+        }
+    }
+
+    #[cfg(target_endian = "big")]
+    #[inline]
+    /// Raw transmutation to `[u64; 4]` (in native endian order).
+    pub(crate) const fn to_bits(&self) -> [u64; 4] {
+        [
+            u128_hi(self.hi) as u64,
+            u128_lo(self.hi) as u64,
+            u128_hi(self.lo) as u64,
+            u128_lo(self.lo) as u64,
+        ]
+    }
+
+    #[cfg(target_endian = "little")]
+    #[inline]
+    /// Raw transmutation to `[u64; 4]` (in native endian order).
+    pub(crate) const fn to_bits(&self) -> [u64; 4] {
+        [
+            u128_lo(self.lo) as u64,
+            u128_hi(self.lo) as u64,
+            u128_lo(self.hi) as u64,
+            u128_hi(self.hi) as u64,
+        ]
+    }
+
+    #[cfg(target_endian = "big")]
+    #[inline]
+    /// Raw transmutation from `[u64; 4]` (in native endian order).
+    pub(crate) const fn from_bits(bits: [u64; 4]) -> Self {
+        Self {
+            hi: (bits[0] as u128) << 64 | (bits[1] as u128),
+            lo: (bits[2] as u128) << 64 | (bits[3] as u128),
+        }
+    }
+
+    #[cfg(target_endian = "little")]
+    #[inline]
+    /// Raw transmutation from `[u64; 4]` (in native endian order).
+    pub(crate) const fn from_bits(bits: [u64; 4]) -> Self {
+        Self {
+            hi: (bits[3] as u128) << 64 | (bits[2] as u128),
+            lo: (bits[1] as u128) << 64 | (bits[0] as u128),
         }
     }
 }

@@ -83,25 +83,19 @@ impl Float256Repr {
     };
 
     /// Smallest finite `f256` value: 2²⁶¹⁹⁰⁷ - 2²⁶²¹⁴⁴ ≈ -1.6113e78913.
-    // TODO: replace by -MAX when Neg implemented
-    pub(crate) const MIN: Self = Self::from_bits(
-        1 << HI_SIGN_SHIFT
-            | ((EXP_MAX as u128 - 1) << HI_FRACTION_BITS)
-            | HI_FRACTION_MASK,
-        u128::MAX,
-    );
+    pub(crate) const MIN: Self = Self::MAX.neg();
 
     /// Smallest positive normal `f256` value: 2⁻²⁶²¹⁴² ≈ 2.4824e−78913.
-    pub(crate) const MIN_POSITIVE: Self = Self::from_bits(HI_FRACTION_BIAS, 0);
+    pub(crate) const MIN_POSITIVE: Self = Self::from_raw(HI_FRACTION_BIAS, 0);
 
     /// Not a Number (NaN).
-    pub(crate) const NAN: Self = Self::from_bits(NAN_HI, 0);
+    pub(crate) const NAN: Self = Self::from_raw(NAN_HI, 0);
 
     /// Infinity (∞).
-    pub(crate) const INFINITY: Self = Self::from_bits(INF_HI, 0);
+    pub(crate) const INFINITY: Self = Self::from_raw(INF_HI, 0);
 
     /// Negative infinity (−∞).
-    pub(crate) const NEG_INFINITY: Self = Self::from_bits(NEG_INF_HI, 0);
+    pub(crate) const NEG_INFINITY: Self = Self::from_raw(NEG_INF_HI, 0);
 
     /// Additive identity
     pub(crate) const ZERO: Self = Self {
@@ -152,9 +146,17 @@ impl Float256Repr {
 
     /// Raw transmutation from (u128, u128).
     #[inline]
-    pub(crate) const fn from_bits(hi: u128, lo: u128) -> Self {
+    const fn from_raw(hi: u128, lo: u128) -> Self {
         Self {
             bits: u256 { hi, lo },
+        }
+    }
+
+    /// Raw transmutation from `[u64; 4]` (in native endian order).
+    #[inline]
+    pub(crate) const fn from_bits(bits: [u64; 4]) -> Self {
+        Self {
+            bits: u256::from_bits(bits),
         }
     }
 
@@ -285,10 +287,10 @@ impl Float256Repr {
         (self.sign(), self.exponent(), self.significand())
     }
 
-    /// Raw transmutation to (u128, u128).
+    /// Raw transmutation to `[u64; 4]` (in native endian order).
     #[inline]
-    pub(crate) const fn to_bits(&self) -> (u128, u128) {
-        (self.bits.hi, self.bits.lo)
+    pub(crate) const fn to_bits(&self) -> [u64; 4] {
+        self.bits.to_bits()
     }
 
     /// Returns `true` if this value is NaN.
@@ -368,10 +370,20 @@ impl Float256Repr {
     }
 
     #[inline]
-    fn abs(self) -> Self {
+    const fn abs(self) -> Self {
         Self {
             bits: u256 {
                 hi: self.bits.hi & HI_SIGN_MASK,
+                lo: self.bits.lo,
+            },
+        }
+    }
+
+    #[inline]
+    const fn neg(self) -> Self {
+        Self {
+            bits: u256 {
+                hi: self.bits.hi ^ HI_SIGN_MASK,
                 lo: self.bits.lo,
             },
         }
@@ -383,12 +395,7 @@ impl Neg for Float256Repr {
 
     #[inline]
     fn neg(self) -> Self::Output {
-        Self {
-            bits: u256 {
-                hi: self.bits.hi ^ HI_SIGN_MASK,
-                lo: self.bits.lo,
-            },
-        }
+        self.neg()
     }
 }
 

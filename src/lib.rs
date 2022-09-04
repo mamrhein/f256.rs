@@ -300,152 +300,18 @@ impl f256 {
         self
     }
 
-    /// Raw transmutation to `u64`.
-    ///
-    /// This is currently identical to `transmute::<f256, u64>(self)` on all
-    /// platforms.
-    ///
-    /// See [`from_bits`](Self::from_bits) for some discussion of the
-    /// portability of this operation (there are almost no issues).
-    ///
-    /// Note that this function is distinct from `as` casting, which attempts to
-    /// preserve the *numeric* value, and not the bitwise value.
-    // #[must_use = "this returns the result of the operation, \
-    //               without modifying the original"]
-    // #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    // #[rustc_const_unstable(feature = "const_float_bits_conv", issue =
-    // "72447")] #[inline]
-    // pub const fn to_bits(self) -> u64 {
-    //     // SAFETY: `u64` is a plain old datatype so we can always transmute
-    // to it.     // ...sorta.
-    //     //
-    //     // See the SAFETY comment in f256::from_bits for more.
-    //     #[rustc_const_unstable(feature = "const_float_bits_conv", issue =
-    // "72447")]     const fn ct_f256_to_u64(ct: Self) -> u64 {
-    //         match ct.classify() {
-    //             FpCategory::Nan => {
-    //                 panic!("const-eval error: cannot use f256::to_bits on a
-    // NaN")             }
-    //             FpCategory::Subnormal => {
-    //                 panic!("const-eval error: cannot use f256::to_bits on a
-    // subnormal number")             }
-    //             FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero
-    // => {                 // SAFETY: We have a normal floating point
-    // number. Now we transmute, i.e. do a bitcopy.                 unsafe {
-    // mem::transmute::<f256, u64>(ct) }             }
-    //         }
-    //     }
-    //     // SAFETY: `u64` is a plain old datatype so we can always... uh...
-    //     // ...look, just pretend you forgot what you just read.
-    //     // Stability concerns.
-    //     let rt_f256_to_u64 = |rt| unsafe { mem::transmute::<f256, u64>(rt) };
-    //     // SAFETY: We use internal implementations that either always work or
-    // fail at compile time.     unsafe {
-    // intrinsics::const_eval_select((self,), ct_f256_to_u64, rt_f256_to_u64) }
-    // }
-
-    /// Raw transmutation to `[u64; 4]`.
+    /// Raw transmutation to `[u64; 4]` (in native endian order).
     #[inline]
-    const fn to_bits(&self) -> [u64; 4] {
-        // (self.bits.hi, self.bits.lo)
-        unimplemented!()
+    pub const fn to_bits(&self) -> [u64; 4] {
+        self.repr.to_bits()
     }
 
-    /// Raw transmutation from `u64`.
-    ///
-    /// This is currently identical to `transmute::<u64, f256>(v)` on all
-    /// platforms. It turns out this is incredibly portable, for two
-    /// reasons:
-    ///
-    /// * Floats and Ints have the same endianness on all supported platforms.
-    /// * IEEE-754 very precisely specifies the bit layout of floats.
-    ///
-    /// However there is one caveat: prior to the 2008 version of IEEE-754, how
-    /// to interpret the NaN signaling bit wasn't actually specified. Most
-    /// platforms (notably x86 and ARM) picked the interpretation that was
-    /// ultimately standardized in 2008, but some didn't (notably MIPS). As
-    /// a result, all signaling NaNs on MIPS are quiet NaNs on x86, and
-    /// vice-versa.
-    ///
-    /// Rather than trying to preserve signaling-ness cross-platform, this
-    /// implementation favors preserving the exact bits. This means that
-    /// any payloads encoded in NaNs will be preserved even if the result of
-    /// this method is sent over the network from an x86 machine to a MIPS one.
-    ///
-    /// If the results of this method are only manipulated by the same
-    /// architecture that produced them, then there is no portability concern.
-    ///
-    /// If the input isn't NaN, then there is no portability concern.
-    ///
-    /// If you don't care about signaling-ness (very likely), then there is no
-    /// portability concern.
-    ///
-    /// Note that this function is distinct from `as` casting, which attempts to
-    /// preserve the *numeric* value, and not the bitwise value.
-    // #[must_use]
-    // #[inline]
-    // pub const fn from_bits(v: u64) -> Self {
-    // It turns out the safety issues with sNaN were overblown! Hooray!
-    // SAFETY: `u64` is a plain old datatype so we can always transmute from it
-    // ...sorta.
-    //
-    // It turns out that at runtime, it is possible for a floating point number
-    // to be subject to floating point modes that alter nonzero subnormal
-    // numbers to zero on reads and writes, aka "denormals are zero" and
-    // "flush to zero". This is not a problem usually, but at least one
-    // tier2 platform for Rust actually exhibits an FTZ behavior by default:
-    // thumbv7neon aka "the Neon FPU in AArch32 state"
-    //
-    // Even with this, not all instructions exhibit the FTZ behaviors on
-    // thumbv7neon, so this should load the same bits if LLVM emits the
-    // "correct" instructions, but LLVM sometimes makes interesting choices
-    // about float optimization, and other FPUs may do similar. Thus, it is
-    // wise to indulge luxuriously in caution.
-    //
-    // In addition, on x86 targets with SSE or SSE2 disabled and the x87 FPU
-    // enabled, i.e. not soft-float, the way Rust does parameter passing can
-    // actually alter a number that is "not infinity" to have the same
-    // exponent as infinity, in a slightly unpredictable manner.
-    //
-    // And, of course evaluating to a NaN value is fairly nondeterministic.
-    // More precisely: when NaN should be returned is knowable, but which NaN?
-    // So far that's defined by a combination of LLVM and the CPU, not Rust.
-    // This function, however, allows observing the bitstring of a NaN,
-    // thus introspection on CTFE.
-    //
-    // In order to preserve, at least for the moment, const-to-runtime
-    // equivalence, reject any of these possible situations from happening.
-    // #[rustc_const_unstable(feature = "const_float_bits_conv", issue =
-    // "72447")]     const fn ct_u64_to_f256(ct: u64) -> Self {
-    //         match f256::classify_bits(ct) {
-    //             FpCategory::Subnormal => {
-    //                 panic!("const-eval error: cannot use f256::from_bits on a
-    // subnormal number")             }
-    //             FpCategory::Nan => {
-    //                 panic!("const-eval error: cannot use f256::from_bits on
-    // NaN")             }
-    //             FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero
-    // => {                 // SAFETY: It's not a frumious number
-    //                 unsafe { mem::transmute::<u64, f256>(ct) }
-    //             }
-    //         }
-    //     }
-    //     // SAFETY: `u64` is a plain old datatype so we can always... uh...
-    //     // ...look, just pretend you forgot what you just read.
-    //     // Stability concerns.
-    //     let rt_u64_to_f256 = |rt| unsafe { mem::transmute::<u64, f256>(rt) };
-    //     // SAFETY: We use internal implementations that either always work or
-    // fail at compile time.     unsafe {
-    // intrinsics::const_eval_select((v,), ct_u64_to_f256, rt_u64_to_f256) }
-    // }
-
-    /// Raw transmutation from `[u64; 4]`.
+    /// Raw transmutation from `[u64; 4]` (in native endian order).
     #[inline]
-    const fn from_bits(hi: u128, lo: u128) -> Self {
-        // Self {
-        //     repr: u256 { hi, lo },
-        // }
-        unimplemented!()
+    pub const fn from_bits(bits: [u64; 4]) -> Self {
+        Self {
+            repr: Float256Repr::from_bits(bits),
+        }
     }
 
     /// Return the memory representation of this floating point number as a byte
