@@ -14,12 +14,15 @@ impl PartialEq for f256 {
         if self.is_nan() || other.is_nan() {
             return false;
         }
+        if self.is_zero() && other.is_zero() {
+            return true;
+        }
         self.repr == other.repr
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod partial_eq_tests {
     use super::*;
 
     #[test]
@@ -31,6 +34,14 @@ mod tests {
         assert!(f256::INFINITY != f256::NAN);
         assert!(f256::NAN != f256::NEG_INFINITY);
         assert!(f256::NEG_INFINITY != f256::NAN);
+    }
+
+    #[test]
+    fn test_zeroes() {
+        assert_eq!(f256::ZERO, f256::ZERO);
+        assert_eq!(f256::ZERO, f256::NEG_ZERO);
+        assert_eq!(f256::NEG_ZERO, f256::ZERO);
+        assert_eq!(f256::NEG_ZERO, f256::NEG_ZERO);
     }
 
     #[test]
