@@ -86,16 +86,38 @@ impl Float256Repr {
     pub(crate) const MIN: Self = Self::MAX.neg();
 
     /// Smallest positive normal `f256` value: 2⁻²⁶²¹⁴² ≈ 2.4824e−78913.
-    pub(crate) const MIN_POSITIVE: Self = Self::from_raw(HI_FRACTION_BIAS, 0);
+    pub(crate) const MIN_POSITIVE: Self = {
+        Self {
+            bits: u256 {
+                hi: HI_FRACTION_BIAS,
+                lo: 0,
+            },
+        }
+    };
 
     /// Not a Number (NaN).
-    pub(crate) const NAN: Self = Self::from_raw(NAN_HI, 0);
+    pub(crate) const NAN: Self = {
+        Self {
+            bits: u256 { hi: NAN_HI, lo: 0 },
+        }
+    };
 
     /// Infinity (∞).
-    pub(crate) const INFINITY: Self = Self::from_raw(INF_HI, 0);
+    pub(crate) const INFINITY: Self = {
+        Self {
+            bits: u256 { hi: INF_HI, lo: 0 },
+        }
+    };
 
     /// Negative infinity (−∞).
-    pub(crate) const NEG_INFINITY: Self = Self::from_raw(NEG_INF_HI, 0);
+    pub(crate) const NEG_INFINITY: Self = {
+        Self {
+            bits: u256 {
+                hi: NEG_INF_HI,
+                lo: 0,
+            },
+        }
+    };
 
     /// Additive identity
     pub(crate) const ZERO: Self = Self {
@@ -103,13 +125,7 @@ impl Float256Repr {
     };
 
     /// Negative additive identity
-    // TODO: replace by -ZERO
-    pub(crate) const NEG_ZERO: Self = Self {
-        bits: u256 {
-            hi: 1 << HI_SIGN_SHIFT,
-            lo: 0,
-        },
-    };
+    pub(crate) const NEG_ZERO: Self = Self::ZERO.neg();
 
     /// Multiplicative identity
     pub(crate) const ONE: Self = Self {
@@ -120,13 +136,7 @@ impl Float256Repr {
     };
 
     /// Multiplicative negator
-    // TODO: replace by -ONE
-    pub(crate) const NEG_ONE: Self = Self {
-        bits: u256 {
-            hi: 1 << HI_SIGN_SHIFT | (EXP_BIAS as u128) << HI_FRACTION_BITS,
-            lo: 0,
-        },
-    };
+    pub(crate) const NEG_ONE: Self = Self::ONE.neg();
 
     /// Equivalent of 2.0: 2 × ONE.
     pub(crate) const TWO: Self = Self {
@@ -135,22 +145,6 @@ impl Float256Repr {
             lo: 0,
         },
     };
-
-    /// TODO: Equivalent of 10.0
-    // pub(crate const TEN: Self = Self {
-    //     bits: u256 {
-    //         hi: ((1 + EXP_BIAS) as u128) << HI_FRACTION_BITS,
-    //         lo: 0,
-    //     },
-    // };
-
-    /// Raw transmutation from (u128, u128).
-    #[inline]
-    const fn from_raw(hi: u128, lo: u128) -> Self {
-        Self {
-            bits: u256 { hi, lo },
-        }
-    }
 
     /// Raw transmutation from `[u64; 4]` (in native endian order).
     #[inline]
