@@ -8,7 +8,7 @@
 // $Revision$
 
 use core::num::FpCategory;
-use std::cmp::Ordering;
+use std::{cmp::Ordering, ops::Neg};
 
 use crate::uint256::u256;
 
@@ -44,6 +44,8 @@ pub(crate) const HI_FRACTION_MASK: u128 = HI_FRACTION_BIAS - 1;
 pub(crate) const HI_EXP_MASK: u128 = (EXP_MAX as u128) << HI_FRACTION_BITS;
 /// Sign mask in hi u128 = 0x80000000000000000000000000000000
 pub(crate) const HI_SIGN_MASK: u128 = 1_u128 << HI_SIGN_SHIFT;
+/// Abs mask in hi u128 = 0x7fffffffffffffffffffffffffffffff
+pub(crate) const HI_ABS_MASK: u128 = !HI_SIGN_MASK;
 /// Value of hi u128 for NaN = 0x7ffff000000000000000000000000001
 pub(crate) const NAN_HI: u128 = HI_EXP_MASK + 1;
 /// Value of hi u128 for Inf = 0x7ffff000000000000000000000000000
@@ -57,7 +59,7 @@ pub(crate) const EPSILON_HI: u128 =
 pub(crate) const MAX_HI: u128 =
     ((EMAX as u32 + EXP_BIAS) as u128) << HI_FRACTION_BITS | HI_FRACTION_MASK;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Ord)]
 pub(crate) struct Float256Repr {
     pub(crate) bits: u256,
 }
@@ -482,10 +484,49 @@ impl Float256Repr {
         // }
         unimplemented!()
     }
+
+    #[inline]
+    fn abs(self) -> Self {
+        Self {
+            bits: u256 {
+                hi: self.bits.hi & HI_SIGN_MASK,
+                lo: self.bits.lo,
+            },
+        }
+    }
 }
 
+impl Neg for Float256Repr {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        Self {
+            bits: u256 {
+                hi: self.bits.hi ^ HI_SIGN_MASK,
+                lo: self.bits.lo,
+            },
+        }
+    }
+}
+
+// Note: Float256Repr instances are treated as equal if and only if their
+// raw binary values are equal. I. e. - other than with f256 - NAN.repr ==
+// NAN.repr and ZERO.repr != NEG_ZERO.repr!
 impl PartialEq for Float256Repr {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.bits == other.bits
+    }
+}
+
+impl PartialOrd for Float256Repr {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // The internal representation of floats does - besides their sign -
+        // gives a total ordering following the intended mathematical ordering.
+        // Thus, flipping the sign bit allows to compare the raw values.
+        // Note that this differs from f256. See doc of fn f256::total_cmp.
+        self.neg().bits.partial_cmp(&(*other).neg().bits)
     }
 }
