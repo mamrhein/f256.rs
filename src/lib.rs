@@ -112,14 +112,14 @@ impl f256 {
     pub const MAX_EXP: i32 = EMAX + 1;
 
     /// One greater than the minimum possible normal power of 2 exponent:
-    /// 1 - MAX_EXP = -262142.
-    pub const MIN_EXP: i32 = EMIN;
+    /// 3 - MAX_EXP = -262141.
+    pub const MIN_EXP: i32 = EMIN + 1;
 
-    /// Maximum possible power of 10 exponent: ⌊log₁₀(2)⌋.
-    pub const MAX_10_EXP: i32 = 78912;
+    /// Maximum possible power of 10 exponent: ⌊MAX_EXP × log₁₀(2)⌋.
+    pub const MAX_10_EXP: i32 = 78913;
 
-    /// Minimum possible normal power of 10 exponent ( .
-    pub const MIN_10_EXP: i32 = -78911;
+    /// Minimum possible normal power of 10 exponent ⌊MIN_EXP × log₁₀(2)⌋.
+    pub const MIN_10_EXP: i32 = -78912;
 
     /// Not a Number (NaN).
     ///
