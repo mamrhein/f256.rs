@@ -57,6 +57,8 @@
 #![warn(clippy::used_underscore_binding)]
 #![warn(clippy::wildcard_imports)]
 
+extern crate core;
+
 use core::{cmp::Ordering, num::FpCategory};
 
 use crate::float256::{Float256Repr, EMAX, EMIN, SIGNIFICAND_BITS};
@@ -316,111 +318,56 @@ impl f256 {
 
     /// Return the memory representation of this floating point number as a byte
     /// array in big-endian (network) byte order.
-    ///
-    /// See [`from_bits`](Self::from_bits) for some discussion of the
-    /// portability of this operation (there are almost no issues).
     #[must_use]
     #[inline]
-    pub const fn to_be_bytes(self) -> [u8; 8] {
-        // self.to_bits().to_be_bytes()'
-        unimplemented!()
+    pub const fn to_be_bytes(self) -> [u8; 32] {
+        self.repr.to_be_bytes()
     }
 
     /// Return the memory representation of this floating point number as a byte
     /// array in little-endian byte order.
-    ///
-    /// See [`from_bits`](Self::from_bits) for some discussion of the
-    /// portability of this operation (there are almost no issues).
     #[must_use]
     #[inline]
-    pub const fn to_le_bytes(self) -> [u8; 8] {
-        // self.to_bits().to_le_bytes()
-        unimplemented!()
+    pub const fn to_le_bytes(self) -> [u8; 32] {
+        self.repr.to_le_bytes()
     }
 
     /// Return the memory representation of this floating point number as a byte
     /// array in native byte order.
-    ///
-    /// As the target platform's native endianness is used, portable code
-    /// should use [`to_be_bytes`] or [`to_le_bytes`], as appropriate, instead.
-    ///
-    /// [`to_be_bytes`]: Self::to_be_bytes
-    /// [`to_le_bytes`]: Self::to_le_bytes
-    ///
-    /// See [`from_bits`](Self::from_bits) for some discussion of the
-    /// portability of this operation (there are almost no issues).
     #[must_use]
     #[inline]
-    pub const fn to_ne_bytes(self) -> [u8; 8] {
-        // self.to_bits().to_ne_bytes()
-        unimplemented!()
+    pub const fn to_ne_bytes(self) -> [u8; 32] {
+        self.repr.to_ne_bytes()
     }
 
     /// Create a floating point value from its representation as a byte array in
     /// big endian.
-    ///
-    /// See [`from_bits`](Self::from_bits) for some discussion of the
-    /// portability of this operation (there are almost no issues).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let value =
-    ///     f256::from_be_bytes([0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-    /// assert_eq!(value, 12.5);
-    /// ```
     #[must_use]
     #[inline]
-    pub const fn from_be_bytes(bytes: [u8; 8]) -> Self {
-        unimplemented!()
+    pub const fn from_be_bytes(bytes: [u8; 32]) -> Self {
+        Self {
+            repr: Float256Repr::from_be_bytes(bytes),
+        }
     }
 
     /// Create a floating point value from its representation as a byte array in
     /// little endian.
-    ///
-    /// See [`from_bits`](Self::from_bits) for some discussion of the
-    /// portability of this operation (there are almost no issues).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let value =
-    ///     f256::from_le_bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
-    /// assert_eq!(value, 12.5);
-    /// ```
     #[must_use]
     #[inline]
-    pub const fn from_le_bytes(bytes: [u8; 8]) -> Self {
-        unimplemented!()
+    pub const fn from_le_bytes(bytes: [u8; 32]) -> Self {
+        Self {
+            repr: Float256Repr::from_le_bytes(bytes),
+        }
     }
 
     /// Create a floating point value from its representation as a byte array in
     /// native endian.
-    ///
-    /// As the target platform's native endianness is used, portable code
-    /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
-    /// appropriate instead.
-    ///
-    /// [`from_be_bytes`]: Self::from_be_bytes
-    /// [`from_le_bytes`]: Self::from_le_bytes
-    ///
-    /// See [`from_bits`](Self::from_bits) for some discussion of the
-    /// portability of this operation (there are almost no issues).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let value = f256::from_ne_bytes(if cfg!(target_endian = "big") {
-    ///     [0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-    /// } else {
-    ///     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]
-    /// });
-    /// assert_eq!(value, 12.5);
-    /// ```
     #[must_use]
     #[inline]
-    pub const fn from_ne_bytes(bytes: [u8; 8]) -> Self {
-        unimplemented!()
+    pub const fn from_ne_bytes(bytes: [u8; 32]) -> Self {
+        Self {
+            repr: Float256Repr::from_ne_bytes(bytes),
+        }
     }
 
     /// Return the ordering between `self` and `other`.

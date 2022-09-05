@@ -154,6 +154,49 @@ impl Float256Repr {
         }
     }
 
+    /// Create a floating point value from its representation as a byte array in
+    /// big endian.
+    #[must_use]
+    #[inline]
+    #[allow(unsafe_code)]
+    pub(crate) const fn from_be_bytes(bytes: [u8; 32]) -> Self {
+        // safe because size of [[u8; 16]; 2] == [u8; 32]
+        let bits: [[u8; 16]; 2] = unsafe { core::mem::transmute(bytes) };
+        Self {
+            bits: u256 {
+                hi: u128::from_be_bytes(bits[0]),
+                lo: u128::from_be_bytes(bits[1]),
+            },
+        }
+    }
+
+    /// Create a floating point value from its representation as a byte array in
+    /// little endian.
+    #[must_use]
+    #[inline]
+    #[allow(unsafe_code)]
+    pub(crate) const fn from_le_bytes(bytes: [u8; 32]) -> Self {
+        // safe because size of [[u8; 16]; 2] == [u8; 32]
+        let bits: [[u8; 16]; 2] = unsafe { core::mem::transmute(bytes) };
+        Self {
+            bits: u256 {
+                hi: u128::from_le_bytes(bits[1]),
+                lo: u128::from_le_bytes(bits[0]),
+            },
+        }
+    }
+
+    /// Create a floating point value from its representation as a byte array in
+    /// native endian.
+    #[must_use]
+    #[inline]
+    #[allow(unsafe_code)]
+    pub(crate) const fn from_ne_bytes(bytes: [u8; 32]) -> Self {
+        // safe because size of [u64; 4] == [u8; 32]
+        let bits: [u64; 4] = unsafe { core::mem::transmute(bytes) };
+        Self::from_bits(bits)
+    }
+
     /// Construct a finite, non-zero `Float256Repr` f from sign s, exponent t
     /// and significand c,
     ///
@@ -285,6 +328,39 @@ impl Float256Repr {
     #[inline]
     pub(crate) const fn to_bits(&self) -> [u64; 4] {
         self.bits.to_bits()
+    }
+
+    /// Return the memory representation of this floating point number as a byte
+    /// array in big-endian (network) byte order.
+    #[must_use]
+    #[inline]
+    #[allow(unsafe_code)]
+    pub(crate) const fn to_be_bytes(self) -> [u8; 32] {
+        let bytes = [self.bits.hi.to_be_bytes(), self.bits.lo.to_be_bytes()];
+        // safe because size of [[u8; 16]; 2] == size of [u8; 32]
+        unsafe { core::mem::transmute(bytes) }
+    }
+
+    /// Return the memory representation of this floating point number as a byte
+    /// array in little-endian byte order.
+    #[must_use]
+    #[inline]
+    #[allow(unsafe_code)]
+    pub(crate) const fn to_le_bytes(self) -> [u8; 32] {
+        let bytes = [self.bits.lo.to_le_bytes(), self.bits.hi.to_le_bytes()];
+        // safe because size of [[u8; 16]; 2] == size of [u8; 32]
+        unsafe { core::mem::transmute(bytes) }
+    }
+
+    /// Return the memory representation of this floating point number as a byte
+    /// array in native byte order.
+    #[must_use]
+    #[inline]
+    #[allow(unsafe_code)]
+    pub(crate) const fn to_ne_bytes(self) -> [u8; 32] {
+        let bytes = self.to_bits();
+        // safe because size of [u64; 4] == size of [u8; 32]
+        unsafe { core::mem::transmute(bytes) }
     }
 
     /// Returns `true` if this value is NaN.
