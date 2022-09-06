@@ -67,6 +67,7 @@ mod binops;
 mod float256;
 mod from_float;
 mod uint256;
+mod unops;
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]

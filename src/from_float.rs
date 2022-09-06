@@ -103,13 +103,7 @@ impl<F: Float> From<F> for f256 {
         } else {
             if fraction != 0 {
                 // +/- NaN
-                // TODO: replace by -f256::NAN
-                [
-                    f256::NAN,
-                    f256 {
-                        repr: Float256Repr::NAN.neg(),
-                    },
-                ][sign as usize]
+                [f256::NAN, -f256::NAN][sign as usize]
             } else {
                 // +/- inf
                 [f256::INFINITY, f256::NEG_INFINITY][sign as usize]

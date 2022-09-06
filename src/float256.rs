@@ -443,7 +443,7 @@ impl Float256Repr {
     }
 
     #[inline]
-    const fn abs(self) -> Self {
+    pub(crate) const fn abs(self) -> Self {
         Self {
             bits: u256 {
                 hi: self.bits.hi & HI_SIGN_MASK,
@@ -453,7 +453,7 @@ impl Float256Repr {
     }
 
     #[inline]
-    const fn neg(self) -> Self {
+    pub(crate) const fn neg(self) -> Self {
         Self {
             bits: u256 {
                 hi: self.bits.hi ^ HI_SIGN_MASK,
