@@ -46,8 +46,9 @@ pub(crate) const HI_EXP_MASK: u128 = (EXP_MAX as u128) << HI_FRACTION_BITS;
 pub(crate) const HI_SIGN_MASK: u128 = 1_u128 << HI_SIGN_SHIFT;
 /// Abs mask in hi u128 = 0x7fffffffffffffffffffffffffffffff
 pub(crate) const HI_ABS_MASK: u128 = !HI_SIGN_MASK;
-/// Value of hi u128 for NaN = 0x7ffff000000000000000000000000001
-pub(crate) const NAN_HI: u128 = HI_EXP_MASK + 1;
+/// Value of hi u128 for NaN = 0x7ffff800000000000000000000000000
+pub(crate) const NAN_HI: u128 =
+    HI_EXP_MASK | (1_u128 << (HI_FRACTION_BITS - 1));
 /// Value of hi u128 for Inf = 0x7ffff000000000000000000000000000
 pub(crate) const INF_HI: u128 = HI_EXP_MASK;
 /// Value of hi u128 for -Inf = 0xfffff000000000000000000000000000
@@ -367,7 +368,9 @@ impl Float256Repr {
     #[must_use]
     #[inline]
     pub(crate) const fn is_nan(self) -> bool {
-        self.bits.hi == NAN_HI
+        (self.bits.hi & HI_ABS_MASK) > HI_EXP_MASK
+            || ((self.bits.hi & HI_ABS_MASK) == HI_EXP_MASK
+                && self.bits.lo != 0)
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity,
@@ -375,7 +378,7 @@ impl Float256Repr {
     #[must_use]
     #[inline]
     pub(crate) const fn is_infinite(self) -> bool {
-        (self.bits.hi & HI_EXP_MASK) == HI_EXP_MASK
+        (self.bits.hi & HI_ABS_MASK) == HI_EXP_MASK && self.bits.lo == 0
     }
 
     /// Returns `true` if this number is neither infinite nor NaN.
@@ -415,8 +418,8 @@ impl Float256Repr {
             self.bits.hi & HI_FRACTION_MASK,
             self.bits.lo,
         ) {
-            (HI_EXP_MASK, 0, _) => FpCategory::Infinite,
-            (HI_EXP_MASK, NAN_HI, _) => FpCategory::Nan,
+            (HI_EXP_MASK, 0, 0) => FpCategory::Infinite,
+            (HI_EXP_MASK, ..) => FpCategory::Nan,
             (0, 0, 0) => FpCategory::Zero,
             (0, ..) => FpCategory::Subnormal,
             _ => FpCategory::Normal,

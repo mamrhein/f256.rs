@@ -7,6 +7,8 @@
 // $Source$
 // $Revision$
 
+use std::ops::Neg;
+
 use crate::{f256, float256, uint256::u256, Float256Repr};
 
 trait Float: Copy + Clone {
@@ -100,7 +102,14 @@ impl<F: Float> From<F> for f256 {
             }
         } else {
             if fraction != 0 {
-                f256::NAN
+                // +/- NaN
+                // TODO: replace by -f256::NAN
+                [
+                    f256::NAN,
+                    f256 {
+                        repr: Float256Repr::NAN.neg(),
+                    },
+                ][sign as usize]
             } else {
                 // +/- inf
                 [f256::INFINITY, f256::NEG_INFINITY][sign as usize]
@@ -116,6 +125,7 @@ mod from_f64_tests {
     #[test]
     fn test_nan() {
         assert!(f256::from(f64::NAN).is_nan());
+        assert!(f256::from(-f64::NAN).is_nan());
     }
 
     #[test]

@@ -149,7 +149,6 @@ impl f256 {
     };
 
     /// Negative additive identity
-    // TODO: replace by -ZERO
     pub const NEG_ZERO: Self = Self {
         repr: Float256Repr::NEG_ZERO,
     };
@@ -160,7 +159,6 @@ impl f256 {
     };
 
     /// Multiplicative negator
-    // TODO: replace by -ONE
     pub const NEG_ONE: Self = Self {
         repr: Float256Repr::NEG_ONE,
     };
