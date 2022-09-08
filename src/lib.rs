@@ -229,6 +229,14 @@ impl f256 {
         self.repr.is_zero()
     }
 
+    /// Returns `true` if `self` is either not a number, infinite or equal to
+    /// zero.
+    #[must_use]
+    #[inline]
+    pub(crate) const fn is_special(self) -> bool {
+        self.repr.is_special()
+    }
+
     /// Returns `true` if `self` has a positive sign, including `+0.0`, positive
     /// infinity and NaN.
     #[must_use]

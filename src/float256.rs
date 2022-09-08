@@ -7,8 +7,11 @@
 // $Source$
 // $Revision$
 
-use core::num::FpCategory;
-use std::{cmp::Ordering, ops::Neg};
+use core::{
+    cmp::{min, Ordering},
+    num::FpCategory,
+    ops::Neg,
+};
 
 use crate::uint256::u256;
 
@@ -146,6 +149,23 @@ impl Float256Repr {
             lo: 0,
         },
     };
+
+    /// Raw assembly from significand, exponent and sign.
+    #[inline]
+    pub(crate) const fn new(
+        significand: u256,
+        exponent: u32,
+        sign: u32,
+    ) -> Self {
+        Self {
+            bits: u256 {
+                hi: (significand.hi & HI_FRACTION_MASK)
+                    | ((exponent as u128) << HI_FRACTION_BITS)
+                    | ((sign as u128) << HI_SIGN_SHIFT),
+                lo: significand.lo,
+            },
+        }
+    }
 
     /// Raw transmutation from `[u64; 4]` (in native endian order).
     #[inline]
@@ -320,6 +340,7 @@ impl Float256Repr {
     }
 
     /// Extract sign, exponent and significand from `self`.
+    // TODO: ensure that for all finite values: encode(x.decode()) == x
     #[inline]
     pub(crate) const fn decode(&self) -> (u32, i32, u256) {
         (self.sign(), self.exponent(), self.significand())
@@ -411,6 +432,14 @@ impl Float256Repr {
         (self.bits.hi << 1) == 0 && self.bits.lo == 0
     }
 
+    /// Returns `true` if `self` is either not a number, infinite or equal to
+    /// zero.
+    #[must_use]
+    #[inline]
+    pub(crate) const fn is_special(self) -> bool {
+        self.is_zero() || (self.bits.hi & HI_EXP_MASK) == INF_HI
+    }
+
     /// Returns the floating point category of the represented number.
     pub(crate) const fn classify(&self) -> FpCategory {
         match (
@@ -461,6 +490,11 @@ impl Float256Repr {
             },
         }
     }
+
+    #[inline]
+    pub(crate) fn set_sign(&mut self, sign: u32) {
+        self.bits.hi |= (sign as u128) << HI_SIGN_SHIFT;
+    }
 }
 
 impl Neg for Float256Repr {
@@ -491,4 +525,108 @@ impl PartialOrd for Float256Repr {
         // Note that this differs from f256. See doc of fn f256::total_cmp.
         self.neg().bits.partial_cmp(&(*other).neg().bits)
     }
+}
+
+#[inline]
+pub(crate) fn add_special(x: Float256Repr, y: Float256Repr) -> Float256Repr {
+    // Either x or y or both are either not a number, infinite or equal to zero.
+    if x.is_zero() {
+        return if y.is_zero() {
+            if x.is_sign_negative() && y.is_sign_negative() {
+                x
+            } else {
+                Float256Repr::ZERO
+            }
+        } else {
+            y
+        };
+    }
+    if y.is_zero() {
+        return x;
+    }
+    if x.is_nan() || y.is_nan() {
+        return Float256Repr::NAN;
+    }
+    if x.is_infinite() {
+        return if (x.bits.hi ^ y.bits.hi) == HI_SIGN_MASK {
+            // x and y are infinite and have different signs
+            Float256Repr::NAN
+        } else {
+            x
+        };
+    }
+    // x is a number and y is infinite
+    y
+}
+
+type InplaceBinOp = fn(&mut u256, &u256);
+const SIGNIF_OPS: [InplaceBinOp; 2] = [u256::iadd, u256::isub];
+
+#[inline]
+pub(crate) fn add(x: Float256Repr, y: Float256Repr) -> Float256Repr {
+    // Both operands are finite and non-zero.
+    // Compare the absolute values of the operands and swap them in case x < y.
+    let mut a: Float256Repr;
+    let mut b: Float256Repr;
+    if x.abs() >= y.abs() {
+        a = x;
+        b = y;
+    } else {
+        a = y;
+        b = x;
+    }
+    // Extract biased exponents and significands (shifted left by 3 bits to give
+    // room for a round, guard and sticky bit). These shifts are safe because
+    // the significands use at most 237 bits in an u256.
+    let mut a_exp = a.biased_exponent();
+    let b_exp = b.biased_exponent();
+    let mut a_signif = a.significand() << 3;
+    let mut b_signif = b.significand() << 3;
+    // Here a >= b => a_exp >= b_exp => a_exp - b_exp >= 0.
+    // We adjust the significand of b by right-shifting it.
+    // We limit the adjustment by an upper limit of SIGNIFICAND_BITS + 2. Thus,
+    // the silent bit of b's significant is atmost to the position of the sticky
+    // bit. Any further shift would have no effect on the result.
+    let adj = min(a_exp - b_exp, SIGNIFICAND_BITS + 2);
+    let sticky_bit =
+        !(adj == 0 || (b_signif << (u256::BITS - adj) as usize).is_zero());
+    b_signif >>= adj as usize;
+    b_signif.lo |= sticky_bit as u128;
+    // Determine the actual op to be performed: if the sign of the operands
+    // differ, it's a subtraction, otherwise an addition.
+    let signs_differ = (((x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK) != 0);
+    let op = SIGNIF_OPS[signs_differ as usize];
+    op(&mut a_signif, &b_signif);
+    // If addition carried over, right-shift the significand and increment
+    // the exponent.
+    if (a_signif.hi >> (HI_FRACTION_BITS + 4)) != 0 {
+        a_signif >>= 1;
+        a_signif.lo |= sticky_bit as u128;
+        a_exp += 1;
+    } else {
+        // If subtraction cancelled the hidden bit or x and y are subnormal,
+        // left-shift the significand and decrement the exponent. We limit the
+        // adjustment to avoid the biased exponent to become negative.
+        let adj = min(SIGNIFICAND_BITS + 3 - a_signif.leading_zeros(), a_exp);
+        a_signif <<= adj as usize;
+        a_exp -= adj;
+    }
+    // If the result overflows the range of values representable as `f256`,
+    // return +/- Infinity.
+    if a_exp >= EXP_MAX {
+        return [Float256Repr::INFINITY, Float256Repr::NEG_INFINITY]
+            [a.sign() as usize];
+    }
+    // Determine carry from round, guard and sticky bit.
+    let carry = (a_signif.lo & 0x7_u128) > 0x4;
+    // Shift significand back, erase hidden bit and set exponent and sign.
+    let mut bits = a_signif >> 3;
+    bits.hi &= HI_FRACTION_MASK;
+    bits.hi |= (a_exp as u128) << HI_FRACTION_BITS;
+    bits.hi |= a.bits.hi & HI_SIGN_MASK;
+    // Final rounding. Possibly overflowing into the exponent, but that is ok.
+    if carry {
+        bits.incr();
+    }
+    Float256Repr { bits }
 }

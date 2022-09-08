@@ -132,4 +132,5 @@ macro_rules! forward_op_assign {
     };
 }
 
+mod add;
 mod cmp;
