@@ -231,62 +231,62 @@ impl Float256Repr {
     /// * 0 <= c < 2ᵖ
     ///
     /// so that f = (-1)ˢ × 2ᵗ × c.
-    pub(crate) fn encode(
-        sign: u32,
-        mut exponent: i32,
-        mut significand: u256,
-    ) -> Self {
-        debug_assert!(sign == 0 || sign == 1);
+    pub(crate) fn encode(s: u32, mut t: i32, mut c: u256) -> Self {
+        debug_assert!(s == 0 || s == 1);
         debug_assert!(
-            exponent >= EMIN - FRACTION_BITS as i32
-                && exponent <= EMAX - FRACTION_BITS as i32
+            t >= EMIN - FRACTION_BITS as i32
+                && t <= EMAX - FRACTION_BITS as i32
         );
-        debug_assert!(!significand.is_zero());
+        debug_assert!(!c.is_zero());
         // We have an integer based representation `(-1)ˢ × 2ᵗ × c` and need to
         // transform it into a fraction based representation
-        // `(-1)ˢ × 2ᵉ × (1 + m × 2¹⁻ᵖ)`, where `Eₘᵢₙ <= e <= Eₘₐₓ` and
-        // `0 < m < 2ᵖ⁻¹` or `(-1)ˢ × 2ᵉ × m × 2¹⁻ᵖ`, where `e = Eₘᵢₙ - 1` and
-        // `0 < m < 2ᵖ⁻¹`.
+        // `(-1)ˢ × 2ᵉ × (1 + m × 2¹⁻ᵖ)`,
+        // where `Eₘᵢₙ <= e <= Eₘₐₓ` and `0 < m < 2ᵖ⁻¹`, or
+        // `(-1)ˢ × 2ᵉ × m × 2¹⁻ᵖ`,
+        // where `e = Eₘᵢₙ - 1` and `0 < m < 2ᵖ⁻¹`.
 
         // 1. Compensate radix shift
-        exponent += FRACTION_BITS as i32;
+        t += FRACTION_BITS as i32;
         // 2. Normalize significand
-        let nlz = significand.leading_zeros();
+        let nlz = c.leading_zeros();
+        // The position of the most significant bit is `256 - nlz - 1`. We need
+        // to shift it to the position of the hidden bit, which is
+        // `256 - EXP_BITS - 1`. So we have to shift by |nlz - EXP_BITS|.
         match nlz.cmp(&EXP_BITS) {
             Ordering::Greater => {
-                // shift left
+                // Shift left.
                 let shift = (nlz - EXP_BITS) as usize;
-                if exponent >= EMIN + shift as i32 {
-                    significand <<= shift;
-                    exponent -= shift as i32;
+                if t >= EMIN + shift as i32 {
+                    c <<= shift;
+                    t -= shift as i32;
                 } else {
                     // Number is subnormal
-                    significand <<= (exponent - EMIN) as usize;
-                    exponent = EMIN - 1;
+                    c <<= (t - EMIN) as usize;
+                    t = EMIN - 1;
                 }
             }
             Ordering::Less => {
-                // shift right and round
+                // Shift right and round.
                 let shift = (EXP_BITS - nlz) as usize;
-                exponent += shift as i32;
-                significand.idiv_pow2(shift as u32);
+                t += shift as i32;
+                c.idiv_pow2(shift as u32);
                 // Rounding may have caused significand to overflow.
-                if (significand.hi >> HI_FRACTION_BITS + 1) != 0 {
-                    exponent += 1;
-                    significand >>= 1;
+                if (c.hi >> HI_FRACTION_BITS + 1) != 0 {
+                    t += 1;
+                    c >>= 1;
                 }
             }
             _ => {}
         }
         // 3. Offset exponent
-        let biased_exponent = exponent + EXP_BIAS as i32;
+        let biased_exponent = t + EXP_BIAS as i32;
         debug_assert!(biased_exponent >= 0);
         Self {
             bits: u256 {
-                hi: (sign as u128) << HI_SIGN_SHIFT
+                hi: (s as u128) << HI_SIGN_SHIFT
                     | ((biased_exponent as u128) << HI_FRACTION_BITS)
-                    | (significand.hi & HI_FRACTION_MASK),
-                lo: significand.lo,
+                    | (c.hi & HI_FRACTION_MASK),
+                lo: c.lo,
             },
         }
     }
@@ -351,11 +351,41 @@ impl Float256Repr {
         }
     }
 
-    /// Extract sign, exponent and significand from `self`.
-    // TODO: ensure that for all finite values: encode(x.decode()) == x
-    #[inline]
-    pub(crate) const fn decode(&self) -> (u32, i32, u256) {
-        (self.sign(), self.exponent(), self.significand())
+    /// Extract sign s, exponent t and significand c from a finite, non-zero
+    /// `Float256Repr` f,
+    ///
+    /// where
+    ///
+    /// * p = 237
+    /// * Eₘₐₓ = 262143
+    /// * Eₘᵢₙ = 1 - Eₘₐₓ = -262142
+    /// * s ∈ {0, 1}
+    /// * Eₘᵢₙ - p + 1 <= t <= Eₘₐₓ - p + 1
+    /// * 0 <= c < 2ᵖ
+    ///
+    /// so that (-1)ˢ × 2ᵗ × c = f.
+    pub(crate) fn decode(&self) -> (u32, i32, u256) {
+        debug_assert!(
+            self.is_finite(),
+            "Attempt to extract sign, exponent and significand from Infinity \
+             or NaN."
+        );
+        // We have a fraction based representation
+        // `(-1)ˢ × 2ᵉ × (1 + m × 2¹⁻ᵖ)`, where `Eₘᵢₙ <= e <= Eₘₐₓ` and
+        // `0 < m < 2ᵖ⁻¹`
+        // or
+        // `(-1)ˢ × 2ᵉ × m × 2¹⁻ᵖ`, where `e = Eₘᵢₙ - 1` and
+        // `0 < m < 2ᵖ⁻¹`
+        // and need to transform it into an integer based representation
+        // `(-1)ˢ × 2ᵗ × c`.
+        if self.is_zero() {
+            return (self.sign(), 0, u256::default());
+        }
+        let m = self.significand();
+        let ntz = m.trailing_zeros();
+        let c = self.significand() >> ntz as usize;
+        let t = self.exponent() - FRACTION_BITS as i32 + ntz as i32;
+        (self.sign(), t, c)
     }
 
     /// Raw transmutation to `[u64; 4]` (in native endian order).
@@ -644,7 +674,7 @@ pub(crate) fn add(x: Float256Repr, y: Float256Repr) -> Float256Repr {
 }
 
 #[cfg(test)]
-mod tests {
+mod repr_tests {
     use super::*;
 
     #[test]
@@ -653,10 +683,12 @@ mod tests {
         assert_eq!(z.sign(), 0);
         assert_eq!(z.exponent(), 0);
         assert_eq!(z.significand(), u256::default());
+        assert_eq!(z.decode(), (0, 0, u256::default()));
         let z = Float256Repr::NEG_ZERO;
         assert_eq!(z.sign(), 1);
         assert_eq!(z.exponent(), 0);
         assert_eq!(z.significand(), u256::default());
+        assert_eq!(z.decode(), (1, 0, u256::default()));
     }
 
     #[test]
@@ -671,6 +703,7 @@ mod tests {
                 lo: 0
             }
         );
+        assert_eq!(i.decode(), (0, 0, u256 { hi: 0, lo: 1 }));
         let j = Float256Repr::NEG_ONE;
         assert_eq!(j.sign(), 1);
         assert_eq!(j.exponent(), 0);
@@ -681,5 +714,40 @@ mod tests {
                 lo: 0
             }
         );
+        assert_eq!(j.decode(), (1, 0, u256 { hi: 0, lo: 1 }));
+    }
+}
+
+#[cfg(test)]
+mod encode_decode_tests {
+    use super::*;
+
+    #[test]
+    fn test_normal() {
+        let sign = 1_u32;
+        let exponent = -23_i32;
+        let significand = u256 {
+            hi: 39,
+            lo: 10000730744,
+        };
+        let f = Float256Repr::encode(sign, exponent, significand);
+        let (s, t, c) = f.decode();
+        let g = Float256Repr::encode(s, t, c);
+        assert_eq!(f, g);
+    }
+
+    #[test]
+    fn test_subnormal() {
+        let sign = 0_u32;
+        let exponent = EMIN - 235_i32;
+        let significand = u256 {
+            hi: u128::MAX >> EXP_BITS + 2,
+            lo: 0,
+        };
+        let f = Float256Repr::encode(sign, exponent, significand);
+        assert!(f.is_subnormal());
+        let (s, t, c) = f.decode();
+        let g = Float256Repr::encode(s, t, c);
+        assert_eq!(f, g);
     }
 }
