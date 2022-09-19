@@ -448,6 +448,8 @@ mod tests {
         assert!((-f256::NAN).is_nan());
         assert!(!f256::INFINITY.is_nan());
         assert!(!f256::NEG_INFINITY.is_nan());
+        assert!(!f256::ZERO.is_nan());
+        assert!(!f256::NEG_ZERO.is_nan());
     }
 
     #[test]
