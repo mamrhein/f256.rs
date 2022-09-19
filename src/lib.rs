@@ -437,34 +437,3 @@ impl f256 {
         unimplemented!()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_nan() {
-        assert!(f256::NAN.is_nan());
-        assert!((-f256::NAN).is_nan());
-        assert!(!f256::INFINITY.is_nan());
-        assert!(!f256::NEG_INFINITY.is_nan());
-        assert!(!f256::ZERO.is_nan());
-        assert!(!f256::NEG_ZERO.is_nan());
-    }
-
-    #[test]
-    fn test_inf() {
-        assert!(f256::INFINITY.is_infinite());
-        assert!(f256::NEG_INFINITY.is_infinite());
-        assert!(!f256::NAN.is_infinite());
-        assert!(!f256::NEG_ZERO.is_infinite());
-        assert!(!f256::ZERO.is_infinite());
-        assert!(!f256::ONE.is_infinite());
-        assert!(!f256::INFINITY.is_finite());
-        assert!(!f256::NEG_INFINITY.is_finite());
-        assert!(!f256::NAN.is_finite());
-        assert!(f256::NEG_ZERO.is_finite());
-        assert!(f256::ZERO.is_finite());
-        assert!(f256::ONE.is_finite());
-    }
-}
