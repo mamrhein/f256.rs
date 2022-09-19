@@ -306,7 +306,19 @@ impl Float256Repr {
     /// Returns the binary exponent of `self`.
     #[inline]
     pub(crate) const fn exponent(&self) -> i32 {
-        self.biased_exponent() as i32 - EXP_BIAS as i32
+        debug_assert!(
+            self.is_finite(),
+            "Attempt to extract exponent from Infinity or NaN."
+        );
+        if self.is_zero() {
+            return 0;
+        }
+        let exp = self.biased_exponent();
+        if exp == 0 {
+            // subnormal
+            return EMIN;
+        }
+        exp as i32 - EXP_BIAS as i32
     }
 
     /// Returns the fraction of `self`.
@@ -629,4 +641,45 @@ pub(crate) fn add(x: Float256Repr, y: Float256Repr) -> Float256Repr {
         bits.incr();
     }
     Float256Repr { bits }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_zero() {
+        let z = Float256Repr::ZERO;
+        assert_eq!(z.sign(), 0);
+        assert_eq!(z.exponent(), 0);
+        assert_eq!(z.significand(), u256::default());
+        let z = Float256Repr::NEG_ZERO;
+        assert_eq!(z.sign(), 1);
+        assert_eq!(z.exponent(), 0);
+        assert_eq!(z.significand(), u256::default());
+    }
+
+    #[test]
+    fn test_one() {
+        let i = Float256Repr::ONE;
+        assert_eq!(i.sign(), 0);
+        assert_eq!(i.exponent(), 0);
+        assert_eq!(
+            i.significand(),
+            u256 {
+                hi: 1_u128 << HI_FRACTION_BITS,
+                lo: 0
+            }
+        );
+        let j = Float256Repr::NEG_ONE;
+        assert_eq!(j.sign(), 1);
+        assert_eq!(j.exponent(), 0);
+        assert_eq!(
+            j.significand(),
+            u256 {
+                hi: 1_u128 << HI_FRACTION_BITS,
+                lo: 0
+            }
+        );
+    }
 }
