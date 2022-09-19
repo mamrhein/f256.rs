@@ -404,6 +404,7 @@ impl Shl<usize> for u256 {
                 hi: self.lo << (rhs - 128),
                 lo: 0,
             },
+            0 => self,
             _ => unreachable!(),
         }
     }
@@ -427,6 +428,7 @@ impl ShlAssign<usize> for u256 {
                 self.hi = self.lo << (rhs - 128);
                 self.lo = 0;
             }
+            0 => {}
             _ => unreachable!(),
         }
     }
@@ -448,6 +450,7 @@ impl Shr<usize> for u256 {
                 hi: 0,
                 lo: self.hi >> (rhs - 128),
             },
+            0 => self,
             _ => unreachable!(),
         }
     }
@@ -471,6 +474,7 @@ impl ShrAssign<usize> for u256 {
                 self.lo = self.hi >> (rhs - 128);
                 self.hi = 0;
             }
+            0 => {}
             _ => unreachable!(),
         }
     }
