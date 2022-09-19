@@ -62,6 +62,8 @@ pub(crate) const EPSILON_HI: u128 =
 /// Value of hi u128 for MAX = 0x7fffefffffffffffffffffffffffffff
 pub(crate) const MAX_HI: u128 =
     ((EMAX as u32 + EXP_BIAS) as u128) << HI_FRACTION_BITS | HI_FRACTION_MASK;
+/// Binary exponent for integral values
+const INT_EXP: i32 = -(FRACTION_BITS as i32);
 
 #[derive(Clone, Copy, Debug, Eq, Ord)]
 pub(crate) struct Float256Repr {
@@ -316,9 +318,9 @@ impl Float256Repr {
         let exp = self.biased_exponent();
         if exp == 0 {
             // subnormal
-            return EMIN;
+            return EMIN - FRACTION_BITS as i32;
         }
-        exp as i32 - EXP_BIAS as i32
+        exp as i32 - EXP_BIAS as i32 - FRACTION_BITS as i32
     }
 
     /// Returns the fraction of `self`.
@@ -381,10 +383,11 @@ impl Float256Repr {
         if self.is_zero() {
             return (self.sign(), 0, u256::default());
         }
-        let m = self.significand();
-        let ntz = m.trailing_zeros();
-        let c = self.significand() >> ntz as usize;
-        let t = self.exponent() - FRACTION_BITS as i32 + ntz as i32;
+        let mut c = self.significand();
+        let mut t = self.exponent();
+        let ntz = c.trailing_zeros();
+        c >>= ntz as usize;
+        t += ntz as i32;
         (self.sign(), t, c)
     }
 
@@ -695,7 +698,7 @@ mod repr_tests {
     fn test_one() {
         let i = Float256Repr::ONE;
         assert_eq!(i.sign(), 0);
-        assert_eq!(i.exponent(), 0);
+        assert_eq!(i.exponent(), INT_EXP);
         assert_eq!(
             i.significand(),
             u256 {
@@ -706,7 +709,7 @@ mod repr_tests {
         assert_eq!(i.decode(), (0, 0, u256 { hi: 0, lo: 1 }));
         let j = Float256Repr::NEG_ONE;
         assert_eq!(j.sign(), 1);
-        assert_eq!(j.exponent(), 0);
+        assert_eq!(j.exponent(), INT_EXP);
         assert_eq!(
             j.significand(),
             u256 {
