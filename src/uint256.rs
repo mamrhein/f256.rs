@@ -375,6 +375,12 @@ impl u256 {
     }
 }
 
+impl Default for u256 {
+    fn default() -> Self {
+        Self { hi: 0, lo: 0 }
+    }
+}
+
 impl Shl<usize> for u256 {
     type Output = Self;
 
