@@ -261,6 +261,13 @@ impl u256 {
             + (self.hi == 0) as u32 * self.lo.leading_zeros();
     }
 
+    /// Returns the number of trailing zeros in the binary representation of
+    /// `self`.
+    pub(crate) const fn trailing_zeros(&self) -> u32 {
+        return self.lo.trailing_zeros()
+            + (self.lo == 0) as u32 * self.hi.trailing_zeros();
+    }
+
     /// Returns the index of the most significant bit of `self`.
     /// Pre-condition: `self` must not be zero!
     pub(crate) fn msb(&self) -> u32 {
