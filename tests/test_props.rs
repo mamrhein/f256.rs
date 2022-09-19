@@ -36,4 +36,16 @@ mod tests {
         assert!(f256::ZERO.is_finite());
         assert!(f256::ONE.is_finite());
     }
+
+    #[test]
+    fn test_zero() {
+        assert!(f256::ZERO.is_zero());
+        assert!(f256::NEG_ZERO.is_zero());
+        assert!(!f256::ONE.is_zero());
+        assert!(!f256::NEG_ONE.is_zero());
+        assert!(!f256::NAN.is_zero());
+        assert!(!(-f256::NAN).is_zero());
+        assert!(!f256::INFINITY.is_zero());
+        assert!(!f256::NEG_INFINITY.is_zero());
+    }
 }
