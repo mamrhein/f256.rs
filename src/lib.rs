@@ -66,6 +66,7 @@ use crate::float256::{Float256Repr, EMAX, EMIN, SIGNIFICAND_BITS};
 mod binops;
 mod float256;
 mod from_float;
+mod from_int;
 mod uint256;
 mod unops;
 

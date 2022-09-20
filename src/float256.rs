@@ -220,6 +220,45 @@ impl Float256Repr {
         Self::from_bits(bits)
     }
 
+    /// Construct a finite `Float256Repr` from a signed 64-bit integer.
+    #[must_use]
+    #[inline]
+    pub(crate) fn from_i64(i: i64) -> Self {
+        if i == 0 {
+            return Self::ZERO;
+        }
+        // First cast to i128, because i64::MIN.abs() causes overflow.
+        let j = (i as i128).abs() as u128;
+        let msb = 127 - j.leading_zeros();
+        Self::new(
+            u256 {
+                hi: j << (HI_FRACTION_BITS - msb),
+                lo: 0,
+            },
+            EXP_BIAS + msb,
+            i.is_negative() as u32,
+        )
+    }
+
+    /// Construct a finite `Float256Repr` from a signed 128-bit integer.
+    #[must_use]
+    #[inline]
+    pub(crate) fn from_i128(i: i128) -> Self {
+        if i == 0 {
+            return Self::ZERO;
+        }
+        let j = match i.checked_abs() {
+            Some(k) => k as u128,
+            None => i as u128,
+        };
+        let msb = 127 - j.leading_zeros();
+        Self::new(
+            u256 { hi: 0, lo: j } << (128 + HI_FRACTION_BITS - msb) as usize,
+            EXP_BIAS + msb,
+            i.is_negative() as u32,
+        )
+    }
+
     /// Construct a finite, non-zero `Float256Repr` f from sign s, exponent t
     /// and significand c,
     ///
