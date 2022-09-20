@@ -70,6 +70,10 @@ mod from_int;
 mod uint256;
 mod unops;
 
+/// A 256-bit floating point type (specifically, the “binary256” type defined in
+/// IEEE 754-2008).
+///
+/// For details see [above](index.html).
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 pub struct f256 {
@@ -86,7 +90,8 @@ impl f256 {
     /// Number of significant digits in base 2: 237.
     pub const SIGNIFICANT_DIGITS: u32 = SIGNIFICAND_BITS;
 
-    /// Approximate number of significant digits in base 10 (.
+    /// Approximate number of significant digits in base 10: log₁₀(2²³⁷) ≈
+    /// 71.344.
     pub const DIGITS: u32 = 71;
 
     /// The difference between `1.0` and the next larger representable number:
@@ -170,7 +175,7 @@ impl f256 {
         repr: Float256Repr::TWO,
     };
 
-    /// TODO: Equivalent of 10.0
+    // TODO: Equivalent of 10.0
     // pub const TEN: Self = Self {
     //     bits: u256 {
     //         hi: ((1 + EXP_BIAS) as u128) << HI_FRACTION_BITS,
@@ -418,11 +423,6 @@ impl f256 {
     /// # Panics
     ///
     /// Panics if `min > max`, `min` is NaN, or `max` is NaN.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// ```
     #[must_use]
     #[inline]
     pub fn clamp(self, min: Self, max: Self) -> Self {
