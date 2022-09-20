@@ -253,9 +253,42 @@ impl Float256Repr {
         };
         let msb = 127 - j.leading_zeros();
         Self::new(
-            u256 { hi: 0, lo: j } << (128 + HI_FRACTION_BITS - msb) as usize,
+            u256 { hi: 0, lo: j } << (FRACTION_BITS - msb) as usize,
             EXP_BIAS + msb,
             i.is_negative() as u32,
+        )
+    }
+
+    /// Construct a finite `Float256Repr` from an unsigned 64-bit integer.
+    #[must_use]
+    #[inline]
+    pub(crate) fn from_u64(i: u64) -> Self {
+        if i == 0 {
+            return Self::ZERO;
+        }
+        let msb = 127 - (i as u128).leading_zeros();
+        Self::new(
+            u256 {
+                hi: (i as u128) << (HI_FRACTION_BITS - msb),
+                lo: 0,
+            },
+            EXP_BIAS + msb,
+            0_u32,
+        )
+    }
+
+    /// Construct a finite `Float256Repr` from an unsigned 128-bit integer.
+    #[must_use]
+    #[inline]
+    pub(crate) fn from_u128(i: u128) -> Self {
+        if i == 0 {
+            return Self::ZERO;
+        }
+        let msb = 127 - i.leading_zeros();
+        Self::new(
+            u256 { hi: 0, lo: i } << (FRACTION_BITS - msb) as usize,
+            EXP_BIAS + msb,
+            0_u32,
         )
     }
 
