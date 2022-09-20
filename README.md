@@ -15,7 +15,7 @@ exponent is all zeros. Thus only 236 bits of the significand appear in the
 memory format, but the total precision is 237 bits (approximately 71 decimal
 digits: log₁₀(2²³⁷) ≈ 71.344). The bits are laid out as follows:
 
-Layout of octuple-precision floating-point format
+![Layout of octuple-precision floating-point format](images/Octuple_precision_layout.png)
 
 ##### Exponent encoding
 
