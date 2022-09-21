@@ -153,6 +153,9 @@ const MIN_POSITIVE: f256 = f256 {
         lo: 0,
     },
 };
+const MIN_GT_ZERO: f256 = f256 {
+    bits: u256 { hi: 0, lo: 1 },
+};
 const NAN: f256 = f256 {
     bits: u256 { hi: NAN_HI, lo: 0 },
 };
@@ -199,17 +202,16 @@ impl f256 {
     pub const DIGITS: u32 = 71;
 
     /// The difference between `1.0` and the next larger representable number:
-    /// 2⁻²³⁶ ≈ 9.055679e-72.
+    /// 2⁻²³⁶ ≈ 9.055679 × 10⁻⁷².
     pub const EPSILON: Self = EPSILON;
 
-    /// Largest finite `f256` value:  2²⁶²¹⁴⁴ − 2²⁶¹⁹⁰⁷ ≈ 1.6113e78913.
-    // TODO: replace by formula above when fn pow is implemented.
+    /// Largest finite `f256` value:  2²⁶²¹⁴⁴ − 2²⁶¹⁹⁰⁷ ≈ 1.6113 × 10⁷⁸⁹¹³.
     pub const MAX: Self = MAX;
 
-    /// Smallest finite `f256` value: 2²⁶¹⁹⁰⁷ - 2²⁶²¹⁴⁴ ≈ -1.6113e78913.
+    /// Smallest finite `f256` value: 2²⁶¹⁹⁰⁷ - 2²⁶²¹⁴⁴ ≈ -1.6113 × 10⁷⁸⁹¹³.
     pub const MIN: Self = MIN;
 
-    /// Smallest positive normal `f256` value: 2⁻²⁶²¹⁴² ≈ 2.4824e−78913.
+    /// Smallest positive normal `f256` value: 2⁻²⁶²¹⁴² ≈ 2.4824 × 10⁻⁷⁸⁹¹³.
     pub const MIN_POSITIVE: Self = MIN_POSITIVE;
 
     /// Maximum possible power of 2 exponent: 2¹⁸ = 262144.
