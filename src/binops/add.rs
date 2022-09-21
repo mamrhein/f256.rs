@@ -151,7 +151,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_nan() {
+    fn test_add_nan() {
         assert!((f256::NAN + f256::ONE).is_nan());
         assert!((f256::ONE + f256::NAN).is_nan());
         assert!((f256::NAN + f256::NAN).is_nan());
@@ -162,7 +162,18 @@ mod tests {
     }
 
     #[test]
-    fn test_inf() {
+    fn test_sub_nan() {
+        assert!((f256::NAN - f256::ONE).is_nan());
+        assert!((f256::ONE - f256::NAN).is_nan());
+        assert!((f256::NAN - f256::NAN).is_nan());
+        assert!((f256::NAN - f256::INFINITY).is_nan());
+        assert!((f256::INFINITY - f256::NAN).is_nan());
+        assert!((f256::NAN - f256::NEG_INFINITY).is_nan());
+        assert!((f256::NEG_INFINITY - f256::NAN).is_nan());
+    }
+
+    #[test]
+    fn test_add_inf() {
         assert_eq!(f256::INFINITY + f256::INFINITY, f256::INFINITY);
         assert_eq!(f256::INFINITY + f256::ONE, f256::INFINITY);
         assert_eq!(f256::ONE + f256::INFINITY, f256::INFINITY);
@@ -174,7 +185,32 @@ mod tests {
     }
 
     #[test]
+    fn test_sub_inf() {
+        assert_eq!(f256::INFINITY - f256::NEG_INFINITY, f256::INFINITY);
+        assert_eq!(f256::INFINITY - f256::ONE, f256::INFINITY);
+        assert_eq!(f256::ONE - f256::INFINITY, f256::NEG_INFINITY);
+        assert_eq!(f256::NEG_INFINITY - f256::INFINITY, f256::NEG_INFINITY);
+        assert_eq!(f256::NEG_INFINITY - f256::ONE, f256::NEG_INFINITY);
+        assert_eq!(f256::ONE - f256::NEG_INFINITY, f256::INFINITY);
+        assert!((f256::INFINITY - f256::INFINITY).is_nan());
+        assert!((f256::NEG_INFINITY - f256::NEG_INFINITY).is_nan());
+    }
+
+    #[test]
+    fn test_add_zero() {
+        assert_eq!(f256::ZERO + f256::ZERO, f256::ZERO);
+        assert_eq!(f256::ZERO + f256::NEG_ZERO, f256::ZERO);
+        assert_eq!(f256::NEG_ZERO + f256::ZERO, f256::ZERO);
+        assert_eq!(f256::NEG_ZERO + f256::NEG_ZERO, f256::NEG_ZERO);
+        assert_eq!(f256::ONE + f256::ZERO, f256::ONE);
+        assert_eq!(f256::ZERO + f256::ONE, f256::ONE);
+        assert_eq!(f256::ONE + f256::NEG_ZERO, f256::ONE);
+        assert_eq!(f256::NEG_ZERO + f256::ONE, f256::ONE);
+    }
+
+    #[test]
     fn test_pos_add_pos() {
         assert_eq!(f256::ONE + f256::ONE, f256::TWO);
+        assert_eq!(f256::TWO + f256::TWO, f256::from(4.0));
     }
 }
