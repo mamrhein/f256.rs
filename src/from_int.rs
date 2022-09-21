@@ -7,7 +7,81 @@
 // $Source$
 // $Revision$
 
-use crate::{f256, Float256Repr};
+use crate::{f256, u256, EXP_BIAS, FRACTION_BITS, HI_FRACTION_BITS};
+
+impl f256 {
+    /// Construct a finite `f256` from a signed 64-bit integer.
+    #[must_use]
+    #[inline]
+    pub(crate) const fn from_i64(i: i64) -> Self {
+        if i == 0 {
+            return Self::ZERO;
+        }
+        // First cast to i128, because i64::MIN.abs() causes overflow.
+        let j = (i as i128).abs() as u128;
+        let msb = 127 - j.leading_zeros();
+        Self::new(
+            u256 {
+                hi: j << (HI_FRACTION_BITS - msb),
+                lo: 0,
+            },
+            EXP_BIAS + msb,
+            i.is_negative() as u32,
+        )
+    }
+
+    /// Construct a finite `f256` from a signed 128-bit integer.
+    #[must_use]
+    #[inline]
+    pub(crate) const fn from_i128(i: i128) -> Self {
+        if i == 0 {
+            return Self::ZERO;
+        }
+        let j = match i.checked_abs() {
+            Some(k) => k as u128,
+            None => i as u128,
+        };
+        let msb = 127 - j.leading_zeros();
+        Self::new(
+            u256::new(0, j).shl((FRACTION_BITS - msb) as usize),
+            EXP_BIAS + msb,
+            i.is_negative() as u32,
+        )
+    }
+
+    /// Construct a finite `f256` from an unsigned 64-bit integer.
+    #[must_use]
+    #[inline]
+    pub(crate) const fn from_u64(i: u64) -> Self {
+        if i == 0 {
+            return Self::ZERO;
+        }
+        let msb = 127 - (i as u128).leading_zeros();
+        Self::new(
+            u256 {
+                hi: (i as u128) << (HI_FRACTION_BITS - msb),
+                lo: 0,
+            },
+            EXP_BIAS + msb,
+            0_u32,
+        )
+    }
+
+    /// Construct a finite `f256` from an unsigned 128-bit integer.
+    #[must_use]
+    #[inline]
+    pub(crate) const fn from_u128(i: u128) -> Self {
+        if i == 0 {
+            return Self::ZERO;
+        }
+        let msb = 127 - i.leading_zeros();
+        Self::new(
+            u256::new(0, i).shl((FRACTION_BITS - msb) as usize),
+            EXP_BIAS + msb,
+            0_u32,
+        )
+    }
+}
 
 macro_rules! impl_from_signed_int {
     () => {
@@ -18,9 +92,7 @@ macro_rules! impl_from_signed_int {
         impl From<$t> for f256 {
             #[allow(trivial_numeric_casts)]
             fn from(i: $t) -> Self {
-                Self{
-                    repr: Float256Repr::from_i64(i as i64)
-                }
+                Self::from_i64(i as i64)
             }
         }
         )*
@@ -31,9 +103,7 @@ impl_from_signed_int!();
 
 impl From<i128> for f256 {
     fn from(i: i128) -> Self {
-        Self {
-            repr: Float256Repr::from_i128(i),
-        }
+        Self::from_i128(i)
     }
 }
 
@@ -54,7 +124,7 @@ mod from_signed_int_tests {
                 None => i as u128,
             };
             assert_eq!(f.is_sign_negative(), i.is_negative());
-            let (s, t, c) = f.repr.decode();
+            let (s, t, c) = f.decode();
             assert_eq!(c.hi, 0);
             assert_eq!(c.lo, j >> t as usize);
         }
@@ -100,9 +170,7 @@ macro_rules! impl_from_unsigned_int {
         impl From<$t> for f256 {
             #[allow(trivial_numeric_casts)]
             fn from(i: $t) -> Self {
-                Self{
-                    repr: Float256Repr::from_u64(i as u64)
-                }
+                Self::from_u64(i as u64)
             }
         }
         )*
@@ -113,9 +181,7 @@ impl_from_unsigned_int!();
 
 impl From<u128> for f256 {
     fn from(i: u128) -> Self {
-        Self {
-            repr: Float256Repr::from_u128(i),
-        }
+        Self::from_u128(i)
     }
 }
 
@@ -132,7 +198,7 @@ mod from_unsigned_int_tests {
             let f = f256::from(*n);
             let i = (*n).into();
             assert!(f.is_sign_positive());
-            let (s, t, c) = f.repr.decode();
+            let (s, t, c) = f.decode();
             assert_eq!(c.hi, 0);
             assert_eq!(c.lo, i >> t as usize);
         }

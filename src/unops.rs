@@ -9,14 +9,17 @@
 
 use core::ops::Neg;
 
-use crate::f256;
+use crate::{f256, u256, HI_SIGN_MASK};
 
 impl f256 {
     /// Computes the absolute value of `self`.
     #[inline(always)]
     pub const fn abs(&self) -> Self {
         Self {
-            repr: self.repr.abs(),
+            bits: u256 {
+                hi: self.bits.hi & HI_SIGN_MASK,
+                lo: self.bits.lo,
+            },
         }
     }
 
@@ -38,11 +41,14 @@ impl f256 {
         unimplemented!()
     }
 
-    /// Performs the unary `-` operation.
+    /// Returns the additive inverse of `self`.
     #[inline(always)]
-    pub(crate) const fn neg(&self) -> Self {
+    pub(crate) const fn negate(&self) -> Self {
         Self {
-            repr: self.repr.neg(),
+            bits: u256 {
+                hi: self.bits.hi ^ HI_SIGN_MASK,
+                lo: self.bits.lo,
+            },
         }
     }
 
@@ -66,7 +72,7 @@ impl Neg for f256 {
 
     #[inline(always)]
     fn neg(self) -> Self::Output {
-        f256::neg(&self)
+        self.negate()
     }
 }
 
@@ -75,6 +81,6 @@ impl Neg for &f256 {
 
     #[inline(always)]
     fn neg(self) -> Self::Output {
-        self.neg()
+        self.negate()
     }
 }

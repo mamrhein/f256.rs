@@ -9,7 +9,7 @@
 
 use std::ops::Neg;
 
-use crate::{f256, float256, uint256::u256, Float256Repr};
+use crate::{f256, uint256::u256};
 
 trait Float: Copy + Clone {
     /// Precision level in relation to single precision float (f32)
@@ -80,25 +80,21 @@ impl<F: Float> From<F> for f256 {
                 hi: 0,
                 lo: (fraction | F::FRACTION_BIAS) as u128,
             };
-            f256 {
-                repr: Float256Repr::encode(sign, exp, significand),
-            }
+            Self::encode(sign, exp, significand)
         } else if biased_exp == 0 {
             if fraction == 0 {
                 // +/- zero
                 [f256::ZERO, f256::NEG_ZERO][sign as usize]
             } else {
                 // subnormal
-                f256 {
-                    repr: Float256Repr::encode(
-                        sign,
-                        -(F::EXP_BIAS as i32),
-                        u256 {
-                            hi: 0,
-                            lo: fraction as u128,
-                        },
-                    ),
-                }
+                Self::encode(
+                    sign,
+                    -(F::EXP_BIAS as i32),
+                    u256 {
+                        hi: 0,
+                        lo: fraction as u128,
+                    },
+                )
             }
         } else {
             if fraction != 0 {

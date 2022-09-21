@@ -13,13 +13,16 @@ use crate::f256;
 
 impl PartialEq for f256 {
     fn eq(&self, other: &Self) -> bool {
+        // NaN is not equal to any other value, incl. NaN.
         if self.is_nan() || other.is_nan() {
             return false;
         }
+        // ±0 == ±0
         if self.is_zero() && other.is_zero() {
             return true;
         }
-        self.repr == other.repr
+        // All other values are equal if their bit representations are equal.
+        self.bits == other.bits
     }
 }
 
@@ -64,13 +67,15 @@ mod partial_eq_tests {
 
 impl PartialOrd for f256 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // NaN is not ordered.
         if self.is_nan() || other.is_nan() {
             return None;
         }
+        // ±0 == ±0
         if self.is_zero() && other.is_zero() {
             return Some(Ordering::Equal);
         }
-        self.repr.partial_cmp(&(*other).repr)
+        Some(self.total_cmp(other))
     }
 }
 

@@ -245,6 +245,12 @@ pub(crate) struct u256 {
 }
 
 impl u256 {
+    /// Create an `u256` value from two u128 values.
+    #[inline(always)]
+    pub(crate) const fn new(hi: u128, lo: u128) -> Self {
+        Self { hi, lo }
+    }
+
     /// The size of this integer type in bits.
     pub(crate) const BITS: u32 = size_of::<u256>() as u32 * 8;
 
@@ -380,6 +386,24 @@ impl u256 {
             lo: (bits[1] as u128) << 64 | (bits[0] as u128),
         }
     }
+
+    pub(crate) const fn shl(self, rhs: usize) -> Self {
+        const LIMIT: usize = u256::BITS as usize - 1;
+        assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
+        match rhs {
+            1..=127 => Self {
+                hi: self.hi << rhs | self.lo >> (128 - rhs),
+                lo: self.lo << rhs,
+            },
+            128 => Self { hi: self.lo, lo: 0 },
+            129..=255 => Self {
+                hi: self.lo << (rhs - 128),
+                lo: 0,
+            },
+            0 => self,
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl Default for u256 {
@@ -392,21 +416,7 @@ impl Shl<usize> for u256 {
     type Output = Self;
 
     fn shl(self, rhs: usize) -> Self::Output {
-        const LIMIT: usize = u256::BITS as usize - 1;
-        assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
-        match rhs {
-            1..=127 => Self::Output {
-                hi: self.hi << rhs | self.lo >> (128 - rhs),
-                lo: self.lo << rhs,
-            },
-            128 => Self::Output { hi: self.lo, lo: 0 },
-            129..=255 => Self::Output {
-                hi: self.lo << (rhs - 128),
-                lo: 0,
-            },
-            0 => self,
-            _ => unreachable!(),
-        }
+        self.shl(rhs)
     }
 }
 

@@ -8,7 +8,7 @@
 // $Revision$
 
 #[cfg(test)]
-mod tests {
+mod property_tests {
     use f256::f256;
 
     #[test]
