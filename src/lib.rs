@@ -259,17 +259,17 @@ impl f256 {
     /// Equivalent of decimal base (10.0).
     pub const TEN: Self = TEN;
 
-    /// Raw assembly from significand, exponent and sign.
+    /// Raw assembly from significand, biased exponent and sign.
     #[inline]
     pub(crate) const fn new(
         significand: u256,
-        exponent: u32,
+        biased_exponent: u32,
         sign: u32,
     ) -> Self {
         Self {
             bits: u256 {
                 hi: (significand.hi & HI_FRACTION_MASK)
-                    | ((exponent as u128) << HI_FRACTION_BITS)
+                    | ((biased_exponent as u128) << HI_FRACTION_BITS)
                     | ((sign as u128) << HI_SIGN_SHIFT),
                 lo: significand.lo,
             },
@@ -410,7 +410,7 @@ impl f256 {
     }
 
     /// Extract sign s, exponent t and significand c from a finite, non-zero
-    /// `Float256Repr` f,
+    /// `f256` f,
     ///
     /// where
     ///
