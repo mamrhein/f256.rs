@@ -36,15 +36,14 @@ The stored exponents 00000₁₆ and 7FFFF₁₆ are interpreted specially.
 
 | Exponent          | Significand zero | Significand non-zero    | Equation                                                                 |
 |-------------------|------------------|-------------------------|--------------------------------------------------------------------------|
-| 00000₁₆           | 0, −0            | subnormal numbers       | (-1)<sup>signbit</sup> × 2<sup>−262142</sup> × 0.significandbits₂        |
+| 00000₁₆           | 0, −0            | subnormal numbers       | (-1)<sup>signbit</sup> × 2⁻²⁶²¹⁴² × 0.significandbits₂        |
 | 00001₁₆ … 7FFFE₁₆ | normalized value | normalized value        | (-1)<sup>signbit</sup> × 2<sup>exponent bits₂</sup> × 1.significandbits₂ |
 | 7FFFF₁₆           | ±∞               | NaN (quiet, signalling) |
 
-The minimum strictly positive (subnormal) value is 2<sup>−262378</sup> ≈
-10<sup>−78984</sup> and has a precision of only one bit. The minimum positive
-normal value is 2<sup>−262142</sup> ≈ 2.4824 × 10<sup>−78913</sup>. The
-maximum representable value is 2<sup>262144</sup> − 2<sup>261907</sup> ≈
-1.6113 × 10<sup>78913</sup>.
+The minimum strictly positive (subnormal) value is 2⁻²⁶²³⁷⁸ ≈ 10⁻⁷⁸⁹⁸⁴ and has
+a precision of only one bit. The minimum positive normal value is 2⁻²⁶²¹⁴² ≈
+2.4824 × 10⁻⁷⁸⁹¹³. The maximum representable value is 2²⁶²¹⁴⁴ − 2²⁶¹⁹⁰⁷ ≈
+1.6113 × 10⁷⁸⁹¹³.
 
 The type `f256` will provide the same stable API as the built-in `f64`
 (besides differences caused by the increased precision).
