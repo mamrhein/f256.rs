@@ -520,7 +520,7 @@ impl f256 {
     /// zero.
     #[must_use]
     #[inline]
-    pub(crate) const fn is_special(self) -> bool {
+    pub const fn is_special(self) -> bool {
         self.is_zero() || (self.bits.hi & HI_EXP_MASK) == INF_HI
     }
 
@@ -785,6 +785,23 @@ mod repr_tests {
         );
         assert_eq!(j.decode(), (1, 0, u256 { hi: 0, lo: 1 }));
     }
+
+    #[test]
+    fn test_normal() {
+        let f = f256::from(3.5_f64);
+        assert_eq!(f.sign(), 0);
+        assert_eq!(f.exponent(), -235);
+        assert_eq!(
+            f.significand(),
+            u256 {
+                hi: 567907468902246771870523036008448,
+                lo: 0
+            }
+        );
+        assert_eq!(f.decode(), (0, -1, u256 { hi: 0, lo: 7 }));
+    }
+
+    // TODO: test subnormal
 }
 
 #[cfg(test)]
