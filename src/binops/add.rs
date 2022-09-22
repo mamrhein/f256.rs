@@ -198,10 +198,12 @@ mod tests {
 
     #[test]
     fn test_add_zero() {
-        assert_eq!(f256::ZERO + f256::ZERO, f256::ZERO);
-        assert_eq!(f256::ZERO + f256::NEG_ZERO, f256::ZERO);
-        assert_eq!(f256::NEG_ZERO + f256::ZERO, f256::ZERO);
-        assert_eq!(f256::NEG_ZERO + f256::NEG_ZERO, f256::NEG_ZERO);
+        // Because the normal cmp treats 0 == -0, we have to compare the bits
+        // for checking the correct result of adding two zeroes:
+        assert_eq!((f256::ZERO + f256::ZERO).bits, f256::ZERO.bits);
+        assert_eq!((f256::ZERO + f256::NEG_ZERO).bits, f256::ZERO.bits);
+        assert_eq!((f256::NEG_ZERO + f256::ZERO).bits, f256::ZERO.bits);
+        assert_eq!((f256::NEG_ZERO + f256::NEG_ZERO).bits, f256::NEG_ZERO.bits);
         assert_eq!(f256::ONE + f256::ZERO, f256::ONE);
         assert_eq!(f256::ZERO + f256::ONE, f256::ONE);
         assert_eq!(f256::ONE + f256::NEG_ZERO, f256::ONE);
@@ -209,7 +211,21 @@ mod tests {
     }
 
     #[test]
-    fn test_pos_add_pos() {
+    fn test_sub_zero() {
+        // Because the normal cmp treats 0 == -0, we have to compare the bits
+        // for checking the correct result of subtracting zero from zero:
+        assert_eq!((f256::ZERO - f256::ZERO).bits, f256::ZERO.bits);
+        assert_eq!((f256::ZERO - f256::NEG_ZERO).bits, f256::ZERO.bits);
+        assert_eq!((f256::NEG_ZERO - f256::ZERO).bits, f256::NEG_ZERO.bits);
+        assert_eq!((f256::NEG_ZERO - f256::NEG_ZERO).bits, f256::ZERO.bits);
+        assert_eq!(f256::ONE - f256::ZERO, f256::ONE);
+        assert_eq!(f256::ZERO - f256::ONE, f256::NEG_ONE);
+        assert_eq!(f256::ONE - f256::NEG_ZERO, f256::ONE);
+        assert_eq!(f256::NEG_ZERO - f256::ONE, f256::NEG_ONE);
+    }
+
+    #[test]
+    fn test_add_normal() {
         assert_eq!(f256::ONE + f256::ONE, f256::TWO);
         assert_eq!(f256::TWO + f256::TWO, f256::from(4.0));
     }
