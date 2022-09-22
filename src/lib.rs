@@ -801,7 +801,17 @@ mod repr_tests {
         assert_eq!(f.decode(), (0, -1, u256 { hi: 0, lo: 7 }));
     }
 
-    // TODO: test subnormal
+    #[test]
+    fn test_subnormal() {
+        let f = f256::MIN_GT_ZERO;
+        assert_eq!(f.sign(), 0);
+        assert_eq!(f.exponent(), EMIN - FRACTION_BITS as i32);
+        assert_eq!(f.significand(), u256 { hi: 0, lo: 1 });
+        assert_eq!(
+            f.decode(),
+            (0, EMIN - FRACTION_BITS as i32, u256 { hi: 0, lo: 1 })
+        );
+    }
 }
 
 #[cfg(test)]
