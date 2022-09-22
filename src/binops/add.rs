@@ -7,12 +7,14 @@
 // $Source$
 // $Revision$
 
-use core::ops::{Add, Sub};
-use std::cmp::min;
+use core::{
+    cmp::min,
+    ops::{Add, Sub},
+};
 
 use crate::{
-    f256, u256, EXP_MAX, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
-    SIGNIFICAND_BITS,
+    f256, u256, EXP_MAX, HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK,
+    HI_SIGN_MASK, SIGNIFICAND_BITS,
 };
 
 #[inline]
@@ -47,16 +49,14 @@ pub(crate) fn add_special(x: f256, y: f256) -> f256 {
     y
 }
 
-type InplaceBinOp = fn(&mut u256, &u256);
-const SIGNIF_OPS: [InplaceBinOp; 2] = [u256::iadd, u256::isub];
-
 #[inline]
 pub(crate) fn add(x: f256, y: f256) -> f256 {
     // Both operands are finite and non-zero.
-    // Compare the absolute values of the operands and swap them in case x < y.
-    let mut a: f256;
-    let mut b: f256;
-    if x.abs() >= y.abs() {
+    // Compare the absolute values of the operands and swap them in case
+    // |x| < |y|.
+    let mut a: f256 = x.abs();
+    let mut b: f256 = y.abs();
+    if a >= b {
         a = x;
         b = y;
     } else {
@@ -82,37 +82,42 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
     b_signif.lo |= sticky_bit as u128;
     // Determine the actual op to be performed: if the sign of the operands
     // differ, it's a subtraction, otherwise an addition.
-    let signs_differ = (((x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK) != 0);
-    let op = SIGNIF_OPS[signs_differ as usize];
-    op(&mut a_signif, &b_signif);
-    // If addition carried over, right-shift the significand and increment
-    // the exponent.
-    if (a_signif.hi >> (HI_FRACTION_BITS + 4)) != 0 {
-        a_signif >>= 1;
-        a_signif.lo |= sticky_bit as u128;
-        a_exp += 1;
+    if ((x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK) == 0 {
+        a_signif.iadd(&b_signif);
+        // If addition carried over, right-shift the significand and increment
+        // the exponent.
+        if (a_signif.hi >> (HI_FRACTION_BITS + 4)) != 0 {
+            a_signif >>= 1;
+            a_signif.lo |= sticky_bit as u128;
+            a_exp += 1;
+        }
     } else {
-        // If subtraction cancelled the hidden bit or x and y are subnormal,
-        // left-shift the significand and decrement the exponent. We limit the
-        // adjustment to avoid the biased exponent to become negative.
-        let adj = min(SIGNIFICAND_BITS + 3 - a_signif.leading_zeros(), a_exp);
-        a_signif <<= adj as usize;
-        a_exp -= adj;
+        a_signif.isub(&b_signif);
+        if a_signif.is_zero() {
+            return f256::ZERO;
+        }
+        // If subtraction cancelled the hidden bit, left-shift the significand
+        // and decrement the exponent.
+        if a_signif.hi < HI_FRACTION_BIAS << 3 {
+            let adj = min(SIGNIFICAND_BITS + 2 - a_signif.msb(), a_exp);
+            a_signif <<= adj as usize;
+            a_exp -= adj;
+        }
     }
     // If the result overflows the range of values representable as `f256`,
     // return +/- Infinity.
     if a_exp >= EXP_MAX {
         return [f256::INFINITY, f256::NEG_INFINITY][a.sign() as usize];
     }
-    // Determine carry from round, guard and sticky bit.
-    let carry = (a_signif.lo & 0x7_u128) > 0x4;
+    // Get round, guard and sticky bit.
+    let l3bits = (a_signif.lo & 0x7_u128) as u32;
     // Shift significand back, erase hidden bit and set exponent and sign.
     let mut bits = a_signif >> 3;
     bits.hi &= HI_FRACTION_MASK;
     bits.hi |= (a_exp as u128) << HI_FRACTION_BITS;
     bits.hi |= a.bits.hi & HI_SIGN_MASK;
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
-    if carry {
+    if l3bits > 0x4 || l3bits == 0x4 && (bits.lo & 1) == 1 {
         bits.incr();
     }
     f256 { bits }
@@ -227,6 +232,57 @@ mod tests {
     #[test]
     fn test_add_normal() {
         assert_eq!(f256::ONE + f256::ONE, f256::TWO);
+        assert_eq!(f256::ONE + f256::NEG_ONE, f256::ZERO);
         assert_eq!(f256::TWO + f256::TWO, f256::from(4.0));
+        assert_eq!(f256::from(3.5) + f256::from(3.5), f256::from(7.0));
+        assert_eq!(f256::MAX + f256::MIN, f256::ZERO);
+        assert_eq!(f256::MIN + f256::MAX, f256::ZERO);
+        assert_eq!(f256::MAX + f256::EPSILON, f256::MAX);
+        assert_eq!(f256::MIN + f256::EPSILON, f256::MIN);
+        assert_eq!(f256::MAX + f256::MIN_GT_ZERO, f256::MAX);
+        assert_eq!(f256::MIN + f256::MIN_GT_ZERO, f256::MIN);
+    }
+
+    #[test]
+    fn test_sub_normal() {
+        assert_eq!(f256::ONE - f256::ONE, f256::ZERO);
+        assert_eq!(f256::ONE - f256::TWO, f256::NEG_ONE);
+        assert_eq!(f256::from(4.0) - f256::TWO, f256::TWO);
+        assert_eq!(f256::from(7.0) - f256::from(3.5), f256::from(3.5));
+        assert_eq!(f256::MAX - f256::MAX, f256::ZERO);
+        assert_eq!(f256::MIN - f256::MIN, f256::ZERO);
+        assert_eq!(f256::MAX - f256::EPSILON, f256::MAX);
+        assert_eq!(f256::MIN - f256::EPSILON, f256::MIN);
+        assert_eq!(f256::MAX + f256::MIN_GT_ZERO, f256::MAX);
+        assert_eq!(f256::MIN + f256::MIN_GT_ZERO, f256::MIN);
+    }
+
+    #[test]
+    fn test_add_subnormal() {
+        assert_eq!(f256::MAX + f256::MIN_GT_ZERO, f256::MAX);
+        assert_eq!(f256::MIN + f256::MIN_GT_ZERO, f256::MIN);
+        assert_eq!(f256::MIN_GT_ZERO + f256::MAX, f256::MAX);
+        assert_eq!(f256::MIN_GT_ZERO + f256::MIN, f256::MIN);
+        assert_eq!(f256::ONE + f256::MIN_GT_ZERO, f256::ONE);
+        assert_eq!(f256::MIN_GT_ZERO + f256::ONE, f256::ONE);
+        // TODO: add two subnormals giving subnormal result
+        // TODO: add two subnormals giving normal result
+    }
+
+    #[test]
+    fn test_sub_subnormal() {
+        assert_eq!(f256::MAX - f256::MIN_GT_ZERO, f256::MAX);
+        assert_eq!(f256::MIN - f256::MIN_GT_ZERO, f256::MIN);
+        assert_eq!(f256::MIN_GT_ZERO - f256::MAX, f256::MIN);
+        assert_eq!(f256::MIN_GT_ZERO - f256::MIN, f256::MAX);
+        assert_eq!(f256::ONE - f256::MIN_GT_ZERO, f256::ONE);
+        assert_eq!(f256::MIN_GT_ZERO - f256::ONE, f256::NEG_ONE);
+        assert_eq!(f256::MIN_GT_ZERO - f256::MIN_GT_ZERO, f256::ZERO);
+        // TODO: sub two subnormals giving subnormal result
+    }
+
+    #[test]
+    fn test_overflow() {
+        assert_eq!(f256::MAX + f256::MAX, f256::INFINITY);
     }
 }
