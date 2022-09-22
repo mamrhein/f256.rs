@@ -306,9 +306,12 @@ impl u256 {
     /// Subtract `other` from `self` inplace.
     #[inline]
     pub(crate) fn isub(&mut self, other: &u256) {
-        self.lo = self.lo.wrapping_sub(other.lo);
-        self.hi = self.hi.wrapping_sub((self.lo > other.lo) as u128);
-        self.hi = self.hi.wrapping_sub(other.hi);
+        let t = self.lo.wrapping_sub(other.lo);
+        self.hi = self
+            .hi
+            .wrapping_sub(other.hi)
+            .wrapping_sub((t > self.lo) as u128);
+        self.lo = t;
     }
 
     // TODO: change when [feature(bigint_helper_methods)] got stable
