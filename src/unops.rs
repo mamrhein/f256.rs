@@ -9,7 +9,7 @@
 
 use core::ops::Neg;
 
-use crate::{f256, u256, HI_SIGN_MASK};
+use crate::{f256, u256, HI_ABS_MASK, HI_SIGN_MASK};
 
 impl f256 {
     /// Computes the absolute value of `self`.
@@ -17,7 +17,7 @@ impl f256 {
     pub const fn abs(&self) -> Self {
         Self {
             bits: u256 {
-                hi: self.bits.hi & HI_SIGN_MASK,
+                hi: self.bits.hi & HI_ABS_MASK,
                 lo: self.bits.lo,
             },
         }
