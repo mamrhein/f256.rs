@@ -72,21 +72,20 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
             };
         } else {
             let sh = x_signif.leading_zeros() - EXP_BITS;
-            x_signif <<= sh as usize;
+            x_signif <<= sh;
             x_exp -= sh as i32;
         }
     }
     if y_exp == 0 {
         let sh = y_signif.leading_zeros() - EXP_BITS;
-        y_signif <<= sh as usize;
+        y_signif <<= sh;
         y_exp -= sh as i32;
     }
 
     // Calculate the results significand and exponent.
     // Shifting one operand to msb = 255 causes the result to its msb at
     // position 237 or 238. Normalizing it will atmost be a left-shift by 1.
-    let (mut z_signif, rem) =
-        u256_mul(&x_signif, &(y_signif << EXP_BITS as usize));
+    let (mut z_signif, rem) = u256_mul(&x_signif, &(y_signif << EXP_BITS));
     let mut z_exp = x_exp + y_exp - EXP_BIAS as i32;
 
     // Normalize result

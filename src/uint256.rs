@@ -380,8 +380,8 @@ impl u256 {
         }
     }
 
-    pub(crate) const fn shl(self, rhs: usize) -> Self {
-        const LIMIT: usize = u256::BITS as usize - 1;
+    pub(crate) const fn shl(self, rhs: u32) -> Self {
+        const LIMIT: u32 = u256::BITS - 1;
         assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
         match rhs {
             1..=127 => Self {
@@ -405,17 +405,17 @@ impl Default for u256 {
     }
 }
 
-impl Shl<usize> for u256 {
+impl Shl<u32> for u256 {
     type Output = Self;
 
-    fn shl(self, rhs: usize) -> Self::Output {
+    fn shl(self, rhs: u32) -> Self::Output {
         self.shl(rhs)
     }
 }
 
-impl ShlAssign<usize> for u256 {
-    fn shl_assign(&mut self, rhs: usize) {
-        const LIMIT: usize = u256::BITS as usize - 1;
+impl ShlAssign<u32> for u256 {
+    fn shl_assign(&mut self, rhs: u32) {
+        const LIMIT: u32 = u256::BITS - 1;
         assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
         match rhs {
             1..=127 => {
@@ -437,11 +437,11 @@ impl ShlAssign<usize> for u256 {
     }
 }
 
-impl Shr<usize> for u256 {
+impl Shr<u32> for u256 {
     type Output = Self;
 
-    fn shr(self, rhs: usize) -> Self::Output {
-        const LIMIT: usize = u256::BITS as usize - 1;
+    fn shr(self, rhs: u32) -> Self::Output {
+        const LIMIT: u32 = u256::BITS - 1;
         assert!(rhs <= LIMIT, "Attempt to shift right with overflow.");
         match rhs {
             1..=127 => Self::Output {
@@ -459,9 +459,9 @@ impl Shr<usize> for u256 {
     }
 }
 
-impl ShrAssign<usize> for u256 {
-    fn shr_assign(&mut self, rhs: usize) {
-        const LIMIT: usize = u256::BITS as usize - 1;
+impl ShrAssign<u32> for u256 {
+    fn shr_assign(&mut self, rhs: u32) {
+        const LIMIT: u32 = u256::BITS - 1;
         assert!(rhs <= LIMIT, "Attempt to shift right with overflow.");
         match rhs {
             1..=127 => {

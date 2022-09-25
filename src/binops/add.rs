@@ -76,9 +76,8 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
     // the silent bit of b's significant is atmost to the position of the sticky
     // bit. Any further shift would have no effect on the result.
     let adj = min(a_exp - b_exp, SIGNIFICAND_BITS + 2);
-    let sticky_bit =
-        !(adj == 0 || (b_signif << (u256::BITS - adj) as usize).is_zero());
-    b_signif >>= adj as usize;
+    let sticky_bit = !(adj == 0 || (b_signif << (u256::BITS - adj)).is_zero());
+    b_signif >>= adj;
     b_signif.lo |= sticky_bit as u128;
     // Determine the actual op to be performed: if the sign of the operands
     // differ, it's a subtraction, otherwise an addition.
@@ -100,7 +99,7 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
         // and decrement the exponent.
         if a_signif.hi < HI_FRACTION_BIAS << 3 {
             let adj = min(SIGNIFICAND_BITS + 2 - a_signif.msb(), a_exp);
-            a_signif <<= adj as usize;
+            a_signif <<= adj;
             a_exp -= adj;
         }
     }

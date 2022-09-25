@@ -43,7 +43,7 @@ impl f256 {
         };
         let msb = 127 - j.leading_zeros();
         Self::new(
-            u256::new(0, j).shl((FRACTION_BITS - msb) as usize),
+            u256::new(0, j).shl(FRACTION_BITS - msb),
             EXP_BIAS + msb,
             i.is_negative() as u32,
         )
@@ -76,7 +76,7 @@ impl f256 {
         }
         let msb = 127 - i.leading_zeros();
         Self::new(
-            u256::new(0, i).shl((FRACTION_BITS - msb) as usize),
+            u256::new(0, i).shl(FRACTION_BITS - msb),
             EXP_BIAS + msb,
             0_u32,
         )

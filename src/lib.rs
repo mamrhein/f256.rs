@@ -318,21 +318,21 @@ impl f256 {
         match nlz.cmp(&EXP_BITS) {
             Ordering::Greater => {
                 // Shift left.
-                let shift = (nlz - EXP_BITS) as usize;
+                let shift = (nlz - EXP_BITS);
                 if t >= EMIN + shift as i32 {
                     c <<= shift;
                     t -= shift as i32;
                 } else {
                     // Number is subnormal
-                    c <<= (t - EMIN) as usize;
+                    c <<= (t - EMIN) as u32;
                     t = EMIN - 1;
                 }
             }
             Ordering::Less => {
                 // Shift right and round.
-                let shift = (EXP_BITS - nlz) as usize;
+                let shift = (EXP_BITS - nlz);
                 t += shift as i32;
-                c.idiv_pow2(shift as u32);
+                c.idiv_pow2(shift);
                 // Rounding may have caused significand to overflow.
                 if (c.hi >> HI_FRACTION_BITS + 1) != 0 {
                     t += 1;
@@ -447,7 +447,7 @@ impl f256 {
         let mut c = self.significand();
         let mut t = self.exponent();
         let ntz = c.trailing_zeros();
-        c >>= ntz as usize;
+        c >>= ntz;
         t += ntz as i32;
         (self.sign(), t, c)
     }
