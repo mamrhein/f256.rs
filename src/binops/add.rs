@@ -284,5 +284,7 @@ mod tests {
     #[test]
     fn test_overflow() {
         assert_eq!(f256::MAX + f256::MAX, f256::INFINITY);
+        assert_eq!(f256::MAX + f256::ONE, f256::MAX);
+        assert_eq!(f256::MIN - f256::ONE, f256::MIN);
     }
 }
