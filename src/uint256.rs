@@ -13,35 +13,6 @@ use core::{
     ops::{Shl, ShlAssign, Shr, ShrAssign},
 };
 
-/// Return the index of the most significant bit of an u128.
-/// The given u128 must not be zero!
-fn u128_msb(mut u: u128) -> usize {
-    debug_assert_ne!(u, 0);
-    const IDX_MAP: [u8; 16] = [0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
-    let mut n: usize = 0;
-    if u & 0xffffffffffffffff0000000000000000_u128 != 0 {
-        n = 64;
-        u >>= 64;
-    };
-    if u & 0x0000000000000000ffffffff00000000_u128 != 0 {
-        n += 32;
-        u >>= 32;
-    };
-    if u & 0x000000000000000000000000ffff0000_u128 != 0 {
-        n += 16;
-        u >>= 16;
-    };
-    if u & 0x0000000000000000000000000000ff00_u128 != 0 {
-        n += 8;
-        u >>= 8;
-    };
-    if u & 0x000000000000000000000000000000f0_u128 != 0 {
-        n += 4;
-        u >>= 4;
-    };
-    n + IDX_MAP[u as usize] as usize - 1
-}
-
 #[inline(always)]
 const fn u128_hi(u: u128) -> u128 {
     u >> 64
@@ -52,8 +23,8 @@ const fn u128_lo(u: u128) -> u128 {
     u & 0xffffffffffffffff
 }
 
-#[inline(always)]
-fn u128_mul_u128(x: u128, y: u128) -> (u128, u128) {
+#[inline]
+fn u128_mul_u128(x: u128, y: u128) -> u256 {
     let xh = u128_hi(x);
     let xl = u128_lo(x);
     let yh = u128_hi(y);
@@ -65,7 +36,26 @@ fn u128_mul_u128(x: u128, y: u128) -> (u128, u128) {
     t = xh * yl + u128_lo(t);
     rl += u128_lo(t) << 64;
     rh += xh * yh + u128_hi(t);
-    (rh, rl)
+    u256::new(rh, rl)
+}
+
+#[inline]
+pub(crate) fn u256_mul(x: &u256, y: &u256) -> (u256, u64) {
+    let mut t = u128_mul_u128(x.lo, y.lo);
+    let mut rl = u256::new(0, t.lo);
+    let mut c = u256::new(0, t.hi);
+    t = u128_mul_u128(x.lo, y.hi);
+    t.iadd(&c);
+    let mut rh = u256::new(0, t.hi);
+    c = u256::new(0, t.lo);
+    t = u128_mul_u128(x.hi, y.lo);
+    t.iadd(&c);
+    rl.iadd(&u256::new(t.lo, 0));
+    rh.iadd(&u128_mul_u128(x.hi, y.hi));
+    rh.iadd(&u256::new(0, t.hi));
+    let mut rem = u128_hi(rl.hi) as u64;
+    rem |= (u128_lo(rl.hi) != 0 || rl.lo != 0) as u64;
+    (rh, rem)
 }
 
 // Calculate x = x / y in place, where x = xh * 2^128 + xl, and return x % y.
@@ -104,7 +94,7 @@ fn u256_idiv_u128_special(xh: &mut u128, xl: &mut u128, mut y: u128) -> u128 {
     debug_assert!(*xh < y);
     const B: u128 = 1 << 64;
     // Normalize dividend and divisor, so that y > 2^127 (i.e. highest bit set)
-    let n_bits = 127 - u128_msb(y);
+    let n_bits = y.leading_zeros();
     y <<= n_bits;
     let yn1 = u128_hi(y);
     let yn0 = u128_lo(y);
