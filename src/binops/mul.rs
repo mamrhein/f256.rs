@@ -73,42 +73,55 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
         } else {
             let sh = x_signif.leading_zeros() - EXP_BITS;
             x_signif <<= sh;
-            x_exp -= sh as i32;
+            x_exp = 1 - sh as i32;
         }
     }
     if y_exp == 0 {
         let sh = y_signif.leading_zeros() - EXP_BITS;
         y_signif <<= sh;
-        y_exp -= sh as i32;
+        y_exp = 1 - sh as i32;
     }
 
     // Calculate the results significand and exponent.
     // Shifting one operand to msb = 255 causes the result to its msb at
     // position 237 or 238. Normalizing it will atmost be a left-shift by 1.
-    let (mut z_signif, rem) = u256_mul(&x_signif, &(y_signif << EXP_BITS));
-    let mut z_exp = x_exp + y_exp - EXP_BIAS as i32;
+    let (mut bits, mut rem) = u256_mul(&x_signif, &(y_signif << EXP_BITS));
+    let mut exp = x_exp + y_exp - EXP_BIAS as i32;
 
     // Normalize result
-    if z_signif.hi & HI_FRACTION_BIAS != 0 {
-        z_exp += 1;
+    if bits.hi & HI_FRACTION_BIAS != 0 {
+        exp += 1;
     } else {
-        z_signif <<= 1;
+        bits <<= 1;
     }
 
     // If the result overflows the range of values representable as `f256`,
     // return +/- Infinity.
-    if z_exp >= EXP_MAX as i32 {
+    if exp >= EXP_MAX as i32 {
         return f256 {
             bits: u256::new(z_hi_sign | INF_HI, 0),
         };
     }
 
-    // TODO: Check subnormal result.
-
-    // Erase hidden bit and set exponent and sign.
-    let mut bits = z_signif;
-    bits.hi &= HI_FRACTION_MASK;
-    bits.hi |= (z_exp as u128) << HI_FRACTION_BITS as u128;
+    // Assemble the result.
+    if exp <= 0 {
+        let shift = (1 - exp) as u32;
+        if shift > bits.msb() {
+            // Result underflows to zero.
+            return f256 {
+                bits: u256::new(z_hi_sign, 0),
+            };
+        }
+        // Adjust the remainder for correct final rounding.
+        let rem = ((bits << (u256::BITS - shift)).hi >> 64) as u64
+            | rem >> min(shift, u64::BITS - 1)
+            | (rem != 0) as u64;
+        bits >>= shift;
+    } else {
+        // Erase hidden bit and set exponent.
+        bits.hi &= HI_FRACTION_MASK;
+        bits.hi |= (exp as u128) << HI_FRACTION_BITS as u128;
+    }
     bits.hi |= z_hi_sign;
 
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
@@ -187,6 +200,23 @@ mod tests {
         assert_eq!(f256::NEG_ONE * f256::ONE, f256::NEG_ONE);
         assert_eq!(f256::TWO * f256::TWO, f256::from(4.0));
         assert_eq!(f256::from(3.5) * f256::from(2.75), f256::from(9.625));
+    }
+
+    #[test]
+    fn test_mul_subnormal() {
+        let x = f256::MIN_GT_ZERO;
+        assert_eq!(x * x, f256::ZERO);
+        assert_eq!(-x * x, f256::NEG_ZERO);
+        assert_eq!(x * -x, f256::NEG_ZERO);
+        assert_eq!(-x * -x, f256::NEG_ZERO);
+        let y = f256::from(0.1);
+        assert_eq!(x * y, f256::ZERO);
+        assert_eq!(-x * y, f256::NEG_ZERO);
+        assert_eq!(x * -y, f256::NEG_ZERO);
+        assert_eq!(-x * -y, f256::NEG_ZERO);
+        let y = f256::TWO;
+        let z = x + x;
+        assert_eq!(x * y, z);
     }
 
     #[test]
