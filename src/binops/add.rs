@@ -82,7 +82,7 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
     // Determine the actual op to be performed: if the sign of the operands
     // differ, it's a subtraction, otherwise an addition.
     if ((x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK) == 0 {
-        a_signif.iadd(&b_signif);
+        a_signif += &b_signif;
         // If addition carried over, right-shift the significand and increment
         // the exponent.
         if (a_signif.hi >> (HI_FRACTION_BITS + 4)) != 0 {
@@ -91,7 +91,7 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
             a_exp += 1;
         }
     } else {
-        a_signif.isub(&b_signif);
+        a_signif -= &b_signif;
         if a_signif.is_zero() {
             return f256::ZERO;
         }

@@ -13,11 +13,31 @@ use core::{
 };
 
 use crate::{
-    f256, u256, uint256::u256_mul, EMAX, EXP_BIAS, EXP_BITS, EXP_MAX,
+    f256, u256, uint256::u128_widening_mul, EMAX, EXP_BIAS, EXP_BITS, EXP_MAX,
     HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS,
     HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS,
     TOTAL_BITS,
 };
+
+// Calculate (p, r) so that p = ⌊(x * y) / 2²⁵⁶⌋ and r = ⌈((x * y) - q) / 2¹⁹²⌉.
+#[inline]
+fn u256_mul(x: &u256, y: &u256) -> (u256, u64) {
+    let mut t = u128_widening_mul(x.lo, y.lo);
+    let mut rl = u256::new(0, t.lo);
+    let mut c = t.hi;
+    t = u128_widening_mul(x.lo, y.hi);
+    t += c;
+    let mut rh = u256::new(0, t.hi);
+    c = t.lo;
+    t = u128_widening_mul(x.hi, y.lo);
+    t += c;
+    rl += &u256::new(t.lo, 0);
+    rh += &u128_widening_mul(x.hi, y.hi);
+    rh += t.hi;
+    let mut rem = (rl.hi >> 64) as u64;
+    rem |= ((rl.hi << 64) != 0 || rl.lo != 0) as u64;
+    (rh, rem)
+}
 
 /// Compute z = x * y, rounded tie to even.
 #[inline]
@@ -87,10 +107,10 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
     let mut exp = x_exp + y_exp - EXP_BIAS as i32;
 
     // Normalize result
-    if bits.hi & HI_FRACTION_BIAS != 0 {
-        exp += 1;
-    } else {
+    if bits.hi < HI_FRACTION_BIAS {
         bits <<= 1;
+    } else {
+        exp += 1;
     }
 
     // If the result overflows the range of values representable as `f256`,
