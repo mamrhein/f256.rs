@@ -59,11 +59,7 @@
 
 extern crate core;
 
-use core::{
-    cmp::{min, Ordering},
-    num::FpCategory,
-    ops::Neg,
-};
+use core::{cmp::Ordering, num::FpCategory, ops::Neg};
 
 mod binops;
 mod from_float;
@@ -128,7 +124,7 @@ const INT_EXP: i32 = -(FRACTION_BITS as i32);
 ///
 /// For details see [above](index.html).
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct f256 {
     pub(crate) bits: u256,
 }
@@ -334,7 +330,7 @@ impl f256 {
                 t += shift as i32;
                 c.idiv_pow2(shift);
                 // Rounding may have caused significand to overflow.
-                if (c.hi >> HI_FRACTION_BITS + 1) != 0 {
+                if (c.hi >> (HI_FRACTION_BITS + 1)) != 0 {
                     t += 1;
                     c >>= 1;
                 }
@@ -373,15 +369,10 @@ impl f256 {
             self.is_finite(),
             "Attempt to extract exponent from Infinity or NaN."
         );
-        if self.is_zero() {
-            return 0;
-        }
-        let exp = self.biased_exponent();
-        if exp == 0 {
-            // subnormal
-            return EMIN - FRACTION_BITS as i32;
-        }
-        exp as i32 - EXP_BIAS as i32 - FRACTION_BITS as i32
+        const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
+        let mut exp = self.biased_exponent() as i32;
+        exp += (exp == 0) as i32; // Adjust exp for subnormals.
+        (!self.is_zero() as i32) * (exp - TOTAL_BIAS)
     }
 
     /// Returns the fraction of `self`.
@@ -456,9 +447,8 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_nan(self) -> bool {
-        (self.bits.hi & HI_ABS_MASK) > HI_EXP_MASK
-            || ((self.bits.hi & HI_ABS_MASK) == HI_EXP_MASK
-                && self.bits.lo != 0)
+        ((self.bits.hi & HI_ABS_MASK) | (self.bits.lo != 0) as u128)
+            > HI_EXP_MASK
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity,
@@ -488,7 +478,7 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_normal(self) -> bool {
-        ((self.biased_exponent() + 1) & EXP_MAX) > 1
+        self.biased_exponent().wrapping_sub(1) < EXP_MAX - 1
     }
 
     /// Returns the floating point category of the number. If only one property
@@ -521,7 +511,9 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_special(self) -> bool {
-        self.is_zero() || (self.bits.hi & HI_EXP_MASK) == INF_HI
+        (self.bits.hi & HI_ABS_MASK | (self.bits.lo != 0) as u128)
+            .wrapping_sub(1)
+            >= MAX_HI
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, positive
@@ -529,7 +521,7 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_sign_positive(self) -> bool {
-        self.sign() == 0
+        self.bits.hi < HI_SIGN_MASK
     }
 
     /// Returns `true` if `self` has a negative sign, including `-0.0` and
@@ -537,7 +529,7 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_sign_negative(self) -> bool {
-        self.sign() == 1
+        self.bits.hi >= HI_SIGN_MASK
     }
 
     /// Returns the reciprocal (inverse) of `self`.
