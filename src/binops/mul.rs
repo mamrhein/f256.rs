@@ -23,7 +23,7 @@ use crate::{
 #[inline]
 pub(crate) fn mul(x: f256, y: f256) -> f256 {
     // The products sign is the XOR of the signs of the operands.
-    let z_hi_sign = (x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK;
+    let hi_sign = (x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK;
 
     // Check whether one or both operands are NaN, infinite or zero.
     // We mask off the sign bit and mark subnormals having a significand less
@@ -39,7 +39,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
             if max_abs_hi < HI_EXP_MASK {
                 // ±0 × ±finite or ±finite × ±0
                 return f256 {
-                    bits: u256::new(z_hi_sign, 0),
+                    bits: u256::new(hi_sign, 0),
                 };
             };
             if max_abs_hi == HI_EXP_MASK {
@@ -53,7 +53,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
         }
         // Atleast one operand is infinite and the other non-zero.
         return f256 {
-            bits: u256::new(z_hi_sign | INF_HI, 0),
+            bits: u256::new(hi_sign | INF_HI, 0),
         };
     }
 
@@ -68,7 +68,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
         if y_exp == 0 {
             // The product of two subnormals is zero.
             return f256 {
-                bits: u256::new(z_hi_sign, 0),
+                bits: u256::new(hi_sign, 0),
             };
         } else {
             let sh = x_signif.leading_zeros() - EXP_BITS;
@@ -76,16 +76,14 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
             x_exp = 1 - sh as i32;
         }
     }
-    if y_exp == 0 {
-        let sh = y_signif.leading_zeros() - EXP_BITS;
-        y_signif <<= sh;
-        y_exp = 1 - sh as i32;
-    }
+    // Shifting one operand to msb = 255 causes the result to have its msb at
+    // position 236 or 237. Normalizing it will atmost be a left-shift by 1.
+    let sh = y_signif.leading_zeros();
+    y_signif <<= sh;
+    y_exp -= (sh - EXP_BITS) as i32 - (y_exp == 0) as i32;
 
     // Calculate the results significand and exponent.
-    // Shifting one operand to msb = 255 causes the result to its msb at
-    // position 237 or 238. Normalizing it will atmost be a left-shift by 1.
-    let (mut bits, mut rem) = u256_mul(&x_signif, &(y_signif << EXP_BITS));
+    let (mut bits, mut rem) = u256_mul(&x_signif, &y_signif);
     let mut exp = x_exp + y_exp - EXP_BIAS as i32;
 
     // Normalize result
@@ -99,7 +97,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
     // return +/- Infinity.
     if exp >= EXP_MAX as i32 {
         return f256 {
-            bits: u256::new(z_hi_sign | INF_HI, 0),
+            bits: u256::new(hi_sign | INF_HI, 0),
         };
     }
 
@@ -109,7 +107,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
         if shift > bits.msb() {
             // Result underflows to zero.
             return f256 {
-                bits: u256::new(z_hi_sign, 0),
+                bits: u256::new(hi_sign, 0),
             };
         }
         // Adjust the remainder for correct final rounding.
@@ -122,7 +120,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
         bits.hi &= HI_FRACTION_MASK;
         bits.hi |= (exp as u128) << HI_FRACTION_BITS as u128;
     }
-    bits.hi |= z_hi_sign;
+    bits.hi |= hi_sign;
 
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
     const TIE: u64 = 1_u64 << 63;
