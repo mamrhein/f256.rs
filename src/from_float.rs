@@ -32,10 +32,17 @@ trait Float: Copy + Clone {
     const FRACTION_BIAS: u64 = 1_u64 << Self::FRACTION_BITS;
     /// Number of bits to shift right for sign
     const SIGN_SHIFT: u32 = Self::TOTAL_BITS - 1;
+    // Sign mask
+    const SIGN_MASK: u64 = 1_u64 << Self::SIGN_SHIFT;
+    /// Abs mask
+    const ABS_MASK: u64 = !Self::SIGN_MASK;
+    // Bit representation of +Inf
+    const INF: u64 = (Self::EXP_MAX as u64) << Self::FRACTION_BITS;
+    // Bit representation of maximum normal value
+    const MAX: u64 = (((Self::EXP_MAX - 1) as u64) << Self::FRACTION_BITS)
+        | Self::FRACTION_MASK;
     /// Raw transmutation to u64.
     fn to_bits(self) -> u64;
-    /// Returns true if the number is neither zero, infinite, subnormal, or NaN.
-    fn is_normal(self) -> bool;
 }
 
 impl Float for f32 {
@@ -44,11 +51,6 @@ impl Float for f32 {
     #[inline]
     fn to_bits(self) -> u64 {
         self.to_bits() as u64
-    }
-
-    #[inline]
-    fn is_normal(self) -> bool {
-        self.is_normal()
     }
 }
 
@@ -59,52 +61,46 @@ impl Float for f64 {
     fn to_bits(self) -> u64 {
         self.to_bits()
     }
-
-    #[inline]
-    fn is_normal(self) -> bool {
-        self.is_normal()
-    }
 }
 
 impl<F: Float> From<F> for f256 {
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_possible_truncation)]
     fn from(f: F) -> Self {
         let bits = f.to_bits();
+        let abs_bits = bits & F::ABS_MASK;
         let sign = (bits >> F::SIGN_SHIFT) as u32;
-        let biased_exp =
-            ((bits >> F::FRACTION_BITS as u64) & F::EXP_MAX as u64) as u32;
-        let fraction = bits & F::FRACTION_MASK;
 
-        return if f.is_normal() {
-            let exp = biased_exp as i32 - F::EXP_BIAS as i32;
+        if abs_bits.wrapping_sub(1) < F::MAX {
+            // Normal value
+            let exp = ((bits >> F::FRACTION_BITS as u64) & F::EXP_MAX as u64)
+                as u32 as i32
+                - F::EXP_BIAS as i32;
             let significand = u256 {
                 hi: 0,
-                lo: (fraction | F::FRACTION_BIAS) as u128,
+                lo: ((bits & F::FRACTION_MASK) | F::FRACTION_BIAS) as u128,
             };
             Self::encode(sign, exp, significand)
-        } else if biased_exp == 0 {
-            if fraction == 0 {
-                // +/- zero
-                [f256::ZERO, f256::NEG_ZERO][sign as usize]
-            } else {
-                // subnormal
-                Self::encode(
-                    sign,
-                    -(F::EXP_BIAS as i32),
-                    u256 {
-                        hi: 0,
-                        lo: fraction as u128,
-                    },
-                )
-            }
+        } else if abs_bits == 0 {
+            // +/- zero
+            [Self::ZERO, Self::NEG_ZERO][sign as usize]
+        } else if abs_bits < F::FRACTION_BIAS {
+            // subnormal
+            Self::encode(
+                sign,
+                1 - F::EXP_BIAS as i32,
+                u256 {
+                    hi: 0,
+                    lo: (bits & F::FRACTION_MASK) as u128,
+                },
+            )
+        } else if abs_bits == F::INF {
+            // +/- inf
+            [Self::INFINITY, Self::NEG_INFINITY][sign as usize]
         } else {
-            if fraction != 0 {
-                // +/- NaN
-                [f256::NAN, -f256::NAN][sign as usize]
-            } else {
-                // +/- inf
-                [f256::INFINITY, f256::NEG_INFINITY][sign as usize]
-            }
-        };
+            // +/- NaN
+            [Self::NAN, -Self::NAN][sign as usize]
+        }
     }
 }
 
@@ -135,7 +131,10 @@ mod from_f64_tests {
         assert_eq!(f256::from(1_f64), f256::ONE);
         assert_eq!(f256::from(-1_f64), f256::NEG_ONE);
         assert_eq!(f256::from(2_f64), f256::TWO);
-        // TODO: more tests
+        let x = f256::from(3.5);
+        assert_eq!(x.decode(), (0, -1, u256::new(0, 7)));
+        let x = f256::from(-17.625);
+        assert_eq!(x.decode(), (1, -3, u256::new(0, 141)));
     }
 
     // TODO: test subnormal values
