@@ -40,6 +40,8 @@ fn u256_short_mul(x: &u256, y: &u256) -> (u256, u64) {
 }
 
 /// Compute z = x * y, rounded tie to even.
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 #[inline]
 pub(crate) fn mul(x: f256, y: f256) -> f256 {
     // The products sign is the XOR of the signs of the operands.
@@ -165,6 +167,7 @@ mod tests {
         assert!((f256::NEG_INFINITY * f256::NAN).is_nan());
     }
 
+    #[allow(clippy::cognitive_complexity)]
     #[test]
     fn test_mul_inf() {
         assert_eq!(f256::INFINITY * f256::INFINITY, f256::INFINITY);

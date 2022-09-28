@@ -84,6 +84,7 @@ pub(crate) const EXP_MAX: u32 = (1_u32 << EXP_BITS) - 1;
 /// Base 2 exponent bias = 0x3ffff = 262143
 pub(crate) const EXP_BIAS: u32 = EXP_MAX >> 1;
 /// Maximum value of base 2 exponent = 0x3ffff = 262143
+#[allow(clippy::cast_possible_wrap)]
 pub(crate) const EMAX: i32 = (EXP_MAX >> 1) as i32;
 /// Minimum value of base 2 exponent = -262142
 pub(crate) const EMIN: i32 = 1 - EMAX;
@@ -117,6 +118,7 @@ pub(crate) const EPSILON_HI: u128 =
 pub(crate) const MAX_HI: u128 =
     ((EMAX as u32 + EXP_BIAS) as u128) << HI_FRACTION_BITS | HI_FRACTION_MASK;
 /// Binary exponent for integral values
+#[allow(clippy::cast_possible_wrap)]
 const INT_EXP: i32 = -(FRACTION_BITS as i32);
 
 /// A 256-bit floating point type (specifically, the “binary256” type defined in
@@ -142,7 +144,7 @@ const MAX: f256 = f256 {
         lo: u128::MAX,
     },
 };
-const MIN: f256 = MAX.negate();
+const MIN: f256 = MAX.negated();
 const MIN_POSITIVE: f256 = f256 {
     bits: u256 {
         hi: HI_FRACTION_BIAS,
@@ -167,14 +169,14 @@ const NEG_INFINITY: f256 = f256 {
 const ZERO: f256 = f256 {
     bits: u256 { hi: 0, lo: 0 },
 };
-const NEG_ZERO: f256 = ZERO.negate();
+const NEG_ZERO: f256 = ZERO.negated();
 const ONE: f256 = f256 {
     bits: u256 {
         hi: (EXP_BIAS as u128) << HI_FRACTION_BITS,
         lo: 0,
     },
 };
-const NEG_ONE: f256 = ONE.negate();
+const NEG_ONE: f256 = ONE.negated();
 const TWO: f256 = f256 {
     bits: u256 {
         hi: ((1 + EXP_BIAS) as u128) << HI_FRACTION_BITS,
@@ -183,6 +185,7 @@ const TWO: f256 = f256 {
 };
 const TEN: f256 = f256::from_u64(10);
 
+#[allow(clippy::multiple_inherent_impl)]
 impl f256 {
     /// The radix or base of the internal representation of `f256`.
     pub const RADIX: u32 = 2;
@@ -290,6 +293,8 @@ impl f256 {
     /// * 0 <= c < 2ᵖ
     ///
     /// so that f = (-1)ˢ × 2ᵗ × c.
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_sign_loss)]
     pub(crate) fn encode(s: u32, mut t: i32, mut c: u256) -> Self {
         debug_assert!(s == 0 || s == 1);
         debug_assert!(
@@ -364,6 +369,7 @@ impl f256 {
 
     /// Returns the binary exponent of `self`.
     #[inline]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) const fn exponent(&self) -> i32 {
         debug_assert!(
             self.is_finite(),
@@ -418,6 +424,7 @@ impl f256 {
     /// * 0 <= c < 2ᵖ
     ///
     /// so that (-1)ˢ × 2ᵗ × c = f.
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) fn decode(&self) -> (u32, i32, u256) {
         debug_assert!(
             self.is_finite(),
@@ -485,6 +492,7 @@ impl f256 {
     /// is going to be tested, it is generally faster to use the specific
     /// predicate instead.
     #[inline]
+    #[must_use]
     pub const fn classify(&self) -> FpCategory {
         match (
             self.bits.hi & HI_EXP_MASK,
@@ -590,12 +598,14 @@ impl f256 {
 
     /// Raw transmutation to `[u64; 4]` (in native endian order).
     #[inline]
+    #[must_use]
     pub const fn to_bits(&self) -> [u64; 4] {
         self.bits.to_bits()
     }
 
     /// Raw transmutation from `[u64; 4]` (in native endian order).
     #[inline]
+    #[must_use]
     pub const fn from_bits(bits: [u64; 4]) -> Self {
         Self {
             bits: u256::from_bits(bits),
@@ -609,7 +619,7 @@ impl f256 {
     #[allow(unsafe_code)]
     pub const fn to_be_bytes(self) -> [u8; 32] {
         let bytes = [self.bits.hi.to_be_bytes(), self.bits.lo.to_be_bytes()];
-        // safe because size of [[u8; 16]; 2] == size of [u8; 32]
+        // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
         unsafe { core::mem::transmute(bytes) }
     }
 
@@ -620,7 +630,7 @@ impl f256 {
     #[allow(unsafe_code)]
     pub const fn to_le_bytes(self) -> [u8; 32] {
         let bytes = [self.bits.lo.to_le_bytes(), self.bits.hi.to_le_bytes()];
-        // safe because size of [[u8; 16]; 2] == size of [u8; 32]
+        // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
         unsafe { core::mem::transmute(bytes) }
     }
 
@@ -631,7 +641,7 @@ impl f256 {
     #[allow(unsafe_code)]
     pub const fn to_ne_bytes(self) -> [u8; 32] {
         let bytes = self.to_bits();
-        // safe because size of [u64; 4] == size of [u8; 32]
+        // SAFETY: safe because size of [u64; 4] == size of [u8; 32]
         unsafe { core::mem::transmute(bytes) }
     }
 
@@ -641,6 +651,7 @@ impl f256 {
     #[inline]
     #[allow(unsafe_code)]
     pub const fn from_be_bytes(bytes: [u8; 32]) -> Self {
+        // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
         let bits: [[u8; 16]; 2] = unsafe { core::mem::transmute(bytes) };
         Self {
             bits: u256 {
@@ -656,6 +667,7 @@ impl f256 {
     #[inline]
     #[allow(unsafe_code)]
     pub const fn from_le_bytes(bytes: [u8; 32]) -> Self {
+        // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
         let bits: [[u8; 16]; 2] = unsafe { core::mem::transmute(bytes) };
         Self {
             bits: u256 {
@@ -671,6 +683,7 @@ impl f256 {
     #[inline]
     #[allow(unsafe_code)]
     pub const fn from_ne_bytes(bytes: [u8; 32]) -> Self {
+        // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
         let bits: [u64; 4] = unsafe { core::mem::transmute(bytes) };
         Self::from_bits(bits)
     }
@@ -704,7 +717,7 @@ impl f256 {
         // The internal representation of `f256` values gives - besides their
         // sign - a total ordering following the intended mathematical ordering.
         // Thus, flipping the sign bit allows to compare the raw values.
-        self.negate().bits.cmp(&(*other).negate().bits)
+        self.negated().bits.cmp(&(*other).negated().bits)
     }
 
     /// Restrict a value to a certain interval unless it is NaN.
@@ -794,6 +807,7 @@ mod repr_tests {
     }
 
     #[test]
+    #[allow(clippy::cast_possible_wrap)]
     fn test_subnormal() {
         let f = f256::MIN_GT_ZERO;
         assert_eq!(f.sign(), 0);
@@ -829,7 +843,7 @@ mod encode_decode_tests {
         let sign = 0_u32;
         let exponent = EMIN - 235_i32;
         let significand = u256 {
-            hi: u128::MAX >> EXP_BITS + 2,
+            hi: u128::MAX >> (EXP_BITS + 2),
             lo: 0,
         };
         let f = f256::encode(sign, exponent, significand);

@@ -57,6 +57,7 @@ impl u256 {
     }
 
     /// The size of this integer type in bits.
+    #[allow(clippy::cast_possible_truncation)]
     pub(crate) const BITS: u32 = size_of::<Self>() as u32 * 8;
 
     /// Return true, if `self` == 0.
@@ -96,7 +97,7 @@ impl u256 {
     /// Divide `self` inplace by `2^p` and round (tie to even).
     pub(crate) fn idiv_pow2(&mut self, mut p: u32) {
         debug_assert_ne!(p, 0);
-        debug_assert!(p < size_of::<Self>() as u32);
+        debug_assert!(p < Self::BITS);
         if p > 128 {
             p -= 128;
             let tie = 1 << (p - 1);
@@ -119,6 +120,7 @@ impl u256 {
     }
 
     #[cfg(target_endian = "big")]
+    #[allow(clippy::cast_possible_truncation)]
     #[inline]
     /// Raw transmutation to `[u64; 4]` (in native endian order).
     pub(crate) const fn to_bits(&self) -> [u64; 4] {
@@ -131,9 +133,10 @@ impl u256 {
     }
 
     #[cfg(target_endian = "little")]
+    #[allow(clippy::cast_possible_truncation)]
     #[inline]
     /// Raw transmutation to `[u64; 4]` (in native endian order).
-    pub(crate) const fn to_bits(&self) -> [u64; 4] {
+    pub(crate) const fn to_bits(self) -> [u64; 4] {
         [
             u128_lo(self.lo) as u64,
             u128_hi(self.lo) as u64,

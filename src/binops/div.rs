@@ -44,6 +44,8 @@ fn u256_div(x: &u256, y: &u256) -> u256 {
 }
 
 // Compute z = x / y, rounded tie to even.
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 #[inline]
 pub(crate) fn div(x: f256, y: f256) -> f256 {
     // The products sign is the XOR of the signs of the operands.

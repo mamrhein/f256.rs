@@ -18,7 +18,7 @@ impl f256 {
             return Self::ZERO;
         }
         // First cast to i128, because i64::MIN.abs() causes overflow.
-        let j = (i as i128).abs() as u128;
+        let j = (i as i128).unsigned_abs();
         let msb = 127 - j.leading_zeros();
         Self::new(
             u256 {
@@ -31,6 +31,7 @@ impl f256 {
     }
 
     /// Construct a finite `f256` from a signed 128-bit integer.
+    #[allow(clippy::cast_sign_loss)]
     #[must_use]
     #[inline]
     pub(crate) const fn from_i128(i: i128) -> Self {
@@ -111,6 +112,7 @@ impl From<i128> for f256 {
 mod from_signed_int_tests {
     use super::*;
 
+    #[allow(clippy::cast_sign_loss)]
     fn check_from_signed_int<T>(numbers: &[T])
     where
         T: Into<i128> + Copy,
@@ -189,6 +191,7 @@ impl From<u128> for f256 {
 mod from_unsigned_int_tests {
     use super::*;
 
+    #[allow(clippy::cast_sign_loss)]
     fn check_from_unsigned_int<T>(numbers: &[T])
     where
         T: Into<u128> + Copy,
