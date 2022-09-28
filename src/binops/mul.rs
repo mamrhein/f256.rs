@@ -21,7 +21,7 @@ use crate::{
 
 // Calculate (p, r) so that p = ⌊(x * y) / 2²⁵⁶⌋ and r = ⌈((x * y) - q) / 2¹⁹²⌉.
 #[inline]
-fn u256_mul(x: &u256, y: &u256) -> (u256, u64) {
+fn u256_short_mul(x: &u256, y: &u256) -> (u256, u64) {
     let mut t = u128_widening_mul(x.lo, y.lo);
     let mut rl = u256::new(0, t.lo);
     let mut c = t.hi;
@@ -80,30 +80,20 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
     // Both operands are finite and non-zero.
     let mut x_exp = x.biased_exponent() as i32;
     let mut x_signif = x.significand();
+    let x_shift = x_signif.leading_zeros() - EXP_BITS;
+    x_signif <<= x_shift;
+    x_exp -= x_shift as i32 - (x_exp == 0) as i32;
+
     let mut y_exp = y.biased_exponent() as i32;
     let mut y_signif = y.significand();
-
-    // Check if operands are subnormal.
-    if x_exp == 0 {
-        if y_exp == 0 {
-            // The product of two subnormals is zero.
-            return f256 {
-                bits: u256::new(hi_sign, 0),
-            };
-        } else {
-            let sh = x_signif.leading_zeros() - EXP_BITS;
-            x_signif <<= sh;
-            x_exp = 1 - sh as i32;
-        }
-    }
-    // Shifting one operand to msb = 255 causes the result to have its msb at
-    // position 236 or 237. Normalizing it will atmost be a left-shift by 1.
-    let sh = y_signif.leading_zeros();
-    y_signif <<= sh;
-    y_exp -= (sh - EXP_BITS) as i32 - (y_exp == 0) as i32;
+    // Shifting y to msb = 255 causes the result to have its msb at position 236
+    // or 237. Normalizing it will atmost be a left-shift by 1.
+    let y_shift = y_signif.leading_zeros();
+    y_signif <<= y_shift;
+    y_exp -= (y_shift - EXP_BITS) as i32 - (y_exp == 0) as i32;
 
     // Calculate the results significand and exponent.
-    let (mut bits, mut rem) = u256_mul(&x_signif, &y_signif);
+    let (mut bits, mut rem) = u256_short_mul(&x_signif, &y_signif);
     let mut exp = x_exp + y_exp - EXP_BIAS as i32;
 
     // Normalize result
