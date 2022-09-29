@@ -59,13 +59,16 @@
 
 extern crate core;
 
-use core::{cmp::Ordering, num::FpCategory, ops::Neg};
+use core::{
+    cmp::{max, Ordering},
+    num::FpCategory,
+    ops::Neg,
+};
 
 mod binops;
 mod from_float;
 mod from_int;
 mod uint256;
-mod unops;
 
 use crate::uint256::u256;
 
@@ -540,13 +543,24 @@ impl f256 {
         self.bits.hi >= HI_SIGN_MASK
     }
 
-    /// Returns the reciprocal (inverse) of `self`.
+    /// Returns the reciprocal (multiplicative inverse) of `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use f256::f256;
+    /// let f = f256::from(16);
+    /// let r = f256::from(0.0625);
+    /// assert_eq!(f.recip(), r);
+    ///
+    /// assert_eq!(f256::INFINITY.recip(), f256::ZERO);
+    /// assert_eq!(f256::NEG_ZERO.recip(), f256::NEG_INFINITY);
+    /// assert!(f256::NAN.recip().is_nan());
+    /// ```
     #[must_use]
     #[inline]
     pub fn recip(self) -> Self {
-        // TODO: uncomment when Div implemented
-        // Self::ONE / self
-        unimplemented!()
+        Self::ONE / self
     }
 
     /// Converts radians to degrees.
@@ -731,19 +745,162 @@ impl f256 {
     /// # Panics
     ///
     /// Panics if `min > max`, `min` is NaN, or `max` is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use f256::f256;
+    /// let min = f256::EPSILON;
+    /// let max = f256::TWO;
+    /// let f = f256::ONE;
+    /// assert_eq!(f.clamp(min, max), f);
+    /// assert_eq!((-f).clamp(min, max), min);
+    ///
+    /// assert_eq!(f256::INFINITY.clamp(f256::MIN, f256::MAX), f256::MAX);
+    /// assert!(f256::NAN.clamp(f256::NEG_INFINITY, f256::INFINITY).is_nan());
+    //// ```
     #[must_use]
     #[inline]
     pub fn clamp(self, min: Self, max: Self) -> Self {
-        // assert!(min <= max);
-        // let mut x = self;
-        // if x < min {
-        //     x = min;
-        // }
-        // if x > max {
-        //     x = max;
-        // }
-        // x
+        assert!(min <= max);
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
+
+    /// Computes the absolute value of `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use f256::f256;
+    /// let f = f256::from(138);
+    /// assert_eq!(f.abs(), f);
+    /// assert_eq!((-f).abs(), f);
+    ///
+    /// assert_eq!(f256::MIN.abs(), f256::MAX);
+    /// assert_eq!(f256::NEG_INFINITY.abs(), f256::INFINITY);
+    /// assert!(f256::NAN.abs().is_nan());
+    //// ```
+    #[inline(always)]
+    #[must_use]
+    pub const fn abs(&self) -> Self {
+        Self {
+            bits: u256 {
+                hi: self.bits.hi & HI_ABS_MASK,
+                lo: self.bits.lo,
+            },
+        }
+    }
+
+    /// Returns the smallest integer greater than or equal to `self`.
+    #[inline]
+    #[must_use]
+    pub fn ceil(&self) -> Self {
         unimplemented!()
+    }
+
+    /// Returns the largest integer less than or equal to `self`.
+    #[inline]
+    #[must_use]
+    pub fn floor(&self) -> Self {
+        unimplemented!()
+    }
+
+    /// Returns the fractional part of `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use f256::f256;
+    /// let f = f256::from(177);
+    /// let g = f256::from(177.503_f64);
+    /// let h = -g;
+    ///
+    /// assert_eq!(f.fract(), f256::ZERO);
+    /// assert_eq!(g.fract(), g - f);
+    /// assert_eq!(h.fract(), f - g);
+    //// ```
+    #[inline]
+    #[must_use]
+    pub fn fract(&self) -> Self {
+        self - self.trunc()
+    }
+
+    /// Returns the additive inverse of `self`.
+    #[inline(always)]
+    pub(crate) const fn negated(&self) -> Self {
+        Self {
+            bits: u256 {
+                hi: self.bits.hi ^ HI_SIGN_MASK,
+                lo: self.bits.lo,
+            },
+        }
+    }
+
+    /// Returns the nearest integer to `self`. Rounds half-way cases away from
+    /// 0.0.
+    #[inline]
+    #[must_use]
+    pub const fn round(&self) -> Self {
+        unimplemented!()
+    }
+
+    /// Returns the integer part of `self`. This means that non-integer numbers
+    /// are always truncated towards zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use f256::f256;
+    /// let f = f256::from(177);
+    /// let g = f256::from(177.503_f64);
+    /// let h = -g;
+    ///
+    /// assert_eq!(f.trunc(), f);
+    /// assert_eq!(g.trunc(), f);
+    /// assert_eq!(h.trunc(), -f);
+    //// ```
+    #[inline]
+    #[must_use]
+    pub fn trunc(&self) -> Self {
+        if self.is_special() {
+            return *self;
+        }
+        let exp = self.biased_exponent();
+        if exp < EXP_BIAS {
+            return Self::ZERO;
+        }
+        if exp >= EXP_BIAS + FRACTION_BITS {
+            // self is integral.
+            return *self;
+        }
+        // EXP_BIAS <= exp < EXP_BIAS + FRACTION_BITS
+        let shift = FRACTION_BITS - (exp - EXP_BIAS);
+        let signif = (self.significand() >> shift) << shift;
+        Self::new(signif, exp, self.sign())
+    }
+}
+
+impl Neg for f256 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn neg(self) -> Self::Output {
+        self.negated()
+    }
+}
+
+impl Neg for &f256 {
+    type Output = <f256 as Neg>::Output;
+
+    #[inline(always)]
+    fn neg(self) -> Self::Output {
+        self.negated()
     }
 }
 
@@ -769,6 +926,7 @@ mod repr_tests {
     fn test_one() {
         let i = f256::ONE;
         assert_eq!(i.sign(), 0);
+        assert_eq!(i.biased_exponent(), EXP_BIAS);
         assert_eq!(i.exponent(), INT_EXP);
         assert_eq!(
             i.significand(),
@@ -780,6 +938,7 @@ mod repr_tests {
         assert_eq!(i.decode(), (0, 0, u256 { hi: 0, lo: 1 }));
         let j = f256::NEG_ONE;
         assert_eq!(j.sign(), 1);
+        assert_eq!(i.biased_exponent(), EXP_BIAS);
         assert_eq!(j.exponent(), INT_EXP);
         assert_eq!(
             j.significand(),
@@ -793,8 +952,20 @@ mod repr_tests {
 
     #[test]
     fn test_normal() {
-        let f = f256::from(3.5_f64);
-        assert_eq!(f.sign(), 0);
+        let i = f256::TWO;
+        assert_eq!(i.sign(), 0);
+        assert_eq!(i.biased_exponent(), EXP_BIAS + 1);
+        assert_eq!(i.exponent(), INT_EXP + 1);
+        assert_eq!(
+            i.significand(),
+            u256 {
+                hi: 1_u128 << HI_FRACTION_BITS,
+                lo: 0
+            }
+        );
+        assert_eq!(i.decode(), (0, 1, u256 { hi: 0, lo: 1 }));
+        let f = f256::from(-3.5_f64);
+        assert_eq!(f.sign(), 1);
         assert_eq!(f.exponent(), -235);
         assert_eq!(
             f.significand(),
@@ -803,7 +974,7 @@ mod repr_tests {
                 lo: 0
             }
         );
-        assert_eq!(f.decode(), (0, -1, u256 { hi: 0, lo: 7 }));
+        assert_eq!(f.decode(), (1, -1, u256 { hi: 0, lo: 7 }));
     }
 
     #[test]
