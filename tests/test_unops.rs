@@ -8,6 +8,23 @@
 // $Revision$
 
 #[cfg(test)]
+mod min_max_tests {
+    use f256::f256;
+
+    #[test]
+    fn test_min_nan() {
+        assert_eq!(f256::NAN.min(f256::ONE), f256::ONE);
+        assert_eq!(f256::ONE.min(f256::NAN), f256::ONE);
+    }
+
+    #[test]
+    fn test_max_nan() {
+        assert_eq!(f256::NAN.max(f256::ONE), f256::ONE);
+        assert_eq!(f256::ONE.max(f256::NAN), f256::ONE);
+    }
+}
+
+#[cfg(test)]
 mod abs_tests {
     use f256::f256;
 
@@ -142,5 +159,192 @@ mod fract_tests {
     fn test_subnormal() {
         let f = f256::MIN_GT_ZERO;
         assert_eq!(f.fract(), f256::MIN_GT_ZERO);
+    }
+}
+
+#[cfg(test)]
+mod ceil_tests {
+    use f256::f256;
+
+    #[test]
+    fn test_nan() {
+        assert!(f256::NAN.ceil().is_nan());
+        assert!((-f256::NAN).ceil().is_nan());
+    }
+
+    #[test]
+    fn test_inf() {
+        assert_eq!(f256::INFINITY.ceil(), f256::INFINITY);
+        assert_eq!(f256::NEG_INFINITY.ceil(), f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_zero() {
+        assert_eq!(f256::ZERO.ceil(), f256::ZERO);
+        assert_eq!(f256::NEG_ZERO.ceil(), f256::NEG_ZERO);
+    }
+
+    #[test]
+    fn test_normal() {
+        let f = f256::from(18);
+        let g = f256::from(17.625_f64);
+        let h = -g;
+        assert_eq!(f.ceil(), f);
+        assert_eq!(g.ceil(), f);
+        assert_eq!(h.ceil(), f256::ONE - f);
+    }
+
+    #[test]
+    fn test_lt_0() {
+        let f = f256::from(0.99999_f64);
+        assert_eq!(f.ceil(), f256::ONE);
+        let e = f256::EPSILON;
+        assert_eq!(e.ceil(), f256::ONE);
+    }
+
+    #[test]
+    fn test_gt_2_pow_237() {
+        let f = f256::from(1.3097428e71_f64);
+        assert_eq!(f.ceil(), f);
+    }
+
+    #[test]
+    fn test_subnormal() {
+        let f = f256::MIN_GT_ZERO;
+        assert_eq!(f.ceil(), f256::ONE);
+        let g = -f;
+        assert_eq!(g.ceil(), f256::ZERO);
+    }
+}
+
+#[cfg(test)]
+mod floor_tests {
+    use f256::f256;
+
+    #[test]
+    fn test_nan() {
+        assert!(f256::NAN.floor().is_nan());
+        assert!((-f256::NAN).floor().is_nan());
+    }
+
+    #[test]
+    fn test_inf() {
+        assert_eq!(f256::INFINITY.floor(), f256::INFINITY);
+        assert_eq!(f256::NEG_INFINITY.floor(), f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_zero() {
+        assert_eq!(f256::ZERO.floor(), f256::ZERO);
+        assert_eq!(f256::NEG_ZERO.floor(), f256::NEG_ZERO);
+    }
+
+    #[test]
+    fn test_normal() {
+        let f = f256::from(28);
+        let g = f256::from(28.025_f64);
+        let h = -g;
+        assert_eq!(f.floor(), f);
+        assert_eq!(g.floor(), f);
+        assert_eq!(h.floor(), -f - f256::ONE);
+    }
+
+    #[test]
+    fn test_lt_0() {
+        let f = f256::from(-0.99999_f64);
+        assert_eq!(f.floor(), f256::NEG_ONE);
+        let e = f256::EPSILON;
+        assert_eq!(e.floor(), f256::ZERO);
+    }
+
+    #[test]
+    fn test_gt_2_pow_237() {
+        let f = f256::from(1.3097428e71_f64);
+        assert_eq!(f.floor(), f);
+    }
+
+    #[test]
+    fn test_subnormal() {
+        let f = f256::MIN_GT_ZERO;
+        assert_eq!(f.floor(), f256::ZERO);
+        let g = -f;
+        assert_eq!(g.floor(), f256::NEG_ONE);
+    }
+}
+
+#[cfg(test)]
+mod round_tests {
+    use f256::f256;
+
+    #[test]
+    fn test_nan() {
+        assert!(f256::NAN.round().is_nan());
+        assert!((-f256::NAN).round().is_nan());
+    }
+
+    #[test]
+    fn test_inf() {
+        assert_eq!(f256::INFINITY.round(), f256::INFINITY);
+        assert_eq!(f256::NEG_INFINITY.round(), f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_zero() {
+        assert_eq!(f256::ZERO.round(), f256::ZERO);
+        assert_eq!(f256::NEG_ZERO.round(), f256::NEG_ZERO);
+    }
+
+    #[test]
+    fn test_normal_down() {
+        let f = f256::from(28);
+        let g = f256::from(28.025_f64);
+        let h = -g;
+        assert_eq!(f.round(), f);
+        assert_eq!(g.round(), f);
+        assert_eq!(h.round(), -f);
+    }
+
+    #[test]
+    fn test_normal_half_to_even() {
+        let f = f256::from(28);
+        let g = f256::from(28.5_f64);
+        let h = f256::from(-27.5_f64);
+        assert_eq!(f.round(), f);
+        assert_eq!(g.round(), f);
+        assert_eq!(h.round(), -f);
+    }
+
+    #[test]
+    fn test_normal_up() {
+        let f = f256::from(28);
+        let g = f256::from(27.725_f64);
+        let h = -g;
+        assert_eq!(f.round(), f);
+        assert_eq!(g.round(), f);
+        assert_eq!(h.round(), -f);
+    }
+
+    #[test]
+    fn test_lt_0() {
+        let f = f256::from(-0.99999_f64);
+        assert_eq!(f.round(), f256::NEG_ONE);
+        let e = f256::EPSILON;
+        assert_eq!(e.round(), f256::ZERO);
+        let h = f256::from(0.5_f64);
+        assert_eq!(h.round(), f256::ZERO);
+    }
+
+    #[test]
+    fn test_gt_2_pow_237() {
+        let f = f256::from(1.3097428e71_f64);
+        assert_eq!(f.round(), f);
+    }
+
+    #[test]
+    fn test_subnormal() {
+        let f = f256::MIN_GT_ZERO;
+        assert_eq!(f.round(), f256::ZERO);
+        let g = -f;
+        assert_eq!(g.round(), f256::ZERO);
     }
 }
