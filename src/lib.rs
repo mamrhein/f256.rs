@@ -122,7 +122,10 @@ pub(crate) const MAX_HI: u128 =
     ((EMAX as u32 + EXP_BIAS) as u128) << HI_FRACTION_BITS | HI_FRACTION_MASK;
 /// Binary exponent for integral values
 #[allow(clippy::cast_possible_wrap)]
-const INT_EXP: i32 = -(FRACTION_BITS as i32);
+pub(crate) const INT_EXP: i32 = -(FRACTION_BITS as i32);
+/// Value of hi u128 of the smallest f256 value with no fractional part (2²³⁶)
+pub(crate) const MIN_NO_FRACT_HI: u128 =
+    ((EXP_BIAS + FRACTION_BITS) as u128) << HI_FRACTION_BITS;
 
 /// A 256-bit floating point type (specifically, the “binary256” type defined in
 /// IEEE 754-2008).
@@ -173,6 +176,12 @@ const ZERO: f256 = f256 {
     bits: u256 { hi: 0, lo: 0 },
 };
 const NEG_ZERO: f256 = ZERO.negated();
+const ONE_HALF: f256 = f256 {
+    bits: u256 {
+        hi: ((EXP_BIAS - 1) as u128) << HI_FRACTION_BITS,
+        lo: 0,
+    },
+};
 const ONE: f256 = f256 {
     bits: u256 {
         hi: (EXP_BIAS as u128) << HI_FRACTION_BITS,
@@ -797,18 +806,59 @@ impl f256 {
         }
     }
 
-    /// Returns the smallest integer greater than or equal to `self`.
-    #[inline]
+    // Returns the nearest integral value in the direction controlled by the
+    // given function.
     #[must_use]
-    pub fn ceil(&self) -> Self {
-        unimplemented!()
+    fn nearest_integral(&self, adj: fn(u32) -> bool) -> Self {
+        if self.is_special() {
+            return *self;
+        }
+        // self is finite and non-zero.
+        let hi_sign = self.bits.hi & HI_SIGN_MASK;
+        let mut abs_bits = u256::new(self.bits.hi & HI_ABS_MASK, self.bits.lo);
+        if abs_bits.hi >= MIN_NO_FRACT_HI {
+            // |self| >= 2²³⁶, i. e. self is integral.
+            return *self;
+        }
+        let sign = self.sign();
+        if abs_bits.hi <= ONE.bits.hi {
+            // 0 < |self| < 1
+            return match (sign, adj(sign)) {
+                (0, true) => Self::ONE,
+                (1, true) => Self::NEG_ONE,
+                (..) => Self::ZERO,
+            };
+        }
+        // 1 < |self| < 2²³⁶
+        let n_fract_bits = FRACTION_BITS - (self.biased_exponent() - EXP_BIAS);
+        let mut abs_int_bits = (abs_bits >> n_fract_bits) << n_fract_bits;
+        let c = adj(sign) as u32 * (abs_int_bits != abs_bits) as u32;
+        abs_int_bits += &(u256::new(0, c as u128) << n_fract_bits);
+        Self {
+            bits: u256::new(abs_int_bits.hi | hi_sign, abs_int_bits.lo),
+        }
     }
 
-    /// Returns the largest integer less than or equal to `self`.
+    /// Returns the integer part of `self`. This means that non-integer numbers
+    /// are always truncated towards zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use f256::f256;
+    /// let f = f256::from(177);
+    /// let g = f256::from(177.503_f64);
+    /// let h = -g;
+    ///
+    /// assert_eq!(f.trunc(), f);
+    /// assert_eq!(g.trunc(), f);
+    /// assert_eq!(h.trunc(), -f);
+    //// ```
     #[inline]
     #[must_use]
-    pub fn floor(&self) -> Self {
-        unimplemented!()
+    pub fn trunc(&self) -> Self {
+        let adj = |_: u32| false;
+        self.nearest_integral(adj)
     }
 
     /// Returns the fractional part of `self`.
@@ -831,6 +881,93 @@ impl f256 {
         self - self.trunc()
     }
 
+    /// Returns the smallest integer greater than or equal to `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use f256::f256;
+    /// let f = f256::from(28);
+    /// let g = f256::from(27.04_f64);
+    /// let h = -g;
+    ///
+    /// assert_eq!(f.ceil(), f);
+    /// assert_eq!(g.ceil(), f);
+    /// assert_eq!(h.ceil(), f256::ONE - f);
+    //// ```
+    #[inline]
+    #[must_use]
+    pub fn ceil(&self) -> Self {
+        let adj = |sign: u32| sign == 0;
+        self.nearest_integral(adj)
+    }
+
+    /// Returns the largest integer less than or equal to `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use f256::f256;
+    /// let f = f256::from(57);
+    /// let g = f256::from(57.009_f64);
+    /// let h = -g;
+    ///
+    /// assert_eq!(f.floor(), f);
+    /// assert_eq!(g.floor(), f);
+    /// assert_eq!(h.floor(), -f - f256::ONE);
+    //// ```
+    #[inline]
+    #[must_use]
+    pub fn floor(&self) -> Self {
+        let adj = |sign: u32| sign == 1;
+        self.nearest_integral(adj)
+    }
+
+    /// Returns the nearest integer to `self`. Rounds half-way cases away from
+    /// zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use f256::f256;
+    /// let f = f256::from(28);
+    /// let g = f256::from(27.704_f64);
+    /// let h = f256::from(28.5_f64);;
+    /// assert_eq!(f.round(), f);
+    /// assert_eq!(g.round(), f);
+    /// assert_eq!(h.round(), f);
+    //// ```
+    #[must_use]
+    pub fn round(&self) -> Self {
+        if self.is_special() {
+            return *self;
+        }
+        // self is finite and non-zero.
+        let hi_sign = self.bits.hi & HI_SIGN_MASK;
+        let mut abs_bits = u256::new(self.bits.hi & HI_ABS_MASK, self.bits.lo);
+        if abs_bits.hi >= MIN_NO_FRACT_HI {
+            // |self| >= 2²³⁶, i. e. self is integral.
+            return *self;
+        }
+        if abs_bits.hi <= ONE_HALF.bits.hi {
+            // 0 < |self| <= ½
+            return Self::ZERO;
+        }
+        if abs_bits.hi <= ONE.bits.hi {
+            // ½ < |self| <= 1
+            return Self {
+                bits: u256::new(ONE.bits.hi | hi_sign, 0),
+            };
+        }
+        // 1 < |self| < 2²³⁶
+        let n_fract_bits = FRACTION_BITS - (self.biased_exponent() - EXP_BIAS);
+        abs_bits.idiv_pow2(n_fract_bits);
+        abs_bits <<= n_fract_bits;
+        Self {
+            bits: u256::new(abs_bits.hi | hi_sign, abs_bits.lo),
+        }
+    }
+
     /// Returns the additive inverse of `self`.
     #[inline(always)]
     pub(crate) const fn negated(&self) -> Self {
@@ -840,49 +977,6 @@ impl f256 {
                 lo: self.bits.lo,
             },
         }
-    }
-
-    /// Returns the nearest integer to `self`. Rounds half-way cases away from
-    /// 0.0.
-    #[inline]
-    #[must_use]
-    pub const fn round(&self) -> Self {
-        unimplemented!()
-    }
-
-    /// Returns the integer part of `self`. This means that non-integer numbers
-    /// are always truncated towards zero.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use f256::f256;
-    /// let f = f256::from(177);
-    /// let g = f256::from(177.503_f64);
-    /// let h = -g;
-    ///
-    /// assert_eq!(f.trunc(), f);
-    /// assert_eq!(g.trunc(), f);
-    /// assert_eq!(h.trunc(), -f);
-    //// ```
-    #[inline]
-    #[must_use]
-    pub fn trunc(&self) -> Self {
-        if self.is_special() {
-            return *self;
-        }
-        let exp = self.biased_exponent();
-        if exp < EXP_BIAS {
-            return Self::ZERO;
-        }
-        if exp >= EXP_BIAS + FRACTION_BITS {
-            // self is integral.
-            return *self;
-        }
-        // EXP_BIAS <= exp < EXP_BIAS + FRACTION_BITS
-        let shift = FRACTION_BITS - (exp - EXP_BIAS);
-        let signif = (self.significand() >> shift) << shift;
-        Self::new(signif, exp, self.sign())
     }
 }
 
