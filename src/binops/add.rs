@@ -9,7 +9,7 @@
 
 use core::{
     cmp::{max, min},
-    ops::{Add, Sub},
+    ops::{Add, AddAssign, Sub, SubAssign},
 };
 use std::cmp::Ordering;
 
@@ -141,6 +141,8 @@ impl Add for f256 {
 
 forward_ref_binop!(impl Add, add);
 
+forward_op_assign!(impl AddAssign, add_assign, Add, add);
+
 impl Sub for f256 {
     type Output = Self;
 
@@ -150,6 +152,8 @@ impl Sub for f256 {
 }
 
 forward_ref_binop!(impl Sub, sub);
+
+forward_op_assign!(impl SubAssign, sub_assign, Sub, sub);
 
 #[cfg(test)]
 mod tests {

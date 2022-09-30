@@ -9,7 +9,7 @@
 
 use core::{
     cmp::{max, min},
-    ops::Mul,
+    ops::{Mul, MulAssign},
 };
 
 use crate::{
@@ -151,6 +151,8 @@ impl Mul for f256 {
 }
 
 forward_ref_binop!(impl Mul, mul);
+
+forward_op_assign!(impl MulAssign, mul_assign, Mul, mul);
 
 #[cfg(test)]
 mod tests {

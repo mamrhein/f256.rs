@@ -9,7 +9,7 @@
 
 use core::{
     cmp::{max, min},
-    ops::Div,
+    ops::{Div, DivAssign},
 };
 
 use crate::{
@@ -138,6 +138,8 @@ impl Div for f256 {
 }
 
 forward_ref_binop!(impl Div, div);
+
+forward_op_assign!(impl DivAssign, div_assign, Div, div);
 
 #[cfg(test)]
 mod tests {
