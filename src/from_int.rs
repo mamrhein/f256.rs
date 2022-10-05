@@ -7,7 +7,10 @@
 // $Source$
 // $Revision$
 
-use crate::{f256, u256, EXP_BIAS, FRACTION_BITS, HI_FRACTION_BITS};
+use crate::{
+    f256, u256, EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_FRACTION_BITS,
+    SIGNIFICAND_BITS,
+};
 
 impl f256 {
     /// Construct a finite `f256` from a signed 64-bit integer.
@@ -81,6 +84,18 @@ impl f256 {
             EXP_BIAS + msb,
             0_u32,
         )
+    }
+
+    /// Construct a finite `f256` from an unsigned 256-bit integer.
+    #[must_use]
+    #[inline]
+    pub(crate) const fn from_u256(i: &u256) -> Self {
+        debug_assert!(i.leading_zeros() >= EXP_BITS);
+        if i.is_zero() {
+            return Self::ZERO;
+        }
+        let msb = 255 - i.leading_zeros();
+        Self::new(i.shl(FRACTION_BITS - msb), EXP_BIAS + msb, 0_u32)
     }
 }
 
