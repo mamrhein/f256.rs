@@ -12,6 +12,7 @@ use core::{
     mem::size_of,
     ops::{AddAssign, Shl, ShlAssign, Shr, ShrAssign, SubAssign},
 };
+use std::ops::MulAssign;
 
 use crate::SIGNIFICAND_BITS;
 
@@ -223,6 +224,15 @@ impl SubAssign<u128> for u256 {
         let t = self.lo.wrapping_sub(rhs);
         self.hi = self.hi.wrapping_sub((t > self.lo) as u128);
         self.lo = t;
+    }
+}
+
+impl MulAssign<u128> for u256 {
+    fn mul_assign(&mut self, rhs: u128) {
+        let tl = u128_widening_mul(self.lo, rhs);
+        self.lo = tl.lo;
+        let th = u128_widening_mul(self.hi, rhs);
+        self.hi = th.lo.wrapping_add(tl.hi);
     }
 }
 
