@@ -97,7 +97,7 @@ pub(crate) const HI_TOTAL_BITS: u32 = TOTAL_BITS >> 1;
 pub(crate) const HI_SIGN_SHIFT: u32 = HI_TOTAL_BITS - 1;
 /// Number of fraction bits in hi u128 = 108
 pub(crate) const HI_FRACTION_BITS: u32 = FRACTION_BITS - HI_TOTAL_BITS;
-/// Fraction bias in hi u128 = 1e108 = 0x1000000000000000000000000000
+/// Fraction bias in hi u128 = 2¹⁰⁸ = 0x1000000000000000000000000000
 pub(crate) const HI_FRACTION_BIAS: u128 = 1_u128 << HI_FRACTION_BITS;
 /// Fraction mask in hi u128 = 0xfffffffffffffffffffffffffff
 pub(crate) const HI_FRACTION_MASK: u128 = HI_FRACTION_BIAS - 1;
@@ -176,7 +176,7 @@ const ZERO: f256 = f256 {
     bits: u256 { hi: 0, lo: 0 },
 };
 const NEG_ZERO: f256 = ZERO.negated();
-const ONE_HALF: f256 = f256 {
+pub(crate) const ONE_HALF: f256 = f256 {
     bits: u256 {
         hi: ((EXP_BIAS - 1) as u128) << HI_FRACTION_BITS,
         lo: 0,
@@ -195,6 +195,7 @@ const TWO: f256 = f256 {
         lo: 0,
     },
 };
+pub(crate) const FIVE: f256 = f256::from_u64(5);
 const TEN: f256 = f256::from_u64(10);
 
 #[allow(clippy::multiple_inherent_impl)]
@@ -208,8 +209,7 @@ impl f256 {
     /// Number of significant digits in base 2: 237.
     pub const SIGNIFICANT_DIGITS: u32 = SIGNIFICAND_BITS;
 
-    /// Approximate number of significant digits in base 10: log₁₀(2²³⁷) ≈
-    /// 71.344.
+    /// Approximate number of significant digits in base 10: ⌊log₁₀(2²³⁷)⌋.
     pub const DIGITS: u32 = 71;
 
     /// The difference between `1.0` and the next larger representable number:
