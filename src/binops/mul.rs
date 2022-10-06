@@ -101,6 +101,8 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
     // Normalize result
     if bits.hi < HI_FRACTION_BIAS {
         bits <<= 1;
+        bits.lo |= (rem >> 63) as u128;
+        rem <<= 1;
     } else {
         exp += 1;
     }

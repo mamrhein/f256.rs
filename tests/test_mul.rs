@@ -69,6 +69,37 @@ mod mul_tests {
     }
 
     #[test]
+    fn test_five_pow_102() {
+        let five = f256::from(5);
+        let five_pow_50 = f256::from(88817841970012523233890533447265625_u128);
+        let five_pow_51 = f256::from(444089209850062616169452667236328125_u128);
+        let five_pow_101 = five_pow_50 * five_pow_51;
+        assert_eq!(
+            five_pow_101.as_sign_exp_signif(),
+            (
+                0,
+                0,
+                (
+                    115912692208981918304116726923363,
+                    250037011538279330113129619742442556597
+                )
+            )
+        );
+        let five_pow_102 = five_pow_101 * five;
+        assert_eq!(
+            five_pow_102.as_sign_exp_signif(),
+            (
+                0,
+                0,
+                (
+                    579563461044909591520583634616818,
+                    229337956928581260175524276416908148617
+                )
+            )
+        );
+    }
+
+    #[test]
     fn test_subnormal() {
         let x = f256::MIN_GT_ZERO;
         assert_eq!(x * x, f256::ZERO);
