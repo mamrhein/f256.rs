@@ -78,9 +78,9 @@ pub(crate) const PREC_LEVEL: u32 = 8;
 pub(crate) const TOTAL_BITS: u32 = 1_u32 << PREC_LEVEL;
 /// Number of exponent bits = 19
 pub(crate) const EXP_BITS: u32 = 4 * PREC_LEVEL - 13;
-/// Number of significand bits = 237
+/// Number of significand bits p = 237
 pub(crate) const SIGNIFICAND_BITS: u32 = TOTAL_BITS - EXP_BITS;
-/// Number of fraction bits = 236
+/// Number of fraction bits = p - 1 = 236
 pub(crate) const FRACTION_BITS: u32 = SIGNIFICAND_BITS - 1;
 /// Maximum value of biased base 2 exponent = 0x7ffff = 524287
 pub(crate) const EXP_MAX: u32 = (1_u32 << EXP_BITS) - 1;
@@ -126,6 +126,9 @@ pub(crate) const INT_EXP: i32 = -(FRACTION_BITS as i32);
 /// Value of hi u128 of the smallest f256 value with no fractional part (2²³⁶)
 pub(crate) const MIN_NO_FRACT_HI: u128 =
     ((EXP_BIAS + FRACTION_BITS) as u128) << HI_FRACTION_BITS;
+/// Minimum possible subnormal power of 10 exponent =
+/// ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋.
+pub(crate) const MIN_GT_ZERO_10_EXP: i32 = -78983;
 
 /// A 256-bit floating point type (specifically, the “binary256” type defined in
 /// IEEE 754-2008).
@@ -228,17 +231,18 @@ impl f256 {
     /// Smallest positive subnormal `f256` value: 2⁻²⁶²³⁷⁸ ≈ 10⁻⁷⁸⁹⁸⁴.
     pub const MIN_GT_ZERO: Self = MIN_GT_ZERO;
 
-    /// Maximum possible power of 2 exponent: 2¹⁸ = 262144.
+    /// Maximum possible power of 2 exponent: Eₘₐₓ + 1 = 2¹⁸ = 262144.
     pub const MAX_EXP: i32 = EMAX + 1;
 
     /// One greater than the minimum possible normal power of 2 exponent:
-    /// 3 - MAX_EXP = -262141.
+    /// Eₘᵢₙ + 1 = -262141.
     pub const MIN_EXP: i32 = EMIN + 1;
 
-    /// Maximum possible power of 10 exponent: ⌊MAX_EXP × log₁₀(2)⌋.
+    /// Maximum possible power of 10 exponent: ⌊(Eₘₐₓ + 1) × log₁₀(2)⌋.
     pub const MAX_10_EXP: i32 = 78913;
 
-    /// Minimum possible normal power of 10 exponent ⌊MIN_EXP × log₁₀(2)⌋.
+    /// Minimum possible normal power of 10 exponent:
+    /// ⌊(Eₘᵢₙ + 1) × log₁₀(2)⌋.
     pub const MIN_10_EXP: i32 = -78912;
 
     /// Not a Number (NaN).
@@ -460,6 +464,14 @@ impl f256 {
         c >>= ntz;
         t += ntz as i32;
         (self.sign(), t, c)
+    }
+
+    /// Only public for testing!!!
+    // TODO: hide doc
+    // #[doc(hidden)]
+    pub fn as_sign_exp_signif(&self) -> (u32, i32, (u128, u128)) {
+        let (s, t, c) = self.decode();
+        (s, t, (c.hi, c.lo))
     }
 
     /// Returns `true` if this value is `NaN`.
