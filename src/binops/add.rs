@@ -8,10 +8,9 @@
 // $Revision$
 
 use core::{
-    cmp::{max, min},
+    cmp::{max, min, Ordering},
     ops::{Add, AddAssign, Sub, SubAssign},
 };
-use std::cmp::Ordering;
 
 use crate::{
     f256, u256, EXP_MAX, HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS,

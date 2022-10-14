@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use std::ops::Neg;
+use core::ops::Neg;
 
 use crate::{f256, uint256::u256};
 
