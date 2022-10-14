@@ -68,6 +68,7 @@ use core::{
 mod binops;
 mod from_float;
 mod from_int;
+mod from_str;
 mod uint256;
 
 use crate::uint256::u256;
