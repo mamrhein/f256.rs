@@ -10,11 +10,8 @@
 use core::{
     cmp::Ordering,
     mem::size_of,
-    ops::{AddAssign, Shl, ShlAssign, Shr, ShrAssign, SubAssign},
+    ops::{AddAssign, MulAssign, Shl, ShlAssign, Shr, ShrAssign, SubAssign},
 };
-use std::ops::MulAssign;
-
-use crate::SIGNIFICAND_BITS;
 
 #[inline(always)]
 const fn u128_hi(u: u128) -> u128 {
@@ -51,15 +48,24 @@ pub(crate) struct u256 {
 }
 
 impl u256 {
+    /// The size of this integer type in bits.
+    #[allow(clippy::cast_possible_truncation)]
+    pub(crate) const BITS: u32 = size_of::<Self>() as u32 * 8;
+
+    /// Additive identity = 0.
+    pub(crate) const ZERO: Self = Self::new(0, 0);
+
+    /// Maximum value = 2²⁵⁶ - 1.
+    pub(crate) const MAX: Self = Self::new(u128::MAX, u128::MAX);
+
+    /// Maximum number of decimal digits = ⌊log₁₀(2²⁵⁶ - 1)⌋.
+    pub(crate) const MAX_N_DECIMAL_DIGITS: u32 = 77;
+
     /// Create an `u256` value from two u128 values.
     #[inline(always)]
     pub(crate) const fn new(hi: u128, lo: u128) -> Self {
         Self { hi, lo }
     }
-
-    /// The size of this integer type in bits.
-    #[allow(clippy::cast_possible_truncation)]
-    pub(crate) const BITS: u32 = size_of::<Self>() as u32 * 8;
 
     /// Return true, if `self` == 0.
     #[inline]
@@ -93,6 +99,30 @@ impl u256 {
     pub(crate) fn incr(&mut self) {
         self.lo = self.lo.wrapping_add(1_u128);
         self.hi = self.hi.wrapping_add((self.lo == 0) as u128);
+    }
+
+    /// Multiply by 10 and add decimal digit (inplace).
+    pub(crate) fn imul10_add(&mut self, d: u8) {
+        debug_assert!(
+            *self
+                <= u256::new(
+                    0x19999999999999999999999999999999_u128,
+                    0x99999999999999999999999999999999_u128
+                )
+        );
+        debug_assert!(d < 10);
+        let ll = u128_lo(self.lo);
+        let lh = u128_hi(self.lo);
+        let hl = u128_lo(self.hi);
+        let hh = u128_hi(self.hi);
+        let mut t = ll * 10 + d as u128;
+        self.lo = u128_lo(t);
+        t = lh * 10 + u128_hi(t);
+        self.lo += t << 64;
+        t = hl * 10 + u128_hi(t);
+        self.hi = u128_lo(t);
+        t = hh * 10 + u128_hi(t);
+        self.hi += t << 64;
     }
 
     /// Divide `self` inplace by `2^p` and round (tie to even).
