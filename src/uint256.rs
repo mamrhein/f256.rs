@@ -39,6 +39,22 @@ pub(crate) const fn u128_widening_mul(x: u128, y: u128) -> u256 {
     u256::new(rh, rl)
 }
 
+// Calculate ⌊(x * y) / 2²⁵⁶⌋.
+pub(crate) fn u256_truncating_mul(x: u256, y: u256) -> u256 {
+    let mut r = u128_widening_mul(x.hi, y.hi);
+    let t1 = u128_widening_mul(x.hi, y.lo);
+    r += t1.hi;
+    let t2 = u128_widening_mul(x.lo, y.hi);
+    r += t2.hi;
+    let mut c = 0_u128;
+    let t3 = t1.lo.wrapping_add(t2.lo);
+    c += (t3 < t1.lo) as u128;
+    let t4 = t3.wrapping_add(u128_widening_mul(x.lo, y.lo).hi);
+    c += (t4 < t3) as u128;
+    r += c;
+    r
+}
+
 /// Helper type representing unsigned integers of 256 bits.
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialOrd, PartialEq)]
@@ -346,7 +362,24 @@ impl ShrAssign<u32> for u256 {
 
 #[cfg(test)]
 mod u256_shift_tests {
-    use crate::uint256::u256;
+    use super::*;
+
+    #[test]
+    fn test_u256_truncating_mul() {
+        let x = u256::MAX;
+        let y = u256::new(0, 1);
+        let mut p = u256_truncating_mul(x, y);
+        assert_eq!(p, u256::new(0, 0));
+        let y = u256::new(0, 2);
+        p = u256_truncating_mul(x, y);
+        assert_eq!(p, u256::new(0, 1));
+        p = u256_truncating_mul(x, x);
+        p.incr();
+        assert_eq!(p, x);
+        let x = u256::new(1, u128::MAX);
+        p = u256_truncating_mul(x, x);
+        assert_eq!(p, u256::new(0, 3));
+    }
 
     #[test]
     fn test_shl() {
