@@ -129,7 +129,7 @@ pub(crate) const MIN_NO_FRACT_HI: u128 =
     ((EXP_BIAS + FRACTION_BITS) as u128) << HI_FRACTION_BITS;
 /// Minimum possible subnormal power of 10 exponent =
 /// ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋.
-pub(crate) const MIN_GT_ZERO_10_EXP: i32 = -78983;
+pub(crate) const MIN_GT_ZERO_10_EXP: i32 = -78984;
 
 /// A 256-bit floating point type (specifically, the “binary256” type defined in
 /// IEEE 754-2008).
@@ -1126,6 +1126,10 @@ mod encode_decode_tests {
         };
         let f = f256::encode(sign, exponent, significand);
         assert!(f.is_subnormal());
+        let (s, t, c) = f.decode();
+        let g = f256::encode(s, t, c);
+        assert_eq!(f, g);
+        let f = f256::MIN_GT_ZERO;
         let (s, t, c) = f.decode();
         let g = f256::encode(s, t, c);
         assert_eq!(f, g);
