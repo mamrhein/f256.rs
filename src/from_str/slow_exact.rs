@@ -21,9 +21,27 @@ pub(super) fn f256_exact(s: &str) -> f256 {
     // ⌊log₁₀(2⁶⁴-1)⌋
     const MAX_DEC_SHIFT: u8 = 19;
     // [0] + [⌊log₂(10ⁿ⌋] for n in [1..MAX_DEC_SHIFT - 1] + [60]
-    const DEC_TO_BIN_SHIFT: [u8; (MAX_DEC_SHIFT + 1) as usize] = [
-        0, 3, 6, 9, 13, 16, 19, 23, 26, 29, 33, 36, 39, 43, 46, 49, 53, 56, 59,
-        60,
+    const DEC_TO_BIN_SHIFT: [u32; (MAX_DEC_SHIFT + 1) as usize] = [
+        0,
+        3,
+        6,
+        9,
+        13,
+        16,
+        19,
+        23,
+        26,
+        29,
+        33,
+        36,
+        39,
+        43,
+        46,
+        49,
+        53,
+        56,
+        59,
+        Decimal::MAX_SHIFT,
     ];
 
     // Parse the number literal into a high precision decimal.
@@ -36,8 +54,7 @@ pub(super) fn f256_exact(s: &str) -> f256 {
     while dec.decimal_point > 0 {
         let n = DEC_TO_BIN_SHIFT
             [min(dec.decimal_point as usize, MAX_DEC_SHIFT as usize)];
-        dec.right_shift(n as u32);
-        // ???: short-cut by checking some lower limit for dec.decimal_point
+        dec.right_shift(n);
         bin_exp += n as i32;
     }
     while dec.decimal_point <= 0 {
@@ -51,17 +68,19 @@ pub(super) fn f256_exact(s: &str) -> f256 {
             DEC_TO_BIN_SHIFT
                 [min(-dec.decimal_point as usize, MAX_DEC_SHIFT as usize)]
         };
-        dec.left_shift(n as u32);
-        // ???: short-cut by checking some upper limit for dec.decimal_point
+        dec.left_shift(n);
         bin_exp -= n as i32;
     }
     // Adjust exponent to put the number in range [1..2].
     bin_exp -= 1;
 
     // If the exponent is too small, right-shift digits and adjust exponent.
-    while bin_exp < EMIN {
-        let n = DEC_TO_BIN_SHIFT
-            [min((EMIN - bin_exp) as usize, MAX_DEC_SHIFT as usize)];
+    const MIN_BIN_EXP: i32 = EMIN - 1;
+    while bin_exp < MIN_BIN_EXP {
+        let n = min(
+            (MIN_BIN_EXP - bin_exp) as usize,
+            Decimal::MAX_SHIFT as usize,
+        );
         dec.right_shift(n as u32);
         bin_exp += n as i32;
     }
@@ -71,9 +90,10 @@ pub(super) fn f256_exact(s: &str) -> f256 {
         return [f256::INFINITY, f256::NEG_INFINITY][dec.sign as usize];
     }
 
-    // Shift the number so that it's in range [2ᵖ..2ᵖ⁺¹] and round it to the
-    // nearest integer to get the significand.
-    let mut sh = SIGNIFICAND_BITS;
+    // Shift the number so that it's in range [2ᵖ..2ᵖ⁺¹) (or [2ᵖ⁻¹..2ᵖ) if
+    // bin_exp = Eₘᵢₙ - 1) and round it to the nearest integer to get the
+    // significand.
+    let mut sh = SIGNIFICAND_BITS - (bin_exp == MIN_BIN_EXP) as u32;
     while sh > 0 {
         let n = min(sh, Decimal::MAX_SHIFT);
         sh -= n;
@@ -90,7 +110,7 @@ pub(super) fn f256_exact(s: &str) -> f256 {
         significand = dec.round();
     }
 
-    debug_assert!(bin_exp >= EMIN);
+    debug_assert!(bin_exp >= MIN_BIN_EXP);
     debug_assert!(bin_exp <= EMAX);
     let biased_exponent = (EXP_BIAS as i32 + bin_exp) as u32;
     f256::new(significand, biased_exponent, dec.sign)

@@ -7,55 +7,76 @@
 // $Source$
 // $Revision$
 
+use super::fast_approx::fast_approx;
 use crate::{
-    f256, u256, FIVE, HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK,
-    HI_SIGN_SHIFT,
+    f256, from_str::slow_exact::f256_exact, u256, FIVE, HI_FRACTION_BIAS,
+    HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_SHIFT,
 };
 
 const MAX_SIGNIF_HI: u128 = HI_FRACTION_BIAS + HI_FRACTION_MASK;
-const MAX_ABS_EXP: u32 = 102;
+const MAX_EXP10: u32 = 102;
 
-/// Try to create a correctly rounded `f256` from a canonical decimal
-/// representation.
-pub(super) fn try_fast_exact(s: u32, w: u256, k: i32) -> Option<f256> {
+/// Create a correctly rounded `f256` from a canonical decimal representation.
+pub(super) fn fast_exact(
+    lit: &str,
+    sign: u32,
+    exp10: i32,
+    mut signif10: u256,
+    signif_truncated: bool,
+) -> f256 {
     // We have a number with a canonical decimal representation (-1)ˢ × w × 10ᵏ,
     // where s ∈ {0, 1}, 0 < w < 2²⁵⁶ and |k| <= 78913.
     // We need to transform it into (-1)ˢ × (1 + m × 2¹⁻ᵖ) × 2ᵉ,
-    // where p = 237, Eₘᵢₙ <= e - Eₘₐₓ <= Eₘₐₓ and 0 < m < 2ᵖ⁻¹.
-    //
+    // where p = 237, Eₘᵢₙ <= e <= Eₘₐₓ and 0 < m < 2ᵖ⁻¹.
+    debug_assert!(sign == 0 || sign == 1);
+    debug_assert!(!signif10.is_zero());
+
     // Under the conditions w < 2²³⁷ and |k| <= 102 we apply the following:
-    // w < 2ᵖ => w is exactly representable as a f256 value w'.
+    // w < 2ᵖ => w is exactly representable as a f256 value x.
     // w × 10ᵏ = w × 5ᵏ × 2ᵏ.
-    // |k| <= 102 => 5ᵏ < 2²³⁷ => 5ᵏ is exactly representable as a f256 value v.
-    // Calculating w × 5ᵏ as w' × v (if k >= 0) or as w' / v (if k < 0) gives a
+    // |k| <= 102 => 5ᵏ < 2²³⁷ => 5ᵏ is exactly representable as a f256 value y.
+    // Calculating w × 5ᵏ as x × y (if k >= 0) or as x / y (if k < 0) gives a
     // correctly rounded result (1 + m × 2¹⁻ᵖ) × 2ᵗ.
     // Finally, setting e = t + k and setting the sign gives the required
     // result.
-    debug_assert!(s == 0 || s == 1);
-    debug_assert!(!w.is_zero());
-    let k_abs = k.unsigned_abs();
-    if w.hi <= MAX_SIGNIF_HI && k_abs <= MAX_ABS_EXP {
-        let w_dash = f256::from_u256(&w);
-        let v = POWERS_OF_FIVE[k_abs as usize];
-        let mut z: f256;
-        if k < 0 {
-            z = w_dash / v;
+    let exp10_abs = exp10.unsigned_abs();
+    if signif10.hi <= MAX_SIGNIF_HI && exp10_abs <= MAX_EXP10 {
+        let x = f256::from_u256(&signif10);
+        let y = POWERS_OF_FIVE[exp10_abs as usize];
+        let mut f: f256;
+        if exp10 < 0 {
+            f = x / y;
             // e = t + k
-            z.bits.hi -= ((k_abs as u128) << HI_FRACTION_BITS);
+            f.bits.hi -= ((exp10_abs as u128) << HI_FRACTION_BITS);
         } else {
-            z = w_dash * v;
+            f = x * y;
             // e = t + k
-            z.bits.hi += ((k_abs as u128) << HI_FRACTION_BITS);
+            f.bits.hi += ((exp10_abs as u128) << HI_FRACTION_BITS);
         };
-        z.bits.hi |= (s as u128) << HI_SIGN_SHIFT;
-        Some(z)
-    } else {
-        None
+        f.bits.hi |= (sign as u128) << HI_SIGN_SHIFT;
+        if signif_truncated {
+            // The real significand w' has been truncated, so f may be less than
+            // the correctly rounded result f'. But
+            // w < w' < w+1 => f <= f' <= f"
+            // where f" is the transformation of (-1)ˢ × (w+1) × 10ᵏ.
+            // If f = f" then f = f'.
+            let mut signif10_incr = signif10;
+            signif10_incr.incr();
+            if f == fast_exact(lit, sign, exp10, signif10_incr, false) {
+                return f;
+            }
+            // The approx algorithm will not give a different result here, so we
+            // fall back directly.
+            return f256_exact(lit);
+        } else {
+            return f;
+        }
     }
+    fast_approx(lit, sign, exp10, signif10, signif_truncated)
 }
 
 #[rustfmt::skip]
-const POWERS_OF_FIVE: [f256; (MAX_ABS_EXP + 1) as usize] = [
+const POWERS_OF_FIVE: [f256; (MAX_EXP10 + 1) as usize] = [
     f256::from_be_bytes([63, 255, 240, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     f256::from_be_bytes([64, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     f256::from_be_bytes([64, 0, 57, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),

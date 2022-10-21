@@ -12,16 +12,22 @@ mod common;
 mod fast_approx;
 mod fast_exact;
 mod float_repr;
+mod powers_of_five;
 mod slow_exact;
 
 use core::{convert::TryFrom, num::ParseFloatError, str::FromStr};
 
-use fast_approx::try_fast_approx;
-use fast_exact::try_fast_exact;
+use fast_exact::fast_exact;
 use float_repr::FloatRepr;
-use slow_exact::f256_exact;
 
-use crate::{f256, u256, HI_FRACTION_BIAS, MIN_GT_ZERO_10_EXP};
+use crate::{
+    f256, from_str::slow_exact::f256_exact, u256, HI_FRACTION_BIAS,
+    MIN_GT_ZERO_10_EXP,
+};
+
+/// Minimum possible subnormal power of 10 exponent - adjustment of significand:
+/// ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉.
+pub(self) const MIN_10_EXP_CUTOFF: i32 = -79056;
 
 // The internals of ParseFloatError are not public. The following hack is used
 // to return the same errors as f64.
@@ -31,6 +37,19 @@ fn err(empty: bool) -> ParseFloatError {
     } else {
         f64::from_str("_").unwrap_err()
     }
+}
+
+#[inline]
+fn calc_normal_f256(
+    lit: &str,
+    sign: u32,
+    exp10: i32,
+    signif10: u256,
+    signif_truncated: bool,
+) -> f256 {
+    // The transformation of the decimal representation is implemented as a
+    // sequence of faster to slower algorithms, chained together by tail calls.
+    fast_exact(lit, sign, exp10, signif10, signif_truncated)
 }
 
 impl FromStr for f256 {
@@ -45,49 +64,46 @@ impl FromStr for f256 {
                 Ok([Self::INFINITY, Self::NEG_INFINITY][sign as usize])
             }
             FloatRepr::NUMBER(repr) => {
-                let s = repr.sign;
-                let w = repr.significand;
-                let k = repr.exponent;
-                // We have a number with a canonical representation
+                let sign = repr.sign;
+                let exp10 = repr.exponent;
+                let signif10 = repr.significand;
+                // We have a number f with a canonical representation
                 // (-1)ˢ × w × 10ᵏ, where s ∈ {0, 1}, |k| < 2³¹, w >= 0 and
-                // w < 2²⁵⁶ only if it has not been truncated, i.e.
+                // w < 2²⁵⁶ only if it has not been truncated, i.e. if
                 // repr.digit_limit_exceeded is false.
-                // We need to transform it into (-1)ˢ × (1 + m × 2¹⁻ᵖ) × 2ᵉ,
-                // where p = 237, Eₘᵢₙ <= e - Eₘₐₓ <= Eₘₐₓ and 0 < m < 2ᵖ⁻¹,
-                // or - if w = 0 or k < ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - into ±0,
-                // or - if k > ⌊(Eₘₐₓ + 1) × log₁₀(2)⌋ - into ±Infinity.
-                if w.is_zero() || k < MIN_GT_ZERO_10_EXP {
-                    return Ok([Self::ZERO, Self::NEG_ZERO][s as usize]);
+                // We need to transform f(s, w, k) it into one of
+                //  • f'(s, m, e) so that f' = (-1)ˢ × (1 + m × 2¹⁻ᵖ) × 2ᵉ and
+                //    f' ≈ f, where p = 237, Eₘᵢₙ <= e <= Eₘₐₓ and 0 < m < 2ᵖ⁻¹,
+                //  • f'(s, m, e) so that f' = (-1)ˢ × (m × 2¹⁻ᵖ) × 2⁻²⁶²¹⁴³
+                //    where p = 237, e < Eₘᵢₙ and 0 < m < 2ᵖ⁻¹,
+                //  • ±0 if w = 0 or e < Eₘᵢₙ + 1 - p,
+                //  • ±Infinity if e > Eₘₐₓ.
+
+                // k < ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉
+                // => e < Eₘᵢₙ + 1 - p
+                if signif10.is_zero() || exp10 < MIN_10_EXP_CUTOFF {
+                    return Ok([Self::ZERO, Self::NEG_ZERO][sign as usize]);
                 }
-                if k > Self::MAX_10_EXP {
-                    return Ok([Self::INFINITY, Self::NEG_INFINITY][s as usize]);
+                // k > ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉ and
+                // k < ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋
+                // => e < Eₘᵢₙ
+                if exp10 < MIN_GT_ZERO_10_EXP {
+                    // Subnormals are not handled by the fast algorithms.
+                    return Ok(f256_exact(lit));
                 }
-                if let Some(f) = try_fast_exact(s, w, k) {
-                    if !repr.digit_limit_exceeded {
-                        return Ok(f);
-                    } else {
-                        // The real significand w' has been truncated, so f may
-                        // by less than the correctly rounded result f'. But
-                        // w < w' < w+1 => f <= f' <= g where g is the
-                        // transformation of (-1)ˢ × (w+1) × 10ᵏ. If f = g
-                        // then f = f'.
-                        let mut wp1 = w;
-                        wp1.incr();
-                        if !wp1.is_zero() {
-                            // Otherwise wp1 overflowed!
-                            if let Some(g) = try_fast_exact(s, wp1, k) {
-                                if f == g {
-                                    return Ok(f);
-                                }
-                            }
-                        }
-                    }
+                // k > ⌊(Eₘₐₓ + 1) × log₁₀(2)⌋ => e > Eₘₐₓ
+                if exp10 > Self::MAX_10_EXP {
+                    return Ok(
+                        [Self::INFINITY, Self::NEG_INFINITY][sign as usize]
+                    );
                 }
-                if let Some(f) = try_fast_approx(s, w, k) {
-                    return Ok(f);
-                }
-                // The last resort must always succed!
-                Ok(f256_exact(lit))
+                Ok(calc_normal_f256(
+                    lit,
+                    sign,
+                    exp10,
+                    signif10,
+                    repr.signif_truncated,
+                ))
             }
         }
     }

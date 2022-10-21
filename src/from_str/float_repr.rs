@@ -23,7 +23,7 @@ fn eliminate_byte_from_chunk(k: u64, p: u32) -> u64 {
             // bytes right from byte p
             (k & (u64::MAX >> (8 * (p + 1))))
                 // bytes left from byte p
-                | ((k & (u64::MAX << 8 * (8 - p))) >> 8)
+                | ((k & (u64::MAX << (8 * (8 - p)))) >> 8)
         }
         _ => k >> 8,
     }
@@ -35,9 +35,9 @@ fn eliminate_byte_from_chunk(k: u64, p: u32) -> u64 {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(super) struct DecNumRepr {
     pub(super) sign: u32,
-    pub(super) significand: u256,
     pub(super) exponent: i32,
-    pub(super) digit_limit_exceeded: bool,
+    pub(super) significand: u256,
+    pub(super) signif_truncated: bool,
 }
 
 // Records the final parsing result.
@@ -293,7 +293,7 @@ impl FloatRepr {
         }
         let n_trucated_digits =
             n_digits.saturating_sub(PartialSignif::MAX_N_DIGITS);
-        let digit_limit_exceeded = n_trucated_digits > 0;
+        let signif_truncated = n_trucated_digits > 0;
 
         // Get normalized significand and adjust exponent
         let n_trailing_zeroes = partial_signif.normalize() + n_trucated_digits;
@@ -303,9 +303,9 @@ impl FloatRepr {
         let significand = partial_signif.significand();
         Self::NUMBER(DecNumRepr {
             sign,
-            significand,
             exponent,
-            digit_limit_exceeded,
+            significand,
+            signif_truncated,
         })
     }
 }
@@ -332,7 +332,7 @@ mod tests {
                 sign: 1,
                 significand: u256::new(0, 1),
                 exponent: -17,
-                digit_limit_exceeded: false
+                signif_truncated: false
             })
         );
     }
@@ -349,7 +349,7 @@ mod tests {
                 sign: 1,
                 significand: u256::new(0, 762939453125),
                 exponent: -17,
-                digit_limit_exceeded: false
+                signif_truncated: false
             })
         );
     }

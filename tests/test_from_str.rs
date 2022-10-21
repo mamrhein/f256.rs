@@ -65,14 +65,14 @@ mod from_str_tests {
 
     #[test]
     fn test_exp_underflow() {
-        let f = f256::from_str("12.5E-78983").unwrap();
+        let f = f256::from_str("10.5E-78985").unwrap();
         assert_eq!(f, f256::ZERO);
-        let f = f256::from_str("-12.5E-78983").unwrap();
+        let f = f256::from_str("-1.1005E-78984").unwrap();
         assert_eq!(f, f256::ZERO);
     }
 
     #[test]
-    fn test_normal_fast_path() {
+    fn test_normal_fast_exact() {
         let f = f256::from_str("17.625").unwrap();
         assert_eq!(f.as_sign_exp_signif(), (0, -3, (0, 141)));
         let s =
@@ -109,18 +109,84 @@ mod from_str_tests {
     }
 
     #[test]
-    fn test_fast_path_max_digits_exceeded() {
+    fn test_fast_exact_max_digits_exceeded() {
         let mut s = "1.".to_string();
-        s.push_str(&*"0".repeat(93));
-        s.push('9');
+        s.push_str(&*"9".repeat(70));
+        s.push_str(&*"0".repeat(8));
+        s.push('2');
         let s = s.as_str();
         let f = f256::from_str(s).unwrap();
-        assert_eq!(f.as_sign_exp_signif(), (0, 0, (0, 1)));
+        assert_eq!(
+            f.as_sign_exp_signif(),
+            (
+                0,
+                -236,
+                (
+                    649037107316853453566312041152511,
+                    340282366920938463463374607431768211445
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn test_normal_fast_approx() {
+        let f = f256::from_str("17.69e107").unwrap();
+        assert_eq!(
+            f.as_sign_exp_signif(),
+            (
+                0,
+                123,
+                (
+                    488876229566786321353870606249405,
+                    6438732618457514668061927528358337931
+                )
+            )
+        );
+        let f = f256::from_str("109.04e-111").unwrap();
+        assert_eq!(
+            f.as_sign_exp_signif(),
+            (
+                0,
+                -596,
+                (
+                    83104360821888621315881191879064,
+                    58982733340686851635519409389570484615
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn test_fast_approx_max_digits_exceeded() {
+        let mut s = "1.".to_string();
+        s.push_str(&*"9".repeat(70));
+        s.push_str(&*"0".repeat(8));
+        s.push_str("2e-95");
+        let s = s.as_str();
+        let f = f256::from_str(s).unwrap();
+        assert_eq!(
+            f.as_sign_exp_signif(),
+            (
+                0,
+                -550,
+                (
+                    216614819853188660904563608136178,
+                    140989523720527938018691533154554017175
+                )
+            )
+        );
     }
 
     #[test]
     fn test_subnormal() {
-        // TODO
+        let s = "1.125e-78984";
+        let f = f256::from_str(s).unwrap();
+        assert_eq!(f, f256::MIN_GT_ZERO);
+        assert_eq!(f.as_sign_exp_signif(), (0, -262378, (0, 1)));
+        let s = "-5.625e-78983";
+        let f = f256::from_str(s).unwrap();
+        assert_eq!(f.as_sign_exp_signif(), (1, -262378, (0, 25)));
     }
 
     #[test]

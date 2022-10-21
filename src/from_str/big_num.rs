@@ -7,11 +7,11 @@
 // $Source$
 // $Revision$
 
-// Implementation of a high precision decimal number type supporting high
-// precision non-rounding shifts as decribed in
-// `Nigel Tao: ParseNumberF64 by Simple Decimal Conversion`
-// [https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html],
-// adopted for `f256`.
+/// Implementation of a high precision decimal number type supporting high
+/// precision non-rounding shifts as decribed in
+/// `Nigel Tao: ParseNumberF64 by Simple Decimal Conversion`
+/// [https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html],
+/// adopted for `f256`.
 use core::cmp::{min, Ordering};
 
 use crate::{f256, from_str::common::AsciiNumLit, u256};
