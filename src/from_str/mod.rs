@@ -19,11 +19,9 @@ use core::{convert::TryFrom, num::ParseFloatError, str::FromStr};
 
 use fast_exact::fast_exact;
 use float_repr::FloatRepr;
+use slow_exact::f256_exact;
 
-use crate::{
-    f256, from_str::slow_exact::f256_exact, u256, HI_FRACTION_BIAS,
-    MIN_GT_ZERO_10_EXP,
-};
+use crate::{f256, u256, HI_FRACTION_BIAS, MIN_GT_ZERO_10_EXP};
 
 /// Minimum possible subnormal power of 10 exponent - adjustment of significand:
 /// ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉.
@@ -115,5 +113,55 @@ impl TryFrom<&str> for f256 {
     #[inline]
     fn try_from(lit: &str) -> Result<Self, Self::Error> {
         Self::from_str(lit)
+    }
+}
+
+mod tests {
+    use super::{fast_approx::fast_approx, *};
+
+    fn cmp_algos(lit: &str) -> bool {
+        if let FloatRepr::NUMBER(repr) = FloatRepr::from_str(lit) {
+            let sign = repr.sign;
+            let exp10 = repr.exponent;
+            let signif10 = repr.significand;
+            let signif_truncated = repr.signif_truncated;
+            let fe = fast_exact(lit, sign, exp10, signif10, signif_truncated);
+            let fa = fast_approx(lit, sign, exp10, signif10, signif_truncated);
+            let fs = f256_exact(lit);
+            if fe != fa || fa != fs {
+                println!("> {}", lit);
+                println!("> {:?}", fe.decode());
+                println!("> {:?}", fa.decode());
+                println!("> {:?}", fs.decode());
+                return false;
+            }
+        }
+        true
+    }
+
+    #[test]
+    fn test_1() {
+        let lit = "+4970589695.\
+                   02834591566739131418985477099711133801877365304479497e-54";
+        assert!(cmp_algos(lit));
+    }
+
+    #[test]
+    fn test_2() {
+        let lit = ".923153707130498519861416615062846647251730131089915766587063647843239307e100";
+        assert!(cmp_algos(lit));
+    }
+
+    #[test]
+    fn test_3() {
+        let lit = "-097260229193297382461635949130642263176220.0e-63";
+        assert!(cmp_algos(lit));
+    }
+
+    #[test]
+    fn test_4() {
+        let lit = "-258163989229583650361874280907281656079733634034956654.\
+                   053563825162895329e18";
+        assert!(cmp_algos(lit));
     }
 }
