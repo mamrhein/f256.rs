@@ -89,7 +89,7 @@ impl PartialSignif {
             self.n_rem_digits = 8;
             self.n_chunks -= 1;
         }
-        while (self.rem % 10) == 0 {
+        while self.n_rem_digits > 0 && (self.rem % 10) == 0 {
             self.rem /= 10;
             self.n_rem_digits -= 1;
             n_trailing_zeroes += 1;
@@ -249,6 +249,8 @@ impl FloatRepr {
         if lit.is_empty() {
             return Self::INVALID;
         }
+        let start_pos = lit.len();
+
         lit.skip_leading_zeroes(true);
         if lit.is_empty() {
             // There must have been atleast one zero.
@@ -262,7 +264,7 @@ impl FloatRepr {
         if lit.state.invalid {
             return Self::INVALID;
         }
-        let (mut n_digits, mut n_frac_digits) =
+        let (n_signif_digits, n_frac_digits) =
             if let Some(pos) = lit.state.pos_radix_point {
                 (
                     lit.state.start_pos_signif
@@ -275,13 +277,15 @@ impl FloatRepr {
             } else {
                 (lit.state.start_pos_signif - lit.state.end_pos_signif, 0)
             };
-        if n_digits == 0 {
+
+        // If there are no digits, check for special values.
+        if start_pos == lit.len() {
             return FloatRepr::parse_special(&mut lit, sign);
         }
 
         // check for explicit exponent
         let mut exponent = match lit.parse_exponent() {
-            Some(exp) => exp,
+            Some(exp) => exp - n_frac_digits as i32,
             None => {
                 return Self::INVALID;
             }
@@ -292,14 +296,12 @@ impl FloatRepr {
             return Self::INVALID;
         }
         let n_trucated_digits =
-            n_digits.saturating_sub(PartialSignif::MAX_N_DIGITS);
+            n_signif_digits.saturating_sub(PartialSignif::MAX_N_DIGITS);
         let signif_truncated = n_trucated_digits > 0;
 
         // Get normalized significand and adjust exponent
         let n_trailing_zeroes = partial_signif.normalize() + n_trucated_digits;
-        n_digits -= n_trailing_zeroes;
-        n_frac_digits = n_frac_digits.saturating_sub(n_trailing_zeroes);
-        exponent = exponent.saturating_sub(n_frac_digits as i32);
+        exponent += n_trailing_zeroes as i32;
         let significand = partial_signif.significand();
         Self::NUMBER(DecNumRepr {
             sign,
@@ -322,6 +324,22 @@ mod tests {
     }
 
     #[test]
+    fn parse_digits_with_trailing_zeroes_before_dot() {
+        let s = "180000.0000000000000000000000000000000000000000000000000\
+            000000000000000000000000000000000000000000000000000000000000000000";
+        let r = FloatRepr::from_str(s);
+        assert_eq!(
+            r,
+            FloatRepr::NUMBER(DecNumRepr {
+                sign: 0,
+                exponent: 4,
+                significand: u256::new(0, 18),
+                signif_truncated: false
+            })
+        );
+    }
+
+    #[test]
     fn parse_frac_only_with_trailing_zeroes() {
         let s = "-.000000000000000010000000000000000000000000000000000000\
             00000000000000000000000000000000000000000000000000000000000000000";
@@ -330,8 +348,8 @@ mod tests {
             r,
             FloatRepr::NUMBER(DecNumRepr {
                 sign: 1,
-                significand: u256::new(0, 1),
                 exponent: -17,
+                significand: u256::new(0, 1),
                 signif_truncated: false
             })
         );

@@ -39,8 +39,8 @@ pub(super) fn fast_approx(
     let exp10_abs = exp10.unsigned_abs();
     if exp10_abs <= MAX_ABS_EXP {
         // Adjust significand to be in range [2²⁵⁵..2²⁵⁶).
-        let nlz = signif10.leading_zeros();
-        signif10 <<= nlz;
+        let signif10_nlz = signif10.leading_zeros();
+        signif10 <<= signif10_nlz;
         // Compute w' * T[k]
         let (p5hi, p5mi, p5lo, mut exp2) = get_power_of_five(exp10);
         let mut signif2 = u256_truncating_mul(signif10, u256::new(p5hi, p5mi));
@@ -48,9 +48,10 @@ pub(super) fn fast_approx(
         // atmost one leading zero. We have to shift the highest bit to the
         // position of the hidden bit, i.e. by EXP_BITS - number of leading
         // zeroes and round the significand correctly.
-        let mut shift = EXP_BITS - signif2.leading_zeros();
+        let signif2_nlz = signif2.leading_zeros();
+        let mut shift = EXP_BITS - signif2_nlz;
         let mask = (1_u128 << shift) - 1;
-        let tie = mask >> 1;
+        let tie = 1_u128 << (shift - 1);
         let fract = signif2.lo & mask;
         signif2 >>= shift;
         // Check rounding condition.
@@ -83,13 +84,13 @@ pub(super) fn fast_approx(
         if let Some(up) = round_up {
             if up {
                 signif2.incr();
-                if signif2.hi >= HI_FRACTION_BIAS << 1 {
+                if signif2.hi >= (HI_FRACTION_BIAS << 1) {
                     // Rounding overflowed, need to shift back.
                     signif2 >>= 1;
                     exp2 += 1;
                 }
             }
-            exp2 += 256 - nlz as i32 + exp10;
+            exp2 += 256 - signif10_nlz as i32 - signif2_nlz as i32 + exp10;
             if exp2 > EMAX {
                 return [f256::INFINITY, f256::NEG_INFINITY][sign as usize];
             }

@@ -482,7 +482,7 @@ impl Decimal {
         for i in 0..dp {
             n.imul10_add(self.digits[i])
         }
-        if self.digits[dp] >= 5
+        if self.digits[dp] > 5
             || self.digits[dp] == 5
                 && (dp < self.n_digits - 1 || self.truncated)
         {
