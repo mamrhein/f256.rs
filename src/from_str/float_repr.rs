@@ -209,6 +209,13 @@ impl FloatRepr {
         while let Some(c) = lit.first() {
             if *c >= b'1' && *c <= b'9' {
                 n_non_zero_digits += 1;
+            } else if *c == b'.' {
+                if let Some(_) = lit.state.pos_radix_point {
+                    // Double radix point
+                    lit.state.invalid = true;
+                    return partial_signif;
+                }
+                lit.state.pos_radix_point = Some(lit.len());
             } else if *c != b'0' {
                 break;
             }
