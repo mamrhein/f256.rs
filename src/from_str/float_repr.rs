@@ -8,6 +8,7 @@
 // $Revision$
 
 use core::{cmp::max, fmt::Display};
+use std::cmp::min;
 
 use super::common::{
     chunk_contains_7_digits_and_a_dot_at, chunk_contains_8_digits,
@@ -225,7 +226,7 @@ impl FloatRepr {
             }
         }
         if n_non_zero_digits > 0 {
-            lit.state.end_pos_signif = lit.len();
+            lit.state.signif_truncated = true;
         }
         partial_signif
     }
@@ -271,28 +272,20 @@ impl FloatRepr {
         if lit.state.invalid {
             return Self::INVALID;
         }
-        let (n_signif_digits, n_frac_digits) =
-            if let Some(pos) = lit.state.pos_radix_point {
-                (
-                    lit.state.start_pos_signif
-                        - lit.state.end_pos_signif
-                        - (pos < lit.state.start_pos_signif
-                            && pos > lit.state.end_pos_signif)
-                            as usize,
-                    pos - 1 - lit.state.end_pos_signif,
-                )
-            } else {
-                (lit.state.start_pos_signif - lit.state.end_pos_signif, 0)
-            };
 
         // If there are no digits, check for special values.
         if start_pos == lit.len() {
             return FloatRepr::parse_special(&mut lit, sign);
         }
 
-        // check for explicit exponent
+        // Set implicit radix point if no one was detected.
+        if lit.state.pos_radix_point.is_none() {
+            lit.state.pos_radix_point = Some(lit.len());
+        }
+
+        // Check for explicit exponent
         let mut exponent = match lit.parse_exponent() {
-            Some(exp) => exp - n_frac_digits as i32,
+            Some(exp) => exp,
             None => {
                 return Self::INVALID;
             }
@@ -302,19 +295,29 @@ impl FloatRepr {
         if !lit.is_empty() {
             return Self::INVALID;
         }
-        let n_trucated_digits =
-            n_signif_digits.saturating_sub(PartialSignif::MAX_N_DIGITS);
-        let signif_truncated = n_trucated_digits > 0;
+
+        // Adjust exponent by truncated integer digits and fractional digits.
+        let pos_radix_point =
+            // Can't be None here.
+            lit.state.pos_radix_point.unwrap();
+        let n_int_digits =
+            lit.state.start_pos_signif.saturating_sub(pos_radix_point);
+        let n_truncated_int_digits =
+            n_int_digits.saturating_sub(PartialSignif::MAX_N_DIGITS);
+        exponent += n_truncated_int_digits as i32;
+        let n_frac_digits =
+            pos_radix_point.saturating_sub(lit.state.end_pos_signif + 1);
+        exponent -= n_frac_digits as i32;
 
         // Get normalized significand and adjust exponent
-        let n_trailing_zeroes = partial_signif.normalize() + n_trucated_digits;
+        let n_trailing_zeroes = partial_signif.normalize();
         exponent += n_trailing_zeroes as i32;
         let significand = partial_signif.significand();
         Self::NUMBER(DecNumRepr {
             sign,
             exponent,
             significand,
-            signif_truncated,
+            signif_truncated: lit.state.signif_truncated,
         })
     }
 }
@@ -374,6 +377,41 @@ mod tests {
                 sign: 1,
                 significand: u256::new(0, 762939453125),
                 exponent: -17,
+                signif_truncated: false
+            })
+        );
+    }
+
+    #[test]
+    fn parse_digits_with_more_than_77_int_digits() {
+        let s = "-1000000000000000000000000000000000000000000000000000000\
+            000000000000000000000000000000000000000000000000000000000000.0e-06";
+        let r = FloatRepr::from_str(s);
+        assert_eq!(
+            r,
+            FloatRepr::NUMBER(DecNumRepr {
+                sign: 1,
+                significand: u256::new(0, 1),
+                exponent: 108,
+                signif_truncated: false
+            })
+        );
+    }
+
+    #[test]
+    fn test_large_signif_large_neg_exp() {
+        let s = "-441.249009748590979791323783709646682894752724672748600\
+                542581589000e-78928";
+        let r = FloatRepr::from_str(s);
+        assert_eq!(
+            r,
+            FloatRepr::NUMBER(DecNumRepr {
+                sign: 1,
+                significand: u256::new(
+                    1296714295663492914563767,
+                    83422945940683308502053253308490666837
+                ),
+                exponent: -78988,
                 signif_truncated: false
             })
         );

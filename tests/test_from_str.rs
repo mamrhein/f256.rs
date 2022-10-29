@@ -68,7 +68,7 @@ mod from_str_tests {
     fn test_exp_underflow() {
         let f = f256::from_str("10.5E-78985").unwrap();
         assert_eq!(f, f256::ZERO);
-        let f = f256::from_str("-1.1005E-78984").unwrap();
+        let f = f256::from_str("-0.001e-78981").unwrap();
         assert_eq!(f, f256::ZERO);
     }
 
@@ -221,14 +221,66 @@ mod from_str_tests {
     }
 
     #[test]
+    fn test_slow_exact() {
+        let s = "+6693707603597347117297158868310984450882752298764236217\
+                5927640154509878799559.0e874";
+        let f = f256::from_str(s).unwrap();
+        assert_eq!(
+            f.as_sign_exp_signif(),
+            (
+                0,
+                2926,
+                (
+                    30203688295486241190210752268742,
+                    58986786656108783719011333115234100195
+                )
+            )
+        );
+    }
+
+    #[test]
     fn test_subnormal() {
-        let s = "1.125e-78984";
+        let s = "0145441.249009748590979791323783709646682894752724672748\
+                600542581589e-78928";
         let f = f256::from_str(s).unwrap();
-        assert_eq!(f, f256::MIN_GT_ZERO);
-        assert_eq!(f.as_sign_exp_signif(), (0, -262378, (0, 1)));
-        let s = "-5.625e-78983";
+        assert_eq!(
+            f.as_sign_exp_signif(),
+            (
+                0,
+                -262377,
+                (
+                    9506496199230481144411,
+                    183478489063339905949211997661958933079
+                )
+            )
+        );
+        let s = "-0.9818036132127703363504450836394764653184121e-78913";
         let f = f256::from_str(s).unwrap();
-        assert_eq!(f.as_sign_exp_signif(), (1, -262378, (0, 25)));
+        assert_eq!(
+            f.as_sign_exp_signif(),
+            (
+                1,
+                -262378,
+                (
+                    128347527004149295075436743924545,
+                    200698461692417807477600193256349332369
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn test_subnormal_near_zero() {
+        // let s = "1.125e-78984";
+        // let f = f256::from_str(s).unwrap();
+        // assert_eq!(f, f256::MIN_GT_ZERO);
+        // assert_eq!(f.as_sign_exp_signif(), (0, -262378, (0, 1)));
+        // let s = "-5.625e-78983";
+        // let f = f256::from_str(s).unwrap();
+        // assert_eq!(f.as_sign_exp_signif(), (1, -262378, (0, 25)));
+        let s = "-021.75e-78985";
+        let f = f256::from_str(s).unwrap();
+        assert_eq!(f.as_sign_exp_signif(), (1, -262378, (0, 1)));
     }
 
     #[test]

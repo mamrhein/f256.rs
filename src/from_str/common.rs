@@ -76,6 +76,7 @@ pub fn chunk_to_u64(mut chunk: u64) -> u64 {
 pub(super) struct ParsingState {
     pub(super) start_pos_signif: usize,
     pub(super) end_pos_signif: usize,
+    pub(super) signif_truncated: bool,
     pub(super) pos_radix_point: Option<usize>,
     pub(super) invalid: bool,
 }

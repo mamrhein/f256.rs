@@ -14,7 +14,10 @@
 use core::cmp::min;
 
 use super::big_num::Decimal;
-use crate::{f256, EMAX, EMIN, EXP_BIAS, HI_FRACTION_BIAS, SIGNIFICAND_BITS};
+use crate::{
+    f256, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_FRACTION_BIAS,
+    SIGNIFICAND_BITS,
+};
 
 /// Create a correctly rounded `f256` from a valid decimal number literal.
 pub(super) fn f256_exact(s: &str) -> f256 {
@@ -75,12 +78,8 @@ pub(super) fn f256_exact(s: &str) -> f256 {
     bin_exp -= 1;
 
     // If the exponent is too small, right-shift digits and adjust exponent.
-    const MIN_BIN_EXP: i32 = EMIN - 1;
-    while bin_exp < MIN_BIN_EXP {
-        let n = min(
-            (MIN_BIN_EXP - bin_exp) as usize,
-            Decimal::MAX_SHIFT as usize,
-        );
+    while bin_exp < EMIN {
+        let n = min((EMIN - bin_exp) as usize, Decimal::MAX_SHIFT as usize);
         dec.right_shift(n as u32);
         bin_exp += n as i32;
     }
@@ -91,9 +90,9 @@ pub(super) fn f256_exact(s: &str) -> f256 {
     }
 
     // Shift the number so that it's in range [2ᵖ..2ᵖ⁺¹) (or [2ᵖ⁻¹..2ᵖ) if
-    // bin_exp = Eₘᵢₙ - 1) and round it to the nearest integer to get the
+    // it's subnormal) and round it to the nearest integer to get the
     // significand.
-    let mut sh = SIGNIFICAND_BITS - (bin_exp == MIN_BIN_EXP) as u32;
+    let mut sh = SIGNIFICAND_BITS;
     while sh > 0 {
         let n = min(sh, Decimal::MAX_SHIFT);
         sh -= n;
@@ -109,8 +108,15 @@ pub(super) fn f256_exact(s: &str) -> f256 {
         }
         significand = dec.round();
     }
+    // Adjust exponent if number is subnormal.
+    if significand.hi < HI_FRACTION_BIAS {
+        bin_exp -= 1;
+    }
+    if significand.is_zero() {
+        return [f256::ZERO, f256::NEG_ZERO][dec.sign as usize];
+    }
 
-    debug_assert!(bin_exp >= MIN_BIN_EXP);
+    debug_assert!(bin_exp >= -EMAX);
     debug_assert!(bin_exp <= EMAX);
     let biased_exponent = (EXP_BIAS as i32 + bin_exp) as u32;
     f256::new(significand, biased_exponent, dec.sign)
