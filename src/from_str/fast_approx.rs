@@ -42,8 +42,8 @@ pub(super) fn fast_approx(
         let signif10_nlz = signif10.leading_zeros();
         signif10 <<= signif10_nlz;
         // Compute w' * T[k]
-        let (p5hi, p5mi, p5lo, mut exp2) = get_power_of_five(exp10);
-        let mut signif2 = u256_truncating_mul(signif10, u256::new(p5hi, p5mi));
+        let (p5hi, p5lo, mut exp2) = get_power_of_five(exp10);
+        let mut signif2 = u256_truncating_mul(signif10, u256::new(p5hi, p5lo));
         // As both multiplicands have their highest bit set, the result has
         // atmost one leading zero. We have to shift the highest bit to the
         // position of the hidden bit, i.e. by EXP_BITS - number of leading
@@ -74,7 +74,7 @@ pub(super) fn fast_approx(
                 // Check edge cases.
                 // If 5ᵏ ∈ [1..2²⁵⁶) we can be sure to have a tie, otherwise we
                 // have "a tie and a little bit more".
-                if p5lo == 0 {
+                if exp10 >= 0 && exp10 <= 110 {
                     Some((signif2.lo & 1) == 1)
                 } else {
                     Some(true)
