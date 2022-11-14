@@ -69,9 +69,10 @@ mod binops;
 mod from_float;
 mod from_int;
 mod from_str;
+mod to_str;
 mod uint256;
 
-use crate::uint256::u256;
+use crate::uint256::{u256, u512};
 
 /// Precision level in relation to single precision float (f32) = 8
 pub(crate) const PREC_LEVEL: u32 = 8;

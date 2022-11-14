@@ -4,8 +4,8 @@
 //              details please read the file LICENSE.TXT provided together
 //              with the application.
 // ---------------------------------------------------------------------------
-// $Source: src/from_str/powers_of_five.rs $
-// $Revision: 2022-10-21T14:02:15+02:00 $
+// $Source$
+// $Revision$
 
 pub(super) const MAX_ABS_EXP: u32 = 1024;
 

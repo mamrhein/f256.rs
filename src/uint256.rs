@@ -9,8 +9,12 @@
 
 use core::{
     cmp::Ordering,
+    fmt,
     mem::size_of,
-    ops::{AddAssign, MulAssign, Shl, ShlAssign, Shr, ShrAssign, SubAssign},
+    ops::{
+        Add, AddAssign, MulAssign, Rem, Shl, ShlAssign, Shr, ShrAssign, Sub,
+        SubAssign,
+    },
 };
 
 #[inline(always)]
@@ -54,6 +58,29 @@ pub(crate) fn u256_truncating_mul(x: u256, y: u256) -> u256 {
     r += c;
     r
 }
+
+// Calculate ⌊(x * y) / 2⁵¹²⌋.
+pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
+    let mut t = u256::new(0, u128_widening_mul(x.lo, y.3).hi);
+    t += &u128_widening_mul(x.hi, y.3);
+    let mut u = u128_widening_mul(x.lo, y.2);
+    t += &u;
+    t = u256::new((t < u) as u128, t.hi);
+    t += &u128_widening_mul(x.hi, y.2);
+    u = u128_widening_mul(x.lo, y.1);
+    t += &u;
+    t = u256::new((t < u) as u128, t.hi);
+    t += &u128_widening_mul(x.hi, y.1);
+    u = u128_widening_mul(x.lo, y.0);
+    t += &u;
+    t = u256::new((t < u) as u128, t.hi);
+    t += &u128_widening_mul(x.hi, y.0);
+    t
+}
+
+/// Helper type representing unsigned integers of 512 bits.
+#[allow(non_camel_case_types)]
+pub(crate) type u512 = (u128, u128, u128, u128);
 
 /// Helper type representing unsigned integers of 256 bits.
 #[allow(non_camel_case_types)]
@@ -117,6 +144,13 @@ impl u256 {
         self.hi = self.hi.wrapping_add((self.lo == 0) as u128);
     }
 
+    /// Subtract 1 from `self` inplace.
+    #[inline]
+    pub(crate) fn decr(&mut self) {
+        self.hi = self.hi.wrapping_sub((self.lo == 0) as u128);
+        self.lo = self.lo.wrapping_sub(1);
+    }
+
     /// Multiply by 10 and add decimal digit (inplace).
     pub(crate) fn imul10_add(&mut self, d: u8) {
         debug_assert!(
@@ -164,6 +198,21 @@ impl u256 {
                 self.incr();
             }
         }
+    }
+
+    /// Returns `self` / 10ⁿ, `self` % 10ⁿ
+    pub(crate) fn divmod_pow10(&self, n: u32) -> (Self, u64) {
+        debug_assert!(n <= 19);
+        let d = 10_u128.pow(n);
+        let rh = self.hi / d;
+        let mut t = self.hi % d;
+        t = (t << 64) + (self.lo >> 64);
+        let rlh = t / d;
+        t %= d;
+        t = (t << 64) + (self.lo & u64::MAX as u128);
+        let rll = t / d;
+        t %= d;
+        (u256::new(rh, (rlh << 64) + rll), t as u64)
     }
 
     #[cfg(target_endian = "big")]
@@ -231,15 +280,46 @@ impl u256 {
     }
 }
 
+impl Add<&Self> for u256 {
+    type Output = Self;
+
+    fn add(self, rhs: &Self) -> Self::Output {
+        // TODO: change when [feature(bigint_helper_methods)] got stable
+        // let (lo, carry) = self.lo.carrying_add(rhs.lo, false);
+        // let (hi, _) = self.hi.carrying_add(rhs.hi, carry);
+        let lo = self.lo.wrapping_add(rhs.lo);
+        let hi = self
+            .hi
+            .wrapping_add(rhs.hi)
+            .wrapping_add((lo < rhs.lo) as u128);
+        Self { hi, lo }
+    }
+}
+
+impl Add<u32> for u256 {
+    type Output = Self;
+
+    fn add(self, rhs: u32) -> Self::Output {
+        // TODO: change when [feature(bigint_helper_methods)] got stable
+        // let (lo, carry) = self.lo.carrying_add(rhs, false);
+        // let hi = self.hi.wrapping_add(carry);
+        let lo = self.lo.wrapping_add(rhs as u128);
+        let hi = self.hi.wrapping_add((lo < self.lo) as u128);
+        Self { hi, lo }
+    }
+}
+
 impl AddAssign<&Self> for u256 {
     fn add_assign(&mut self, rhs: &Self) {
         // TODO: change when [feature(bigint_helper_methods)] got stable
         // let mut carry = false;
-        // (self.lo, carry) = self.lo.carrying_add(other.lo, carry);
-        // (self.hi, carry) = self.hi.carrying_add(other.lo, carry);
+        // (self.lo, carry) = self.lo.carrying_add(rhs.lo, carry);
+        // (self.hi, carry) = self.hi.carrying_add(rhs.hi, carry);
         self.lo = self.lo.wrapping_add(rhs.lo);
-        self.hi = self.hi.wrapping_add((self.lo < rhs.lo) as u128);
-        self.hi = self.hi.wrapping_add(rhs.hi);
+        self.hi = self
+            .hi
+            .wrapping_add(rhs.hi)
+            .wrapping_add((self.lo < rhs.lo) as u128);
     }
 }
 
@@ -247,6 +327,35 @@ impl AddAssign<u128> for u256 {
     fn add_assign(&mut self, rhs: u128) {
         self.lo = self.lo.wrapping_add(rhs);
         self.hi = self.hi.wrapping_add((self.lo < rhs) as u128);
+    }
+}
+
+impl Sub<&Self> for u256 {
+    type Output = Self;
+
+    fn sub(self, rhs: &Self) -> Self::Output {
+        // TODO: change when [feature(bigint_helper_methods)] got stable
+        // let (lo, borrow) = self.lo.borrowing_sub(rhs.lo, false);
+        // let (hi, _) = self.hi.borrowing_sub(rhs.hi, borrow);
+        let lo = self.lo.wrapping_sub(rhs.lo);
+        let hi = self
+            .hi
+            .wrapping_sub(rhs.hi)
+            .wrapping_sub((lo > self.lo) as u128);
+        Self { hi, lo }
+    }
+}
+
+impl Sub<u32> for u256 {
+    type Output = Self;
+
+    fn sub(self, rhs: u32) -> Self::Output {
+        // TODO: change when [feature(bigint_helper_methods)] got stable
+        // let (lo, borrow) = self.lo.borrowing_add(rhs, false);
+        // let hi = self.hi.wrapping_add(borrow);
+        let lo = self.lo.wrapping_sub(rhs as u128);
+        let hi = self.hi.wrapping_sub((lo > self.lo) as u128);
+        Self { hi, lo }
     }
 }
 
@@ -279,6 +388,24 @@ impl MulAssign<u128> for u256 {
         self.lo = tl.lo;
         let th = u128_widening_mul(self.hi, rhs);
         self.hi = th.lo.wrapping_add(tl.hi);
+    }
+}
+
+impl Rem<u32> for u256 {
+    type Output = u32;
+
+    #[inline]
+    fn rem(self, rhs: u32) -> Self::Output {
+        ((self.hi % rhs as u128) + (self.lo % rhs as u128) % rhs as u128) as u32
+    }
+}
+
+impl Rem<u128> for u256 {
+    type Output = u128;
+
+    #[inline]
+    fn rem(self, rhs: u128) -> Self::Output {
+        (self.hi % rhs) + (self.lo % rhs) % rhs
     }
 }
 
@@ -357,6 +484,134 @@ impl ShrAssign<u32> for u256 {
             0 => {}
             _ => unreachable!(),
         }
+    }
+}
+
+impl fmt::Display for u256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        const MAX_N_DIGITS: usize = 78;
+        const SEGMENT_SIZE: u64 = 18;
+        const SEGMENT_BASE: u64 = 1_000_000_000_000_000_000;
+        if self.hi == 0 {
+            return fmt::Display::fmt(&self.lo, f);
+        }
+        let mut segments: [u64; 5] = [0, 0, 0, 0, 0];
+        let mut t = *self;
+        let mut r = 0_u64;
+        let mut idx = 0;
+        while !t.is_zero() {
+            (t, r) = t.divmod_pow10(18);
+            segments[idx] = r;
+            idx += 1;
+        }
+        idx -= 1;
+        write!(f, "{}", segments[idx]);
+        while idx > 0 {
+            idx -= 1;
+            write!(f, "{:018}", segments[idx]);
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod u256_divmod_pow10_tests {
+    use super::*;
+
+    #[test]
+    fn test_divmod10() {
+        let v = u256::ZERO;
+        assert_eq!(v.divmod_pow10(1), (u256::ZERO, 0));
+        let v = u256::new(0, 7);
+        assert_eq!(v.divmod_pow10(1), (u256::ZERO, 7));
+        let v = u256::MAX;
+        assert_eq!(
+            v.divmod_pow10(1),
+            (
+                u256::new(
+                    34028236692093846346337460743176821145,
+                    204169420152563078078024764459060926873
+                ),
+                5
+            )
+        );
+    }
+
+    #[test]
+    fn test_divmod_pow10() {
+        let v = u256::ZERO;
+        assert_eq!(v.divmod_pow10(10), (u256::ZERO, 0));
+        let v = u256::new(0, 700003);
+        assert_eq!(v.divmod_pow10(5), (u256::new(0, 7), 3));
+        let v = u256::new(0, u128::MAX);
+        assert_eq!(
+            v.divmod_pow10(18),
+            (
+                u256::new(0, u128::MAX / 10_u128.pow(18)),
+                (u128::MAX % 10_u128.pow(18)) as u64
+            )
+        );
+        let v = u256::MAX;
+        assert_eq!(
+            v.divmod_pow10(18),
+            (
+                u256::new(
+                    340282366920938463463,
+                    127472303548260950450562498184250007329
+                ),
+                584007913129639935
+            )
+        );
+    }
+}
+
+#[cfg(test)]
+mod u256_to_str_tests {
+    use super::*;
+
+    #[test]
+    fn test_zero() {
+        let v = u256::ZERO;
+        assert_eq!(v.to_string(), "0")
+    }
+
+    #[test]
+    fn test_max() {
+        let v = u256::MAX;
+        assert_eq!(
+            v.to_string(),
+            "115792089237316195423570985008687907853269984665640564039457584007\
+             913129639935"
+        )
+    }
+}
+
+#[cfg(test)]
+mod u256_wrapping_mul_u512_tests {
+    use super::*;
+
+    #[test]
+    fn test_max() {
+        let x = u256::MAX;
+        let y: u512 = (u128::MAX, u128::MAX, u128::MAX, u128::MAX);
+        let z = u256_truncating_mul_u512(&x, &y);
+        assert_eq!(z, u256::new(u128::MAX, u128::MAX - 1));
+    }
+
+    #[test]
+    fn test_one_times_max() {
+        let x = u256::new(0, 1);
+        let y: u512 = (u128::MAX, u128::MAX, u128::MAX, u128::MAX);
+        let z = u256_truncating_mul_u512(&x, &y);
+        assert_eq!(z, u256::ZERO);
+    }
+
+    #[test]
+    fn test_max_plus_one_times_max() {
+        let x = u256::new(1, 0);
+        let y: u512 = (u128::MAX, u128::MAX, u128::MAX, u128::MAX);
+        let z = u256_truncating_mul_u512(&x, &y);
+        assert_eq!(z, u256::new(0, u128::MAX));
     }
 }
 
