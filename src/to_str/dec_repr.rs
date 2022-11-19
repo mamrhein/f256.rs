@@ -7,14 +7,21 @@
 // $Source$
 // $Revision$
 
-use core::{cmp::min, fmt};
-use std::{cmp::max, fmt::Write};
+use core::{
+    cmp::{max, min},
+    fmt,
+    mem::MaybeUninit,
+    str::from_utf8_unchecked,
+};
 
-use super::{ge_lut::from_ge_lut, lt_lut::from_lt_lut};
+use super::{
+    formatted::{Formatted, Part},
+    ge_lut::from_ge_lut,
+    lt_lut::from_lt_lut,
+    powers_of_five::is_multiple_of_pow5,
+};
 use crate::{
-    f256,
-    to_str::powers_of_five::is_multiple_of_pow5,
-    u256,
+    f256, u256,
     uint256::{u256_truncating_mul, u256_truncating_mul_u512},
 };
 
@@ -165,8 +172,6 @@ impl DecNumRepr {
 
         // Step 4: Find the shortest, correctly-rounded representation within
         // this interval.
-        println!("{f:?}");
-        println!("{lower_rem_zero} {rem_zero}");
         let mut i = 0_i32;
         let mut round_digit = 0_u64;
         if lower_rem_zero || rem_zero {
@@ -243,9 +248,66 @@ impl DecNumRepr {
     }
 }
 
+impl fmt::Display for DecNumRepr {
+    #![allow(unsafe_code, trivial_casts)]
+    fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut parts: [MaybeUninit<Part<'_>>; 4] =
+            unsafe { MaybeUninit::uninit().assume_init() };
+        let mut n_parts = 0_usize;
+        let zero_padding: &mut Part;
+        let signif = self.signif10.to_string();
+        let digits = signif.as_str();
+        let n_digits = digits.len();
+        let n_int_digits = max(0, (n_digits as i32 + self.exp10)) as usize;
+        let n_frac_digits = max(0, -self.exp10) as usize;
+        // Integer part.
+        if n_int_digits > n_digits {
+            // Add a part for all digits and a part for trailing integer zeroes.
+            parts[n_parts] = MaybeUninit::new(Part::Digits(digits));
+            n_parts += 1;
+            parts[n_parts] =
+                MaybeUninit::new(Part::Zeroes(n_int_digits - n_digits));
+            n_parts += 1;
+        } else if n_int_digits > 0 {
+            parts[n_parts] =
+                MaybeUninit::new(Part::Digits(&digits[..n_int_digits]));
+            n_parts += 1;
+        } else {
+            parts[n_parts] = MaybeUninit::new(Part::Char('0'));
+            n_parts += 1;
+        }
+        // Fractional part.
+        if n_frac_digits > 0 {
+            parts[n_parts] = MaybeUninit::new(Part::Char('.'));
+            n_parts += 1;
+            if n_frac_digits > n_digits {
+                // Add a part for leading fractional zeroes and a part for all
+                // digits.
+                parts[n_parts] =
+                    MaybeUninit::new(Part::Zeroes(n_frac_digits - n_digits));
+                n_parts += 1;
+                parts[n_parts] = MaybeUninit::new(Part::Digits(&digits));
+                n_parts += 1;
+            } else {
+                parts[n_parts] =
+                    MaybeUninit::new(Part::Digits(&digits[n_int_digits..]));
+                n_parts += 1;
+            }
+        }
+        let formatted = Formatted {
+            // SAFETY: n_parts elements are initialized.
+            parts: unsafe {
+                &*(&parts[..n_parts] as *const [MaybeUninit<Part<'_>>]
+                    as *const [Part<'_>])
+            },
+        };
+        formatted.pad_parts(self.sign == 1, form)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use super::*;
 
