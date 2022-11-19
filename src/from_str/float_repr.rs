@@ -7,8 +7,10 @@
 // $Source$
 // $Revision$
 
-use core::{cmp::max, fmt::Display};
-use std::cmp::min;
+use core::{
+    cmp::{max, min},
+    fmt::Display,
+};
 
 use super::common::{
     chunk_contains_7_digits_and_a_dot_at, chunk_contains_8_digits,

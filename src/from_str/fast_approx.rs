@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 /// Implementation of a fast decimal to float conversion algorithm as
 /// described in `Daniel Lemire: Number Parsing at a Gigabyte per Second`,
