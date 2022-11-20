@@ -246,10 +246,47 @@ impl DecNumRepr {
             signif10,
         }
     }
+
+    #[allow(unsafe_code, trivial_casts)]
+    pub(super) fn fmt_scientific(
+        self,
+        exp_mark: char,
+        form: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        let mut parts: [MaybeUninit<Part<'_>>; 5] =
+            unsafe { MaybeUninit::uninit().assume_init() };
+        let mut n_parts = 0_usize;
+        let zero_padding: &mut Part;
+        let signif = self.signif10.to_string();
+        let digits = signif.as_str();
+        let n_digits = digits.len();
+        let exp10 = self.exp10 + n_digits as i32 - 1;
+        let exp = exp10.to_string();
+        parts[n_parts] = MaybeUninit::new(Part::Digits(&digits[..1]));
+        n_parts += 1;
+        if n_digits > 1 {
+            parts[n_parts] = MaybeUninit::new(Part::Char('.'));
+            n_parts += 1;
+            parts[n_parts] = MaybeUninit::new(Part::Digits(&digits[1..]));
+            n_parts += 1;
+        }
+        parts[n_parts] = MaybeUninit::new(Part::Char(exp_mark));
+        n_parts += 1;
+        parts[n_parts] = MaybeUninit::new(Part::Digits(&exp));
+        n_parts += 1;
+        let formatted = Formatted {
+            // SAFETY: n_parts elements are initialized.
+            parts: unsafe {
+                &*(&parts[..n_parts] as *const [MaybeUninit<Part<'_>>]
+                    as *const [Part<'_>])
+            },
+        };
+        formatted.pad_parts(self.sign == 1, form)
+    }
 }
 
 impl fmt::Display for DecNumRepr {
-    #![allow(unsafe_code, trivial_casts)]
+    #[allow(unsafe_code, trivial_casts)]
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut parts: [MaybeUninit<Part<'_>>; 4] =
             unsafe { MaybeUninit::uninit().assume_init() };
