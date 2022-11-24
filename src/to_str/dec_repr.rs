@@ -7,31 +7,16 @@
 // $Source$
 // $Revision$
 
-use core::{
-    cmp::{max, min},
-    fmt,
-    mem::MaybeUninit,
-    str::from_utf8_unchecked,
-};
+use core::{cmp::max, fmt, mem::MaybeUninit};
 
 use super::{
+    common::floor_log10_pow2,
     formatted::{Formatted, Part},
     ge_lut::from_ge_lut,
     lt_lut::from_lt_lut,
     powers_of_five::is_multiple_of_pow5,
 };
-use crate::{
-    f256, u256,
-    uint256::{u256_truncating_mul, u256_truncating_mul_u512},
-};
-
-/// Returns ⌊log₁₀(2ⁱ)⌋ for 0 <= i <= 262144.
-#[inline(always)]
-fn floor_log10_pow2(i: i32) -> i32 {
-    debug_assert!(i >= 0);
-    debug_assert!(i <= 262144);
-    ((i as u128 * 169464822037455) >> 49) as i32
-}
+use crate::{f256, u256, uint256::u256_truncating_mul_u512};
 
 /// Returns ⌊log₁₀(5ⁱ)⌋ for 0 <= i <= 262144.
 #[inline(always)]
@@ -55,8 +40,8 @@ fn ceil_log2_pow5(i: i32) -> i32 {
     floor_log2_pow5(i) + 1
 }
 
-/// Internal representation of a decimal number d as (s, k, w) where s ∈ {0, 1},
-/// |k| < 2³¹, 0 <= w < 2²⁵⁶ and d = (-1)ˢ × w × 10ᵏ.
+/// Internal representation of a finite decimal number d as (s, k, w)
+/// where s ∈ {0, 1}, |k| < 2³¹, 0 <= w < 2²⁵⁶ and d = (-1)ˢ × w × 10ᵏ.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(super) struct DecNumRepr {
     pub(super) sign: u32,
@@ -400,6 +385,24 @@ mod tests {
                 sign: 0,
                 exp10: -4,
                 signif10: u256::new(0, 625)
+            }
+        )
+    }
+
+    #[test]
+    fn test_2_pow_237_minus_1() {
+        let i = u256::new(
+            649037107316853453566312041152511,
+            340282366920938463463374607431768211455,
+        );
+        let f = f256::encode(0, 0, i);
+        let r = DecNumRepr::from_f256_shortest(&f);
+        assert_eq!(
+            r,
+            DecNumRepr {
+                sign: 0,
+                exp10: 0,
+                signif10: i,
             }
         )
     }

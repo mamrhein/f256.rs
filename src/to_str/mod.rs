@@ -7,6 +7,7 @@
 // $Source$
 // $Revision$
 
+mod common;
 mod dec_repr;
 mod formatted;
 mod ge_lut;

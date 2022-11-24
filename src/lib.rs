@@ -298,7 +298,7 @@ impl f256 {
         }
     }
 
-    /// Construct a finite, non-zero `Float256Repr` f from sign s, exponent t
+    /// Construct a finite, non-zero `f256` value f from sign s, exponent t
     /// and significand c,
     ///
     /// where
