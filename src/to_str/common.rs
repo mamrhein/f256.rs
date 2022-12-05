@@ -7,10 +7,8 @@
 // $Source$
 // $Revision$
 
-/// Returns ⌊log₁₀(2ⁱ)⌋ for 0 <= i <= 262144.
+/// Returns ⌊log₁₀(2ⁱ)⌋.
 #[inline(always)]
 pub(super) fn floor_log10_pow2(i: i32) -> i32 {
-    debug_assert!(i >= 0);
-    debug_assert!(i <= 262144);
-    ((i as u128 * 169464822037455) >> 49) as i32
+    ((i as i128 * 169464822037455) >> 49) as i32
 }
