@@ -895,6 +895,14 @@ impl f256 {
         self - self.trunc()
     }
 
+    /// Returns the integer and the fractional part of `self`.
+    #[inline]
+    #[must_use]
+    fn split(&self) -> (Self, Self) {
+        let int_part = self.trunc();
+        (int_part, self - int_part)
+    }
+
     /// Returns the smallest integer greater than or equal to `self`.
     ///
     /// # Examples
