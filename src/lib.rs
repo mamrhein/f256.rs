@@ -835,7 +835,7 @@ impl f256 {
             return *self;
         }
         let sign = self.sign();
-        if abs_bits.hi <= ONE.bits.hi {
+        if abs_bits.hi < ONE.bits.hi {
             // 0 < |self| < 1
             return match (sign, adj(sign)) {
                 (0, true) => Self::ONE,
