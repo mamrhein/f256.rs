@@ -43,44 +43,24 @@ pub(crate) const fn u128_widening_mul(x: u128, y: u128) -> u256 {
     u256::new(rh, rl)
 }
 
-// Calculate ⌊(x * y) / 2²⁵⁶⌋.
-pub(crate) fn u256_truncating_mul(x: u256, y: u256) -> u256 {
-    let mut r = u128_widening_mul(x.hi, y.hi);
-    let t1 = u128_widening_mul(x.hi, y.lo);
-    r += t1.hi;
-    let t2 = u128_widening_mul(x.lo, y.hi);
-    r += t2.hi;
-    let mut c = 0_u128;
-    let t3 = t1.lo.wrapping_add(t2.lo);
-    c += (t3 < t1.lo) as u128;
-    let t4 = t3.wrapping_add(u128_widening_mul(x.lo, y.lo).hi);
-    c += (t4 < t3) as u128;
-    r += c;
-    r
-}
-
 // Calculate ⌊(x * y) / 2⁵¹²⌋.
 pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
-    let mut t = u256::new(0, u128_widening_mul(x.lo, y.3).hi);
-    t += &u128_widening_mul(x.hi, y.3);
-    let mut u = u128_widening_mul(x.lo, y.2);
+    let mut t = u256::new(0, u128_widening_mul(x.lo, y.lo.lo).hi);
+    t += &u128_widening_mul(x.hi, y.lo.lo);
+    let mut u = u128_widening_mul(x.lo, y.lo.hi);
     t += &u;
     t = u256::new((t < u) as u128, t.hi);
-    t += &u128_widening_mul(x.hi, y.2);
-    u = u128_widening_mul(x.lo, y.1);
+    t += &u128_widening_mul(x.hi, y.lo.hi);
+    u = u128_widening_mul(x.lo, y.hi.lo);
     t += &u;
     t = u256::new((t < u) as u128, t.hi);
-    t += &u128_widening_mul(x.hi, y.1);
-    u = u128_widening_mul(x.lo, y.0);
+    t += &u128_widening_mul(x.hi, y.hi.lo);
+    u = u128_widening_mul(x.lo, y.hi.hi);
     t += &u;
     t = u256::new((t < u) as u128, t.hi);
-    t += &u128_widening_mul(x.hi, y.0);
+    t += &u128_widening_mul(x.hi, y.hi.hi);
     t
 }
-
-/// Helper type representing unsigned integers of 512 bits.
-#[allow(non_camel_case_types)]
-pub(crate) type u512 = (u128, u128, u128, u128);
 
 /// Helper type representing unsigned integers of 256 bits.
 #[allow(non_camel_case_types)]
@@ -277,6 +257,37 @@ impl u256 {
             0 => self,
             _ => unreachable!(),
         }
+    }
+
+    // Calculate z = x * y.
+    pub(crate) fn widening_mul(&self, rhs: &u256) -> u512 {
+        let mut lo = u128_widening_mul(self.lo, rhs.lo);
+        let mut t1 = u128_widening_mul(self.lo, rhs.hi);
+        let mut t2 = u128_widening_mul(self.hi, rhs.lo);
+        let mut hi = u128_widening_mul(self.hi, rhs.hi);
+        t1 += &t2;
+        hi += t1.hi;
+        hi.hi += (t1 < t2) as u128;
+        t2 = u256::new(t1.lo, 0);
+        lo += &t2;
+        hi += (lo < t2) as u128;
+        u512 { hi, lo }
+    }
+
+    // Calculate ⌊(x * y) / 2²⁵⁶⌋.
+    pub(crate) fn truncating_mul(&self, rhs: &u256) -> u256 {
+        let mut r = u128_widening_mul(self.hi, rhs.hi);
+        let t1 = u128_widening_mul(self.hi, rhs.lo);
+        r += t1.hi;
+        let t2 = u128_widening_mul(self.lo, rhs.hi);
+        r += t2.hi;
+        let mut c = 0_u128;
+        let t3 = t1.lo.wrapping_add(t2.lo);
+        c += (t3 < t1.lo) as u128;
+        let t4 = t3.wrapping_add(u128_widening_mul(self.lo, rhs.lo).hi);
+        c += (t4 < t3) as u128;
+        r += c;
+        r
     }
 }
 
@@ -514,6 +525,109 @@ impl fmt::Display for u256 {
     }
 }
 
+/// Helper type representing unsigned integers of 512 bits.
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialOrd, PartialEq)]
+pub(crate) struct u512 {
+    pub(crate) hi: u256,
+    pub(crate) lo: u256,
+}
+
+impl u512 {
+    /// The size of this integer type in bits.
+    #[allow(clippy::cast_possible_truncation)]
+    pub(crate) const BITS: u32 = size_of::<Self>() as u32 * 8;
+
+    /// Additive identity = 0.
+    pub(crate) const ZERO: Self = Self::new(u256::ZERO, u256::ZERO);
+
+    /// Maximum value = 2⁵¹² - 1.
+    pub(crate) const MAX: Self = Self::new(u256::MAX, u256::MAX);
+
+    /// Create an `u256` value from two u256 values.
+    #[inline(always)]
+    pub(crate) const fn new(hi: u256, lo: u256) -> Self {
+        Self { hi, lo }
+    }
+
+    /// Return true, if `self` == 0.
+    #[inline]
+    pub(crate) const fn is_zero(&self) -> bool {
+        self.hi.is_zero() && self.lo.is_zero()
+    }
+}
+
+impl<'a> Rem<u32> for &'a u512 {
+    type Output = u32;
+
+    #[inline]
+    fn rem(self, rhs: u32) -> Self::Output {
+        (((self.lo.lo % rhs as u128)
+            + (self.lo.hi % rhs as u128)
+            + (self.hi.lo % rhs as u128)
+            + (self.hi.hi % rhs as u128))
+            % rhs as u128) as u32
+    }
+}
+
+impl ShrAssign<u32> for u512 {
+    fn shr_assign(&mut self, rhs: u32) {
+        let mut k = rhs;
+        match k {
+            0..=127 => {
+                let m = 1 << (128 - k);
+                self.lo.lo >>= k;
+                self.lo.lo &= self.lo.hi & m;
+                self.lo.hi >>= k;
+                self.lo.hi &= self.hi.lo & m;
+                self.hi.lo >>= k;
+                self.hi.lo &= self.hi.hi & m;
+                self.hi.hi >>= k;
+            }
+            128 => {
+                self.lo.lo = self.lo.hi;
+                self.lo.hi = self.hi.lo;
+                self.hi.lo = self.hi.hi;
+                self.hi.hi = 0;
+            }
+            129..=255 => {
+                let m = 1 << (256 - k);
+                k -= 128;
+                self.lo.lo = (self.lo.hi >> k) & (self.hi.lo & m);
+                self.lo.hi = (self.hi.lo >> k) & (self.hi.hi & m);
+                self.hi.lo = self.hi.hi >> k;
+                self.hi.hi = 0;
+            }
+            256 => {
+                self.lo.lo = self.hi.lo;
+                self.lo.hi = self.hi.hi;
+                self.hi.lo = 0;
+                self.hi.hi = 0;
+            }
+            257..=383 => {
+                let m = 1 << (384 - k);
+                k -= 256;
+                self.lo.lo = (self.hi.lo >> k) & (self.hi.hi & m);
+                self.lo.hi = self.hi.hi >> k;
+                self.hi.lo = 0;
+                self.hi.hi = 0;
+            }
+            384 => {
+                self.lo.lo = self.hi.hi;
+                self.lo.hi = 0;
+                self.hi.lo = 0;
+                self.hi.hi = 0;
+            }
+            _ => {
+                self.lo.lo = self.hi.hi >> (k - 384);
+                self.lo.hi = 0;
+                self.hi.lo = 0;
+                self.hi.hi = 0;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod u256_divmod_pow10_tests {
     use super::*;
@@ -593,7 +707,10 @@ mod u256_wrapping_mul_u512_tests {
     #[test]
     fn test_max() {
         let x = u256::MAX;
-        let y: u512 = (u128::MAX, u128::MAX, u128::MAX, u128::MAX);
+        let y: u512 = u512 {
+            hi: u256::MAX,
+            lo: u256::MAX,
+        };
         let z = u256_truncating_mul_u512(&x, &y);
         assert_eq!(z, u256::new(u128::MAX, u128::MAX - 1));
     }
@@ -601,7 +718,10 @@ mod u256_wrapping_mul_u512_tests {
     #[test]
     fn test_one_times_max() {
         let x = u256::new(0, 1);
-        let y: u512 = (u128::MAX, u128::MAX, u128::MAX, u128::MAX);
+        let y: u512 = u512 {
+            hi: u256::MAX,
+            lo: u256::MAX,
+        };
         let z = u256_truncating_mul_u512(&x, &y);
         assert_eq!(z, u256::ZERO);
     }
@@ -609,7 +729,10 @@ mod u256_wrapping_mul_u512_tests {
     #[test]
     fn test_max_plus_one_times_max() {
         let x = u256::new(1, 0);
-        let y: u512 = (u128::MAX, u128::MAX, u128::MAX, u128::MAX);
+        let y: u512 = u512 {
+            hi: u256::MAX,
+            lo: u256::MAX,
+        };
         let z = u256_truncating_mul_u512(&x, &y);
         assert_eq!(z, u256::new(0, u128::MAX));
     }
@@ -623,16 +746,16 @@ mod u256_shift_tests {
     fn test_u256_truncating_mul() {
         let x = u256::MAX;
         let y = u256::new(0, 1);
-        let mut p = u256_truncating_mul(x, y);
+        let mut p = x.truncating_mul(&y);
         assert_eq!(p, u256::new(0, 0));
         let y = u256::new(0, 2);
-        p = u256_truncating_mul(x, y);
+        p = x.truncating_mul(&y);
         assert_eq!(p, u256::new(0, 1));
-        p = u256_truncating_mul(x, x);
+        p = x.truncating_mul(&x);
         p.incr();
         assert_eq!(p, x);
         let x = u256::new(1, u128::MAX);
-        p = u256_truncating_mul(x, x);
+        p = x.truncating_mul(&x);
         assert_eq!(p, u256::new(0, 3));
     }
 

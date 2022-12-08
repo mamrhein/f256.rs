@@ -15,8 +15,8 @@ use core::cmp::Ordering;
 use super::powers_of_five::{get_power_of_five, MAX_ABS_EXP};
 use super::slow_exact::f256_exact;
 use crate::{
-    f256, from_str::fast_exact::fast_exact, u256, uint256::u256_truncating_mul,
-    EMAX, EXP_BIAS, EXP_BITS, HI_FRACTION_BIAS,
+    f256, from_str::fast_exact::fast_exact, u256, EMAX, EXP_BIAS, EXP_BITS,
+    HI_FRACTION_BIAS,
 };
 
 pub(super) fn fast_approx(
@@ -43,7 +43,7 @@ pub(super) fn fast_approx(
         signif10 <<= signif10_nlz;
         // Compute w' * T[k]
         let (p5hi, p5lo, mut exp2) = get_power_of_five(exp10);
-        let mut signif2 = u256_truncating_mul(signif10, u256::new(p5hi, p5lo));
+        let mut signif2 = signif10.truncating_mul(&u256::new(p5hi, p5lo));
         // As both multiplicands have their highest bit set, the result has
         // atmost one leading zero. We have to shift the highest bit to the
         // position of the hidden bit, i.e. by EXP_BITS - number of leading
