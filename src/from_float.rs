@@ -9,7 +9,7 @@
 
 use core::ops::Neg;
 
-use crate::{f256, uint256::u256};
+use crate::{f256, u256};
 
 trait Float: Copy + Clone {
     /// Precision level in relation to single precision float (f32)

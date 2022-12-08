@@ -13,7 +13,7 @@ use core::{
 };
 
 use crate::{
-    f256, u256, uint256::u128_widening_mul, EMAX, EXP_BIAS, EXP_BITS, EXP_MAX,
+    biguint::u128_widening_mul, f256, u256, EMAX, EXP_BIAS, EXP_BITS, EXP_MAX,
     HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS,
     HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS,
     TOTAL_BITS,

@@ -149,7 +149,7 @@ mod display_tests {
     use core::str::FromStr;
 
     use super::*;
-    use crate::uint256::u256;
+    use crate::u256;
 
     #[test]
     fn test_zero() {
@@ -273,7 +273,7 @@ mod format_exp_tests {
     use core::str::FromStr;
 
     use super::*;
-    use crate::uint256::u256;
+    use crate::u256;
 
     #[test]
     fn test_zero() {
