@@ -12,14 +12,11 @@ mod dec_repr;
 mod formatted;
 mod ge_lut;
 mod lt_lut;
-mod pow2_div_pow10_lut;
 mod powers_of_five;
-mod to_fixed_point_dec;
 
 use core::fmt::{self, Display, Write};
 
 use dec_repr::DecNumRepr;
-use to_fixed_point_dec::bin_2_dec_str;
 
 use crate::f256;
 
@@ -55,8 +52,7 @@ fn format_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    let (sign, exp2, signif2) = f.decode();
-    let s = bin_2_dec_str(signif2, exp2, prec);
+    unimplemented!()
 }
 
 #[inline]
