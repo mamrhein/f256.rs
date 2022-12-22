@@ -363,6 +363,35 @@ mod tests {
     }
 
     #[test]
+    fn test_2_pow_251() {
+        let i = u256::new(1_u128 << 123, 0);
+        let f = f256::encode(0, 0, i);
+        let r = DecNumRepr::from_f256_shortest(&f);
+        assert_eq!(
+            r,
+            DecNumRepr {
+                sign: 0,
+                exp10: 0,
+                signif10: u256::new(10633823966279326983230456482242756608, 0)
+            }
+        )
+    }
+
+    #[test]
+    fn test_7e28() {
+        let f = f256::from_str("7e28").unwrap();
+        let r = DecNumRepr::from_f256_shortest(&f);
+        assert_eq!(
+            r,
+            DecNumRepr {
+                sign: 0,
+                exp10: 28,
+                signif10: u256::new(0, 7)
+            }
+        )
+    }
+
+    #[test]
     fn test_one_half() {
         let f = f256::encode(0, -1, u256::new(0, 1));
         let r = DecNumRepr::from_f256_shortest(&f);
