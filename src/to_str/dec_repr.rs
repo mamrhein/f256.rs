@@ -62,16 +62,17 @@ impl DecNumRepr {
         // Max number of bits needed to store ⌊2ʰ / 5ᵍ⌋ + 1 or ⌊5⁻ᵉ⁻ᵍ / 2ʰ⌋.
         const H: i32 = 501;
 
+        let accept_bounds = (f.bits.lo & 1) == 0;
+
         // Step 1: Decode the binary floating-point number.
         let sign = f.sign();
         // Subtract 2 from exponent and adjust significand in prep of step 2.
         let exp2 = f.exponent() - 2;
         let signif2 = f.significand() << 2;
-        let accept_bounds = signif2.lo.is_power_of_two();
 
         // Step 2: Compute the halfway points to the next smaller and larger
         // floating point values.
-        let is_non_integer = !f.fraction().is_zero() || exp2 <= -1;
+        let is_non_integer = !f.fract().is_zero();
         let lower_signif2 = signif2 - 1 - is_non_integer as u32;
         let upper_signif2 = signif2 + 2;
 
