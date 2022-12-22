@@ -368,4 +368,10 @@ mod format_exp_tests {
         let f = f256::from_str("-1.00480900e70").unwrap();
         assert_eq!(format!("{f:e}"), "-1.004809e70");
     }
+
+    #[test]
+    fn test_normal_five_times_ten_pow_75() {
+        let f = f256::from_str("5e75").unwrap();
+        assert_eq!(format!("{f:e}"), "5e75");
+    }
 }

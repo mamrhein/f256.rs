@@ -89,16 +89,16 @@ impl DecNumRepr {
             // expression is equivalent to the one above.
             let g = floor_log10_pow2(exp2) - (exp2 > 3) as i32;
             exp10 = g;
+            // Instead of calculating (signif * 2ᵉ⁻ᵍ⁻ʰ * (⌊2ʰ / 5ᵍ⌋ + 1)
+            // we calulate (signif * 2ᵉ⁻ᵍ⁻ʰ⁺⁵¹⁰ * (⌊2ʰ / 5ᵍ⌋ + 1) * 4 / 2⁵¹².
             let h = floor_log2_pow5(g) + H;
-            let d = -exp2 + g + h - 512;
-            let shr = max(d, 0) as u32;
-            let shl = max(-d, 0) as u32;
+            let sh = (exp2 - g - h + 510) as u32;
             let luv = from_ge_lut(g as usize);
             lower_signif10 =
-                u256_truncating_mul_u512(&(lower_signif2 << shl), &luv) >> shr;
-            signif10 = u256_truncating_mul_u512(&(signif2 << shl), &luv) >> shr;
+                u256_truncating_mul_u512(&(lower_signif2 << sh), &luv);
+            signif10 = u256_truncating_mul_u512(&(signif2 << sh), &luv);
             upper_signif10 =
-                u256_truncating_mul_u512(&(upper_signif2 << shl), &luv) >> shr;
+                u256_truncating_mul_u512(&(upper_signif2 << sh), &luv);
             // exp2 >= 0 => rem_zero = signif10 % 10ᵍ == 0 = signif2 % 5ᵍ == 0
             // Analog for the lower and upper bound.
             // exp2 >= 0 => g >= 0
@@ -125,16 +125,16 @@ impl DecNumRepr {
             let g = floor_log10_pow5(-exp2) - (exp2 != -1) as i32;
             exp10 = exp2 + g;
             let i = -exp2 - g;
+            // Instead of calculating signif * ⌊5⁻ᵉ⁻ᵍ / 2ʰ⌋ / 2ᵍ⁻ʰ we calculate
+            // signif * ⌊5⁻ᵉ⁻ᵍ / 2ʰ⁻²⌋ * 2⁵¹⁰⁻ᵍ⁺ʰ / 2⁵¹².
             let h = ceil_log2_pow5(i) - H;
-            let d = g - h - 512;
-            let shr = max(d, 0) as u32;
-            let shl = max(-d, 0) as u32;
+            let sh = (510 - g + h) as u32;
             let luv = from_lt_lut(i as usize);
             lower_signif10 =
-                u256_truncating_mul_u512(&(lower_signif2 << shl), &luv) >> shr;
-            signif10 = u256_truncating_mul_u512(&(signif2 << shl), &luv) >> shr;
+                u256_truncating_mul_u512(&(lower_signif2 << sh), &luv);
+            signif10 = u256_truncating_mul_u512(&(signif2 << sh), &luv);
             upper_signif10 =
-                u256_truncating_mul_u512(&(upper_signif2 << shl), &luv) >> shr;
+                u256_truncating_mul_u512(&(upper_signif2 << sh), &luv);
             // exp2 < 0 => rem_zero = signif10 % 10ᵍ == 0 = signif2 % 2ᵍ == 0
             // Analog for the lower and upper bound.
             if g <= 1 {
@@ -371,8 +371,11 @@ mod tests {
             r,
             DecNumRepr {
                 sign: 0,
-                exp10: 0,
-                signif10: u256::new(10633823966279326983230456482242756608, 0)
+                exp10: 5,
+                signif10: u256::new(
+                    106338239662793269832304564822427,
+                    192627042266604845397347097774975349141
+                )
             }
         )
     }
