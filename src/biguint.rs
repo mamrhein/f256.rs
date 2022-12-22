@@ -557,16 +557,16 @@ impl u512 {
     }
 }
 
-impl<'a> Rem<u32> for &'a u512 {
-    type Output = u32;
+impl<'a> Rem<u64> for &'a u512 {
+    type Output = u64;
 
     #[inline]
-    fn rem(self, rhs: u32) -> Self::Output {
+    fn rem(self, rhs: u64) -> Self::Output {
         (((self.lo.lo % rhs as u128)
             + (self.lo.hi % rhs as u128)
             + (self.hi.lo % rhs as u128)
             + (self.hi.hi % rhs as u128))
-            % rhs as u128) as u32
+            % rhs as u128) as u64
     }
 }
 
@@ -575,7 +575,7 @@ impl ShrAssign<u32> for u512 {
         let mut k = rhs;
         match k {
             0..=127 => {
-                let m = 1 << (128 - k);
+                let m = (1 << (128 - k)) - 1;
                 self.lo.lo >>= k;
                 self.lo.lo &= self.lo.hi & m;
                 self.lo.hi >>= k;
@@ -591,10 +591,10 @@ impl ShrAssign<u32> for u512 {
                 self.hi.hi = 0;
             }
             129..=255 => {
-                let m = 1 << (256 - k);
+                let m = (1 << (256 - k)) - 1;
                 k -= 128;
-                self.lo.lo = (self.lo.hi >> k) & (self.hi.lo & m);
-                self.lo.hi = (self.hi.lo >> k) & (self.hi.hi & m);
+                self.lo.lo = (self.lo.hi >> k) | (self.hi.lo & m);
+                self.lo.hi = (self.hi.lo >> k) | (self.hi.hi & m);
                 self.hi.lo = self.hi.hi >> k;
                 self.hi.hi = 0;
             }
@@ -605,9 +605,9 @@ impl ShrAssign<u32> for u512 {
                 self.hi.hi = 0;
             }
             257..=383 => {
-                let m = 1 << (384 - k);
+                let m = (1 << (384 - k)) - 1;
                 k -= 256;
-                self.lo.lo = (self.hi.lo >> k) & (self.hi.hi & m);
+                self.lo.lo = (self.hi.lo >> k) | (self.hi.hi & m);
                 self.lo.hi = self.hi.hi >> k;
                 self.hi.lo = 0;
                 self.hi.hi = 0;
