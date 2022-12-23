@@ -1144,3 +1144,40 @@ mod encode_decode_tests {
         assert_eq!(f, g);
     }
 }
+
+#[cfg(test)]
+mod split_tests {
+    use super::*;
+
+    #[test]
+    fn test_normal() {
+        let f = f256::from(17);
+        let g = f256::from(17.625_f64);
+        let h = -g;
+        let (fi, ff) = f.split();
+        assert_eq!(fi, f);
+        assert_eq!(fi.exponent(), f.exponent());
+        assert_eq!(ff, f256::ZERO);
+        let (gi, gf) = g.split();
+        assert_eq!(gi, f);
+        assert_eq!(gi.exponent(), g.exponent());
+        assert_eq!(gf, g - f);
+        assert_eq!(h.split(), (-f, (f - g)));
+    }
+
+    #[test]
+    fn test_lt_1() {
+        let f = f256::from(0.99999_f64);
+        let (fi, ff) = f.split();
+        assert_eq!(fi, f256::ZERO);
+        assert_eq!(fi.exponent(), 0);
+        assert_eq!(ff, f);
+        assert_eq!(ff.exponent(), f.exponent());
+    }
+
+    #[test]
+    fn test_subnormal() {
+        let f = f256::MIN_GT_ZERO;
+        assert_eq!(f.split(), (f256::ZERO, f256::MIN_GT_ZERO));
+    }
+}
