@@ -898,7 +898,7 @@ impl f256 {
     /// Returns the integer and the fractional part of `self`.
     #[inline]
     #[must_use]
-    fn split(&self) -> (Self, Self) {
+    pub fn split(&self) -> (Self, Self) {
         let int_part = self.trunc();
         (int_part, self - int_part)
     }
