@@ -95,7 +95,7 @@ mod trunc_tests {
     }
 
     #[test]
-    fn test_lt_0() {
+    fn test_lt_1() {
         let f = f256::from(0.99999_f64);
         assert_eq!(f.trunc(), f256::ZERO);
         let e = f256::EPSILON;
@@ -148,7 +148,7 @@ mod fract_tests {
     }
 
     #[test]
-    fn test_lt_0() {
+    fn test_lt_1() {
         let f = f256::from(0.99999_f64);
         assert_eq!(f.fract(), f);
         let e = f256::EPSILON;
