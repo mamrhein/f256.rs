@@ -508,8 +508,6 @@ impl ShrAssign<u32> for u256 {
 
 impl fmt::Display for u256 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        const MAX_N_DIGITS: usize = 78;
-        const SEGMENT_SIZE: u64 = 18;
         const SEGMENT_BASE: u64 = 1_000_000_000_000_000_000;
         if self.hi == 0 {
             return fmt::Display::fmt(&self.lo, f);
@@ -519,7 +517,7 @@ impl fmt::Display for u256 {
         let mut r = 0_u64;
         let mut idx = 0;
         while !t.is_zero() {
-            (t, r) = t.divrem_pow10(18);
+            (t, r) = t.divrem(SEGMENT_BASE);
             segments[idx] = r;
             idx += 1;
         }
@@ -641,18 +639,18 @@ impl ShrAssign<u32> for u512 {
 }
 
 #[cfg(test)]
-mod u256_divmod_pow10_tests {
+mod u256_divrem_tests {
     use super::*;
 
     #[test]
-    fn test_divmod10() {
+    fn test_divrem10() {
         let v = u256::ZERO;
-        assert_eq!(v.divrem_pow10(1), (u256::ZERO, 0));
+        assert_eq!(v.divrem(10), (u256::ZERO, 0));
         let v = u256::new(0, 7);
-        assert_eq!(v.divrem_pow10(1), (u256::ZERO, 7));
+        assert_eq!(v.divrem(10), (u256::ZERO, 7));
         let v = u256::MAX;
         assert_eq!(
-            v.divrem_pow10(1),
+            v.divrem(10),
             (
                 u256::new(
                     34028236692093846346337460743176821145,
@@ -664,14 +662,14 @@ mod u256_divmod_pow10_tests {
     }
 
     #[test]
-    fn test_divmod_pow10() {
+    fn test_divrem_pow10() {
         let v = u256::ZERO;
-        assert_eq!(v.divrem_pow10(10), (u256::ZERO, 0));
+        assert_eq!(v.divrem(10_u64.pow(10)), (u256::ZERO, 0));
         let v = u256::new(0, 700003);
-        assert_eq!(v.divrem_pow10(5), (u256::new(0, 7), 3));
+        assert_eq!(v.divrem(10_u64.pow(5)), (u256::new(0, 7), 3));
         let v = u256::new(0, u128::MAX);
         assert_eq!(
-            v.divrem_pow10(18),
+            v.divrem(10_u64.pow(18)),
             (
                 u256::new(0, u128::MAX / 10_u128.pow(18)),
                 (u128::MAX % 10_u128.pow(18)) as u64
@@ -679,7 +677,7 @@ mod u256_divmod_pow10_tests {
         );
         let v = u256::MAX;
         assert_eq!(
-            v.divrem_pow10(18),
+            v.divrem(10_u64.pow(18)),
             (
                 u256::new(
                     340282366920938463463,
