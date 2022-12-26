@@ -27,6 +27,11 @@ const fn u128_lo(u: u128) -> u128 {
     u & 0xffffffffffffffff
 }
 
+#[inline(always)]
+const fn u128_divrem(x: u128, y: u128) -> (u128, u128) {
+    (x / y, x % y)
+}
+
 // Calculate z = x * y.
 pub(crate) const fn u128_widening_mul(x: u128, y: u128) -> u256 {
     let xh = u128_hi(x);
@@ -180,19 +185,22 @@ impl u256 {
         }
     }
 
+    /// Returns `self` / rhs, `self` % rhs
+    pub(crate) fn divrem(&self, rhs: u64) -> (Self, u64) {
+        let (quot_hi, r) = u128_divrem(self.hi, rhs as u128);
+        let (mut quot_lo, r) =
+            u128_divrem((r << 64) + u128_hi(self.lo), rhs as u128);
+        quot_lo <<= 64;
+        let (t, r) = u128_divrem((r << 64) + u128_lo(self.lo), rhs as u128);
+        quot_lo += t;
+        (u256::new(quot_hi, quot_lo), r as u64)
+    }
+
     /// Returns `self` / 10ⁿ, `self` % 10ⁿ
     pub(crate) fn divrem_pow10(&self, n: u32) -> (Self, u64) {
         debug_assert!(n <= 19);
-        let d = 10_u128.pow(n);
-        let rh = self.hi / d;
-        let mut t = self.hi % d;
-        t = (t << 64) + (self.lo >> 64);
-        let rlh = t / d;
-        t %= d;
-        t = (t << 64) + (self.lo & u64::MAX as u128);
-        let rll = t / d;
-        t %= d;
-        (u256::new(rh, (rlh << 64) + rll), t as u64)
+        let d = 10_u64.pow(n);
+        self.divrem(d)
     }
 
     #[cfg(target_endian = "big")]
