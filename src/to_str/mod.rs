@@ -80,7 +80,7 @@ impl fmt::Display for f256 {
     }
 }
 
-fn format_special_scientific(
+fn format_scientific_special(
     f: &f256,
     exp_mark: char,
     form: &mut fmt::Formatter<'_>,
@@ -107,7 +107,7 @@ fn format_scientific_common(
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
     if f.is_special() {
-        format_special_scientific(f, exp_mark, form)
+        format_scientific_special(f, exp_mark, form)
     } else {
         match form.precision() {
             Some(prec) => format_scientific_exact(f, exp_mark, prec, form),
