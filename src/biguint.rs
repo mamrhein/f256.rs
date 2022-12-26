@@ -572,16 +572,17 @@ impl<'a> Rem<u64> for &'a u512 {
 
 impl ShrAssign<u32> for u512 {
     fn shr_assign(&mut self, rhs: u32) {
+        debug_assert!(rhs <= 512);
         let mut k = rhs;
         match k {
             0..=127 => {
-                let m = (1 << (128 - k)) - 1;
-                self.lo.lo >>= k;
-                self.lo.lo &= self.lo.hi & m;
-                self.lo.hi >>= k;
-                self.lo.hi &= self.hi.lo & m;
-                self.hi.lo >>= k;
-                self.hi.lo &= self.hi.hi & m;
+                let m = (1 << k) - 1;
+                self.lo.lo =
+                    (self.lo.lo >> k) | ((self.lo.hi & m) << (128 - k));
+                self.lo.hi =
+                    (self.lo.hi >> k) | ((self.hi.lo & m) << (128 - k));
+                self.hi.lo =
+                    (self.hi.lo >> k) | ((self.hi.hi & m) << (128 - k));
                 self.hi.hi >>= k;
             }
             128 => {
@@ -591,10 +592,12 @@ impl ShrAssign<u32> for u512 {
                 self.hi.hi = 0;
             }
             129..=255 => {
-                let m = (1 << (256 - k)) - 1;
                 k -= 128;
-                self.lo.lo = (self.lo.hi >> k) | (self.hi.lo & m);
-                self.lo.hi = (self.hi.lo >> k) | (self.hi.hi & m);
+                let m = (1 << k) - 1;
+                self.lo.lo =
+                    (self.lo.hi >> k) | ((self.hi.lo & m) << (128 - k));
+                self.lo.hi =
+                    (self.hi.lo >> k) | ((self.hi.hi & m) << (128 - k));
                 self.hi.lo = self.hi.hi >> k;
                 self.hi.hi = 0;
             }
@@ -605,9 +608,10 @@ impl ShrAssign<u32> for u512 {
                 self.hi.hi = 0;
             }
             257..=383 => {
-                let m = (1 << (384 - k)) - 1;
                 k -= 256;
-                self.lo.lo = (self.hi.lo >> k) | (self.hi.hi & m);
+                let m = (1 << k) - 1;
+                self.lo.lo =
+                    (self.hi.lo >> k) | ((self.hi.hi & m) << (128 - k));
                 self.lo.hi = self.hi.hi >> k;
                 self.hi.lo = 0;
                 self.hi.hi = 0;
