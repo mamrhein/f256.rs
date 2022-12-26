@@ -12,13 +12,16 @@ mod dec_repr;
 mod formatted;
 mod ge_lut;
 mod lt_lut;
+mod pow10_div_pow2_lut;
 mod powers_of_five;
+mod to_fixed_point_dec;
 
 use core::fmt::{self, Display, Write};
 
 use dec_repr::DecNumRepr;
+use to_fixed_point_dec::bin_2_dec_str;
 
-use crate::f256;
+use crate::{f256, u256};
 
 fn format_nan(form: &mut fmt::Formatter<'_>) -> fmt::Result {
     let nan = "NaN".to_string();
@@ -52,7 +55,9 @@ fn format_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    unimplemented!()
+    let s = bin_2_dec_str(f.abs(), prec);
+    let start = s.starts_with('0') as usize;
+    form.pad_integral(f.is_sign_positive(), "", &s[start..])
 }
 
 #[inline]
@@ -149,7 +154,6 @@ mod display_tests {
     use core::str::FromStr;
 
     use super::*;
-    use crate::u256;
 
     #[test]
     fn test_zero() {
@@ -201,7 +205,7 @@ mod display_tests {
     }
 
     #[test]
-    fn test_one() {
+    fn test_shortest_one() {
         let f = f256::ONE;
         assert_eq!(format!("{f}"), "1");
         assert_eq!(format!("{f:>10}"), "         1");
@@ -210,7 +214,7 @@ mod display_tests {
     }
 
     #[test]
-    fn test_one_tenth() {
+    fn test_shortest_one_tenth() {
         let f = f256::from_str("-0.1").unwrap();
         assert_eq!(format!("{f}"), "-0.1");
         assert_eq!(format!("{f}"), "-0.1");
@@ -220,7 +224,7 @@ mod display_tests {
     }
 
     #[test]
-    fn test_one_half() {
+    fn test_shortest_one_half() {
         let f = f256::encode(0, -1, u256::new(0, 1));
         assert_eq!(format!("{f}"), "0.5");
         assert_eq!(format!("{f:3}"), "0.5");
@@ -229,7 +233,7 @@ mod display_tests {
     }
 
     #[test]
-    fn test_one_third() {
+    fn test_shortest_one_third() {
         let f = f256::ONE / f256::from_u64(3);
         assert_eq!(format!("{f}"),
                    "0.333333333333333333333333333333333333333333333333333333333\
@@ -246,13 +250,13 @@ mod display_tests {
     }
 
     #[test]
-    fn test_normal_gt1() {
+    fn test_shortest_normal_gt1() {
         let f = f256::from_str("320.1000009").unwrap();
         assert_eq!(format!("{f}"), "320.1000009");
     }
 
     #[test]
-    fn test_normal_near_zero() {
+    fn test_shortest_normal_near_zero() {
         let f = f256::from_str("1.000009e-82").unwrap();
         assert_eq!(format!("{f}"),
                    "0.000000000000000000000000000000000000000000000000000000000\
@@ -260,11 +264,91 @@ mod display_tests {
     }
 
     #[test]
-    fn test_normal_near_ten_pow_70() {
+    fn test_shortest_normal_near_ten_pow_70() {
         let f = f256::from_str("-1.004809e70").unwrap();
         assert_eq!(format!("{f}"),
                    "-1004809000000000000000000000000000000000000000000000000000\
                    0000000000000");
+    }
+
+    #[test]
+    fn test_fixed_prec_one() {
+        let f = f256::ONE;
+        assert_eq!(format!("{f:.2}"), "1.00");
+        assert_eq!(format!("{f:>10.0}"), "         1");
+        assert_eq!(format!("{f:<+.3}"), "+1.000");
+        assert_eq!(format!("{f:^+78.72}"),
+                   " +1.0000000000000000000000000000000000000000000000000000000\
+                   00000000000000000  ");
+    }
+
+    #[test]
+    fn test_fixed_prec_one_tenth() {
+        let f = f256::from_str("-0.1").unwrap();
+        assert_eq!(format!("{f:.2}"), "-0.10");
+        assert_eq!(format!("{f:.0}"), "-0");
+        assert_eq!(
+            format!("{f:>35.24}"),
+            "        -0.100000000000000000000000"
+        );
+        assert_eq!(format!("{f:<+7.2}"), "-0.10  ");
+        assert_eq!(format!("{f:^+7.4}"), "-0.1000");
+    }
+
+    #[test]
+    fn test_fixed_prec_one_half() {
+        let f = f256::encode(0, -1, u256::new(0, 1));
+        assert_eq!(format!("{f:>5.0}"), "    0");
+        assert_eq!(format!("{f:.3}"), "0.500");
+        assert_eq!(format!("{f:_>4.1}"), "_0.5");
+        assert_eq!(format!("{f:~^8.2}"), "~~0.50~~");
+    }
+
+    #[test]
+    fn test_fixed_prec_one_third() {
+        let f = f256::ONE / f256::from_u64(3);
+        assert_eq!(format!("{f:.3}"), "0.333");
+        assert_eq!(
+            format!("{f:70.75}"),
+                   "0.333333333333333333333333333333333333333333333333333333333\
+                   333333333333332579"
+        );
+        assert_eq!(
+            format!("{f:_>75.70}"),
+                   "___0.333333333333333333333333333333333333333333333333333333\
+                   3333333333333333"
+        );
+        assert_eq!(
+            format!("{f:~^80.57}"),
+                   "~~~~~~~~~~0.33333333333333333333333333333333333333333333333\
+                   3333333333~~~~~~~~~~~"
+        );
+    }
+
+    #[test]
+    fn test_fixed_prec_normal_gt1() {
+        let f = f256::from_str("320.100000907").unwrap();
+        assert_eq!(format!("{f:.7}"), "320.1000009");
+    }
+
+    #[test]
+    fn test_fixed_prec_normal_near_zero() {
+        let f = f256::from_str("1.000009499e-82").unwrap();
+        assert_eq!(
+            format!("{f:.88}"),
+                   "0.000000000000000000000000000000000000000000000000000000000\
+                   0000000000000000000000001000009"
+        );
+    }
+
+    #[test]
+    fn test_fixed_prec_normal_near_ten_pow_70() {
+        let f = f256::from_str("-1.004809e70").unwrap();
+        assert_eq!(
+            format!("{f:.21}"),
+                   "-1004809000000000000000000000000000000000000000000000000000\
+                   0000000000000.000000000000000000000"
+        );
     }
 }
 
@@ -273,7 +357,6 @@ mod format_exp_tests {
     use core::str::FromStr;
 
     use super::*;
-    use crate::u256;
 
     #[test]
     fn test_zero() {
