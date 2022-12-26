@@ -24,7 +24,7 @@ pub(super) fn is_multiple_of_pow5(x: u256, e: u32) -> bool {
         return true;
     }
     if e == 1 {
-        return x % 5_u32 == 0;
+        return x % 5_u64 == 0;
     }
     let p = get_power_of_five(e);
     if e <= 55 {

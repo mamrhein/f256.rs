@@ -108,7 +108,7 @@ impl DecNumRepr {
             if g <= 102 {
                 // Only one of lower_signif10, signif10, upper_signif10 can be a
                 // multiple of 5, if any.
-                if signif2 % 5_u32 == 0 {
+                if signif2 % 5_u64 == 0 {
                     rem_zero = is_multiple_of_pow5(signif2, g as u32);
                 } else if accept_bounds {
                     lower_rem_zero =

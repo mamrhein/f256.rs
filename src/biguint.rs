@@ -410,12 +410,12 @@ impl MulAssign<u128> for u256 {
     }
 }
 
-impl Rem<u32> for u256 {
-    type Output = u32;
+impl Rem<u64> for u256 {
+    type Output = u64;
 
     #[inline]
-    fn rem(self, rhs: u32) -> Self::Output {
-        ((self.hi % rhs as u128) + (self.lo % rhs as u128) % rhs as u128) as u32
+    fn rem(self, rhs: u64) -> Self::Output {
+        (self % rhs as u128) as u64
     }
 }
 
@@ -424,7 +424,10 @@ impl Rem<u128> for u256 {
 
     #[inline]
     fn rem(self, rhs: u128) -> Self::Output {
-        (self.hi % rhs) + (self.lo % rhs) % rhs
+        let mut rem = self.hi % rhs;
+        rem = ((rem << 64) + u128_hi(self.lo)) % rhs;
+        rem = ((rem << 64) + u128_lo(self.lo)) % rhs;
+        rem
     }
 }
 
@@ -568,11 +571,19 @@ impl<'a> Rem<u64> for &'a u512 {
 
     #[inline]
     fn rem(self, rhs: u64) -> Self::Output {
-        (((self.lo.lo % rhs as u128)
-            + (self.lo.hi % rhs as u128)
-            + (self.hi.lo % rhs as u128)
-            + (self.hi.hi % rhs as u128))
-            % rhs as u128) as u64
+        (self % rhs as u128) as u64
+    }
+}
+
+impl<'a> Rem<u128> for &'a u512 {
+    type Output = u128;
+
+    #[inline]
+    fn rem(self, rhs: u128) -> Self::Output {
+        let mut rem = self.hi % rhs;
+        rem = u256::new(rem, self.lo.hi) % rhs;
+        rem = u256::new(rem, self.lo.lo) % rhs;
+        rem
     }
 }
 
