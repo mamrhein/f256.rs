@@ -181,7 +181,7 @@ impl u256 {
     }
 
     /// Returns `self` / 10ⁿ, `self` % 10ⁿ
-    pub(crate) fn divmod_pow10(&self, n: u32) -> (Self, u64) {
+    pub(crate) fn divrem_pow10(&self, n: u32) -> (Self, u64) {
         debug_assert!(n <= 19);
         let d = 10_u128.pow(n);
         let rh = self.hi / d;
@@ -511,7 +511,7 @@ impl fmt::Display for u256 {
         let mut r = 0_u64;
         let mut idx = 0;
         while !t.is_zero() {
-            (t, r) = t.divmod_pow10(18);
+            (t, r) = t.divrem_pow10(18);
             segments[idx] = r;
             idx += 1;
         }
@@ -639,12 +639,12 @@ mod u256_divmod_pow10_tests {
     #[test]
     fn test_divmod10() {
         let v = u256::ZERO;
-        assert_eq!(v.divmod_pow10(1), (u256::ZERO, 0));
+        assert_eq!(v.divrem_pow10(1), (u256::ZERO, 0));
         let v = u256::new(0, 7);
-        assert_eq!(v.divmod_pow10(1), (u256::ZERO, 7));
+        assert_eq!(v.divrem_pow10(1), (u256::ZERO, 7));
         let v = u256::MAX;
         assert_eq!(
-            v.divmod_pow10(1),
+            v.divrem_pow10(1),
             (
                 u256::new(
                     34028236692093846346337460743176821145,
@@ -658,12 +658,12 @@ mod u256_divmod_pow10_tests {
     #[test]
     fn test_divmod_pow10() {
         let v = u256::ZERO;
-        assert_eq!(v.divmod_pow10(10), (u256::ZERO, 0));
+        assert_eq!(v.divrem_pow10(10), (u256::ZERO, 0));
         let v = u256::new(0, 700003);
-        assert_eq!(v.divmod_pow10(5), (u256::new(0, 7), 3));
+        assert_eq!(v.divrem_pow10(5), (u256::new(0, 7), 3));
         let v = u256::new(0, u128::MAX);
         assert_eq!(
-            v.divmod_pow10(18),
+            v.divrem_pow10(18),
             (
                 u256::new(0, u128::MAX / 10_u128.pow(18)),
                 (u128::MAX % 10_u128.pow(18)) as u64
@@ -671,7 +671,7 @@ mod u256_divmod_pow10_tests {
         );
         let v = u256::MAX;
         assert_eq!(
-            v.divmod_pow10(18),
+            v.divrem_pow10(18),
             (
                 u256::new(
                     340282366920938463463,
