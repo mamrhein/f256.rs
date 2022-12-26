@@ -138,7 +138,10 @@ pub(super) fn bin_2_dec_str(f: f256, prec: usize) -> String {
                 );
             }
             let n_signif_chunks = n_chunks - n_zero_chunks;
-            debug_assert!(n_signif_chunks <= CHUNK_CUTOFF);
+            assert!(
+                n_signif_chunks <= CHUNK_CUTOFF,
+                "Internal limit for significand digits exceeded."
+            );
             for chunk_idx in 0..n_signif_chunks {
                 let t = pow10_div_pow2(segment_idx, chunk_idx);
                 let mut chunk = mul_shift_mod(&signif2, &t, shift);
