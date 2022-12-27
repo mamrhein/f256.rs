@@ -14,12 +14,12 @@ mod ge_lut;
 mod lt_lut;
 mod pow10_div_pow2_lut;
 mod powers_of_five;
-mod to_fixed_point_dec;
+mod to_fixed_prec;
 
 use core::fmt::{self, Display, Write};
 
 use dec_repr::DecNumRepr;
-use to_fixed_point_dec::bin_2_dec_str;
+use to_fixed_prec::bin_2_dec_fixed_point;
 
 use crate::{f256, u256};
 
@@ -55,7 +55,7 @@ fn format_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    let s = bin_2_dec_str(f.abs(), prec);
+    let s = bin_2_dec_fixed_point(f.abs(), prec);
     let start = s.starts_with('0') as usize;
     form.pad_integral(f.is_sign_positive(), "", &s[start..])
 }

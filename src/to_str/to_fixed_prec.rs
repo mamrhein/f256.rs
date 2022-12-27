@@ -62,10 +62,77 @@ fn mul_shift_mod(x: &u256, y: &u512, k: u32) -> u64 {
     &hi % CHUNK_BASE
 }
 
+fn bin_fract_2_dec_str(
+    signif2: u256,
+    exp2: i32,
+    prec: usize,
+    buf: &mut String,
+) -> bool {
+    let mut round_up = false;
+    let segment_idx =
+        (-exp2 - SIGNIFICAND_BITS as i32) as u32 / COMPRESSION_RATE;
+    let n_chunks = prec as u32 / CHUNK_SIZE + 1;
+    let (n_zero_chunks, segment_shift) = get_segment_params(segment_idx);
+    debug_assert!(segment_shift > exp2);
+    let shift = (segment_shift - exp2) as u32;
+    if n_chunks <= n_zero_chunks {
+        buf.push_str("0".repeat(prec).as_str());
+    } else {
+        if n_zero_chunks > 0 {
+            buf.push_str(
+                "0".repeat((n_zero_chunks * CHUNK_SIZE) as usize).as_str(),
+            );
+        }
+        let n_signif_chunks = n_chunks - n_zero_chunks;
+        assert!(
+            n_signif_chunks <= CHUNK_CUTOFF,
+            "Internal limit for significant fractional digits exceeded."
+        );
+        for chunk_idx in 0..n_signif_chunks {
+            let t = pow10_div_pow2(segment_idx, chunk_idx);
+            let mut chunk = mul_shift_mod(&signif2, &t, shift);
+            if chunk_idx < n_signif_chunks - 1 {
+                buf.push_str(
+                    format!("{:01$}", chunk, CHUNK_SIZE as usize).as_str(),
+                );
+            } else {
+                // last chunk
+                let n_digits = prec as u32 - (n_chunks - 1) * CHUNK_SIZE;
+                debug_assert!(n_digits <= CHUNK_SIZE);
+                let d = 10_u64.pow(CHUNK_SIZE - n_digits);
+                let rem = chunk % d;
+                chunk /= d;
+                let tie = d >> 1;
+                if rem > tie {
+                    round_up = true;
+                } else if rem == tie {
+                    if (chunk & 1) == 1 ||
+                        // Need to check whether we really have a tie, i.e.
+                        // signif2 * 10 ^ (prec + 1) / 2 ^ -exp2 is an
+                        // integer. This is the case if the number of
+                        // trailing zeroes of the numerator is greater or
+                        // equal to -exp2.
+                        (signif2.trailing_zeros() as i32)
+                            < (-exp2 - prec as i32 - 1)
+                    {
+                        round_up = true;
+                    }
+                }
+                if n_digits > 0 {
+                    buf.push_str(
+                        format!("{:01$}", chunk, n_digits as usize).as_str(),
+                    );
+                }
+            }
+        }
+    }
+    round_up
+}
+
 /// Round-up the given string representation of a decimal number.
 #[allow(unsafe_code)]
 #[inline]
-fn round_up_inplace(num: &mut str) {
+fn round_up_fixed_point_inplace(num: &mut str) {
     let mut idx = num.len() - 1;
     unsafe {
         let bytes = num.as_bytes_mut();
@@ -86,7 +153,7 @@ fn round_up_inplace(num: &mut str) {
 /// Converts a positive finite binary float into a string representing a decimal
 /// number w × 10⁻ⁿ where n is the number of fractional digits.
 /// The result may have an additional leading zero!
-pub(super) fn bin_2_dec_str(f: f256, prec: usize) -> String {
+pub(super) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
     debug_assert!(f.is_finite());
     debug_assert!(f.is_sign_positive());
     let mut exp2 = f.exponent();
@@ -123,67 +190,10 @@ pub(super) fn bin_2_dec_str(f: f256, prec: usize) -> String {
     } else {
         exp2 = fp.exponent();
         signif2 = fp.significand();
-        let segment_idx =
-            (-exp2 - SIGNIFICAND_BITS as i32) as u32 / COMPRESSION_RATE;
-        let n_chunks = prec as u32 / CHUNK_SIZE + 1;
-        let (n_zero_chunks, segment_shift) = get_segment_params(segment_idx);
-        debug_assert!(segment_shift > exp2);
-        let shift = (segment_shift - exp2) as u32;
-        if n_chunks <= n_zero_chunks {
-            res.push_str("0".repeat(prec).as_str());
-        } else {
-            if n_zero_chunks > 0 {
-                res.push_str(
-                    "0".repeat((n_zero_chunks * CHUNK_SIZE) as usize).as_str(),
-                );
-            }
-            let n_signif_chunks = n_chunks - n_zero_chunks;
-            assert!(
-                n_signif_chunks <= CHUNK_CUTOFF,
-                "Internal limit for significand digits exceeded."
-            );
-            for chunk_idx in 0..n_signif_chunks {
-                let t = pow10_div_pow2(segment_idx, chunk_idx);
-                let mut chunk = mul_shift_mod(&signif2, &t, shift);
-                if chunk_idx < n_signif_chunks - 1 {
-                    res.push_str(
-                        format!("{:01$}", chunk, CHUNK_SIZE as usize).as_str(),
-                    );
-                } else {
-                    // last chunk
-                    let n_digits = prec as u32 - (n_chunks - 1) * CHUNK_SIZE;
-                    debug_assert!(n_digits <= CHUNK_SIZE);
-                    let d = 10_u64.pow(CHUNK_SIZE - n_digits);
-                    let rem = chunk % d;
-                    chunk /= d;
-                    let tie = d >> 1;
-                    if rem > tie {
-                        round_up = true;
-                    } else if rem == tie {
-                        if (chunk & 1) == 1 ||
-                            // Need to check whether we really have a tie, i.e.
-                            // signif2 * 10 ^ (prec + 1) / 2 ^ -exp2 is an
-                            // integer. This is the case if the number of
-                            // trailing zeroes of the numerator is greater or
-                            // equal to -exp2.
-                            (signif2.trailing_zeros() as i32)
-                                < (-exp2 - prec as i32 - 1)
-                        {
-                            round_up = true;
-                        }
-                    }
-                    if n_digits > 0 {
-                        res.push_str(
-                            format!("{:01$}", chunk, n_digits as usize)
-                                .as_str(),
-                        );
-                    }
-                }
-            }
-        }
+        round_up = bin_fract_2_dec_str(signif2, exp2, prec, &mut res)
     }
     if round_up {
-        round_up_inplace(&mut res);
+        round_up_fixed_point_inplace(&mut res);
     }
     res
 }
@@ -198,35 +208,35 @@ mod tests {
     #[test]
     fn test_one() {
         let f = f256::ONE;
-        let s = bin_2_dec_str(f, 2);
+        let s = bin_2_dec_fixed_point(f, 2);
         assert_eq!(s, "01.00");
     }
 
     #[test]
     fn test_one_half() {
         let f = f256::from_str("0.5").unwrap();
-        let s = bin_2_dec_str(f, 0);
+        let s = bin_2_dec_fixed_point(f, 0);
         assert_eq!(s, "00");
     }
 
     #[test]
     fn test_five_times_ten_pow_minus_twenty() {
         let f = f256::from_str("0.00000000000000000005").unwrap();
-        let s = bin_2_dec_str(f, 19);
+        let s = bin_2_dec_fixed_point(f, 19);
         assert_eq!(s, "00.0000000000000000001");
     }
 
     #[test]
     fn test_a_bit_less_ten() {
         let f = f256::from_str("9.9995").unwrap();
-        let s = bin_2_dec_str(f, 3);
+        let s = bin_2_dec_fixed_point(f, 3);
         assert_eq!(s, "10.000");
     }
 
     #[test]
     fn test_epsilon() {
         let f = f256::EPSILON;
-        let s = bin_2_dec_str(f, 75);
+        let s = bin_2_dec_fixed_point(f, 75);
         assert_eq!(
             s,
             "00.000000000000000000000000000000000000000000000000000000000\
@@ -237,7 +247,7 @@ mod tests {
     #[test]
     fn test_min_gt_zero() {
         let f = f256::MIN_GT_ZERO;
-        let s = bin_2_dec_str(f, 79004);
+        let s = bin_2_dec_fixed_point(f, 79004);
         assert!(s.starts_with("00.0"));
         assert_eq!(s[s.len() - 23..], "00224800708647703657297".to_string());
     }
@@ -245,7 +255,7 @@ mod tests {
     #[test]
     fn test_7e28() {
         let f = f256::from_str("7e28").unwrap();
-        let s = bin_2_dec_str(f, 3);
+        let s = bin_2_dec_fixed_point(f, 3);
         assert_eq!(s, "070000000000000000000000000000.000");
     }
 
@@ -253,7 +263,7 @@ mod tests {
     fn test_one_sixteenth() {
         let f = f256::from_str("0.0625").unwrap();
         // assert_eq!(f.fract(), f256::encode(0, -4, u256::new(0, 1)));
-        let s = bin_2_dec_str(f, 23);
+        let s = bin_2_dec_fixed_point(f, 23);
         assert_eq!(s, "00.06250000000000000000000");
     }
 }
