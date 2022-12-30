@@ -53,26 +53,46 @@ impl DecNumRepr {
     /// Converts a finite, non-zero `f256` value into its shortest, correctly
     /// rounded decimal representation.
     pub(super) fn shortest_from_f256(f: &f256) -> Self {
+        debug_assert!(f.is_finite() && !f.is_zero());
+
+        // Step 1: Decode the binary floating-point number.
+        let sign = f.sign();
+        let exp2 = f.exponent();
+        let signif2 = f.significand();
+
+        // Compute the decimal significand and exponent.
+        let (signif10, exp10) = Self::shortest_from_bin_repr(signif2, exp2);
+
+        Self {
+            sign,
+            exp10,
+            signif10,
+        }
+    }
+
+    /// Converts a finite, non-zero `f256` value into its shortest, correctly
+    /// rounded decimal representation.
+    pub(super) fn shortest_from_bin_repr(
+        mut signif2: u256,
+        mut exp2: i32,
+    ) -> (u256, i32) {
         // This is an implementation of the algorithm presented by Ulf Adams in
         // his PLDI'18 paper `Ryū: Fast Float-to-String Conversion`, available
         // at [https://dl.acm.org/doi/pdf/10.1145/3296979.3192369], adapted to
         // f256.
-        debug_assert!(f.is_finite() && !f.is_zero());
 
         // Max number of bits needed to store ⌊2ʰ / 5ᵍ⌋ + 1 or ⌊5⁻ᵉ⁻ᵍ / 2ʰ⌋.
         const H: i32 = 501;
 
-        let accept_bounds = (f.bits.lo & 1) == 0;
+        let accept_bounds = (signif2.lo & 1) == 0;
 
-        // Step 1: Decode the binary floating-point number.
-        let sign = f.sign();
         // Subtract 2 from exponent and adjust significand in prep of step 2.
-        let exp2 = f.exponent() - 2;
-        let signif2 = f.significand() << 2;
+        exp2 -= 2;
+        signif2 <<= 2;
 
         // Step 2: Compute the halfway points to the next smaller and larger
         // floating point values.
-        let is_non_integer = !f.fract().is_zero();
+        let is_non_integer = exp2 < -(signif2.trailing_zeros() as i32);
         let lower_signif2 = signif2 - 1 - is_non_integer as u32;
         let upper_signif2 = signif2 + 2;
 
@@ -222,11 +242,7 @@ impl DecNumRepr {
         // Adjust exponent by adding number of removed digits
         exp10 += i;
 
-        Self {
-            sign,
-            exp10,
-            signif10,
-        }
+        (signif10, exp10)
     }
 
     #[allow(unsafe_code, trivial_casts)]
