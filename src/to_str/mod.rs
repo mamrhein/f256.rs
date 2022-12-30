@@ -63,7 +63,7 @@ fn format_exact(
 #[inline]
 fn format_shortest(f: &f256, form: &mut fmt::Formatter<'_>) -> fmt::Result {
     debug_assert!(f.is_finite() && !f.is_zero());
-    let d = DecNumRepr::from_f256_shortest(f);
+    let d = DecNumRepr::shortest_from_f256(f);
     d.fmt(form)
 }
 
@@ -133,7 +133,7 @@ fn format_scientific_shortest(
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
     debug_assert!(f.is_finite() && !f.is_zero());
-    let d = DecNumRepr::from_f256_shortest(f);
+    let d = DecNumRepr::shortest_from_f256(f);
     d.fmt_scientific(exp_mark, form)
 }
 

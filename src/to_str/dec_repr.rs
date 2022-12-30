@@ -52,7 +52,7 @@ pub(super) struct DecNumRepr {
 impl DecNumRepr {
     /// Converts a finite, non-zero `f256` value into its shortest, correctly
     /// rounded decimal representation.
-    pub(super) fn from_f256_shortest(f: &f256) -> Self {
+    pub(super) fn shortest_from_f256(f: &f256) -> Self {
         // This is an implementation of the algorithm presented by Ulf Adams in
         // his PLDI'18 paper `Ryū: Fast Float-to-String Conversion`, available
         // at [https://dl.acm.org/doi/pdf/10.1145/3296979.3192369], adapted to
@@ -333,7 +333,7 @@ mod tests {
     #[test]
     fn test_one() {
         let f = f256::ONE;
-        let r = DecNumRepr::from_f256_shortest(&f);
+        let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
@@ -347,7 +347,7 @@ mod tests {
     #[test]
     fn test_ten_pow_72() {
         let f = f256::from_str("10.0e72").unwrap();
-        let r = DecNumRepr::from_f256_shortest(&f);
+        let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
@@ -362,7 +362,7 @@ mod tests {
     fn test_2_pow_251() {
         let i = u256::new(1_u128 << 123, 0);
         let f = f256::encode(0, 0, i);
-        let r = DecNumRepr::from_f256_shortest(&f);
+        let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
@@ -379,7 +379,7 @@ mod tests {
     #[test]
     fn test_7e28() {
         let f = f256::from_str("7e28").unwrap();
-        let r = DecNumRepr::from_f256_shortest(&f);
+        let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
@@ -393,7 +393,7 @@ mod tests {
     #[test]
     fn test_one_half() {
         let f = f256::encode(0, -1, u256::new(0, 1));
-        let r = DecNumRepr::from_f256_shortest(&f);
+        let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
@@ -407,7 +407,7 @@ mod tests {
     #[test]
     fn test_one_sixteenth() {
         let f = f256::encode(0, -4, u256::new(0, 1));
-        let r = DecNumRepr::from_f256_shortest(&f);
+        let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
@@ -425,7 +425,7 @@ mod tests {
             340282366920938463463374607431768211455,
         );
         let f = f256::encode(0, 0, i);
-        let r = DecNumRepr::from_f256_shortest(&f);
+        let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn test_f256_max() {
         let f = f256::MAX;
-        let r = DecNumRepr::from_f256_shortest(&f);
+        let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
