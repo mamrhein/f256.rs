@@ -17,6 +17,9 @@ use core::{
     },
 };
 
+const CHUNK_SIZE: u32 = 19;
+const CHUNK_BASE: u64 = 10_u64.pow(CHUNK_SIZE);
+
 #[inline(always)]
 const fn u128_hi(u: u128) -> u128 {
     u >> 64
@@ -198,9 +201,47 @@ impl u256 {
 
     /// Returns `self` / 10ⁿ, `self` % 10ⁿ
     pub(crate) fn divrem_pow10(&self, n: u32) -> (Self, u64) {
-        debug_assert!(n <= 19);
+        debug_assert!(n <= CHUNK_SIZE);
         let d = 10_u64.pow(n);
         self.divrem(d)
+    }
+
+    /// Returns `self` / 10ⁿ, rounded tie to even.
+    pub(crate) fn div_pow10_rounded(&self, k: u32) -> Self {
+        let mut q = *self;
+        let mut r = 0_u64;
+        if k <= CHUNK_SIZE {
+            let d = 10_u64.pow(k);
+            (q, r) = q.divrem(d);
+            let tie = d >> 1;
+            if r > tie || (r == tie && (q.lo & 1) == 1) {
+                q.incr();
+            }
+        } else {
+            let n = (k - 1) / CHUNK_SIZE;
+            let mut all_chunks_zero = true;
+            for _ in 0..n {
+                (q, r) = q.divrem(CHUNK_BASE);
+                all_chunks_zero = all_chunks_zero && r == 0;
+            }
+            let d = 10_u64.pow(k % CHUNK_SIZE);
+            (q, r) = q.divrem(d);
+            let tie = d >> 1;
+            if r > tie || (r == tie && (q.lo & 1) == 1 && all_chunks_zero) {
+                q.incr();
+            }
+        }
+        q
+    }
+
+    /// Returns `self` % 2ⁿ, i.e. the n left-most bits of self.
+    pub(crate) fn rem_pow2(&self, n: u32) -> Self {
+        match n {
+            0 => u256::ZERO,
+            1..=127 => u256::new(0, self.lo & ((1 << n) - 1)),
+            128..=255 => u256::new(self.hi & ((1 << (n - 128)) - 1), self.lo),
+            _ => *self,
+        }
     }
 
     #[cfg(target_endian = "big")]
