@@ -19,7 +19,7 @@ mod to_fixed_prec;
 use core::fmt::{self, Display, Write};
 
 use dec_repr::DecNumRepr;
-use to_fixed_prec::bin_2_dec_fixed_point;
+use to_fixed_prec::{bin_2_dec_fixed_point, bin_2_dec_scientific};
 
 use crate::{f256, u256};
 
@@ -123,7 +123,8 @@ fn format_scientific_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    unimplemented!()
+    let s = bin_2_dec_scientific(f.abs(), exp_mark, prec);
+    form.pad_integral(f.is_sign_positive(), "", &s)
 }
 
 #[inline]
