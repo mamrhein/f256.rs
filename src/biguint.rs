@@ -207,24 +207,24 @@ impl u256 {
     }
 
     /// Returns `self` / 10ⁿ, rounded tie to even.
-    pub(crate) fn div_pow10_rounded(&self, k: u32) -> Self {
+    pub(crate) fn div_pow10_rounded(&self, n: u32) -> Self {
         let mut q = *self;
         let mut r = 0_u64;
-        if k <= CHUNK_SIZE {
-            let d = 10_u64.pow(k);
+        if n <= CHUNK_SIZE {
+            let d = 10_u64.pow(n);
             (q, r) = q.divrem(d);
             let tie = d >> 1;
             if r > tie || (r == tie && (q.lo & 1) == 1) {
                 q.incr();
             }
         } else {
-            let n = (k - 1) / CHUNK_SIZE;
+            let n = (n - 1) / CHUNK_SIZE;
             let mut all_chunks_zero = true;
             for _ in 0..n {
                 (q, r) = q.divrem(CHUNK_BASE);
                 all_chunks_zero = all_chunks_zero && r == 0;
             }
-            let d = 10_u64.pow(k % CHUNK_SIZE);
+            let d = 10_u64.pow(n % CHUNK_SIZE);
             (q, r) = q.divrem(d);
             let tie = d >> 1;
             if r > tie || (r == tie && (q.lo & 1) == 1 && all_chunks_zero) {
@@ -610,7 +610,7 @@ impl u512 {
 impl<'a> Rem<u64> for &'a u512 {
     type Output = u64;
 
-    #[inline]
+    #[inline(always)]
     fn rem(self, rhs: u64) -> Self::Output {
         (self % rhs as u128) as u64
     }
