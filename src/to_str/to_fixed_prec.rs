@@ -235,13 +235,39 @@ fn bin_int_2_scientific(
     exp10
 }
 
+fn bin_fast_2_scientific(
+    signif2: u256,
+    exp2: i32,
+    prec: usize,
+    buf: &mut String,
+) -> (Round, i32) {
+    debug_assert!(exp2 > -(SIGNIFICAND_BITS as i32) && exp2 < 0);
+    let mut round = Round::Down;
+    let mut exp10 = 0_i32;
+    let (int_signif2, int_exp2, fract_signif2, fract_exp2) = {
+        // 1 < f < 2²³⁶
+        let k = -exp2 as u32;
+        (
+            signif2 >> k,
+            0,
+            signif2.rem_pow2(k) << (SIGNIFICAND_BITS - k),
+            -(SIGNIFICAND_BITS as i32),
+        )
+    };
+    exp10 = bin_int_2_scientific(int_signif2, int_exp2, prec, buf);
+    let mut exp = 0_i32;
+    (round, exp) = bin_fract_2_scientific(fract_signif2, fract_exp2, prec, buf);
+    exp10 += exp;
+    (round, exp10)
+}
+
 fn bin_fract_2_scientific(
     signif2: u256,
     exp2: i32,
     prec: usize,
     buf: &mut String,
 ) -> (Round, i32) {
-    debug_assert!(exp2 < 0);
+    debug_assert!(exp2 <= -(SIGNIFICAND_BITS as i32));
     let mut round = Round::Down;
     let segment_idx =
         (-exp2 - (SIGNIFICAND_BITS as i32)) as u32 / COMPRESSION_RATE;
@@ -359,38 +385,26 @@ pub(super) fn bin_2_dec_scientific(
     debug_assert!(f.is_sign_positive());
     let mut exp2 = f.exponent();
     let mut signif2 = f.significand();
-    let ntz = signif2.trailing_zeros();
-    let (int_signif2, int_exp2, fract_signif2, fract_exp2) =
-        if exp2 >= -(ntz as i32) {
-            // f is an integer.
-            (signif2 >> ntz, exp2 + ntz as i32, u256::ZERO, 0)
-        } else if exp2 < -(FRACTION_BITS as i32) {
-            // f < 1
-            (u256::ZERO, 0, signif2, exp2)
-        } else {
-            // 1 < f < 2²³⁶
-            let k = -exp2 as u32;
-            (
-                signif2 >> k,
-                0,
-                signif2.rem_pow2(k) << (SIGNIFICAND_BITS - k),
-                -(SIGNIFICAND_BITS as i32),
-            )
-        };
     let mut res = String::with_capacity(prec + 9);
     let mut round = Round::Down;
     let mut exp10 = 0_i32;
-    if !int_signif2.is_zero() {
-        exp10 = bin_int_2_scientific(int_signif2, int_exp2, prec, &mut res);
-    }
-    if fract_signif2.is_zero() {
+    let ntz = signif2.trailing_zeros();
+    if exp2 >= -(ntz as i32) {
+        // f is an integer.
+        exp10 = bin_int_2_scientific(
+            signif2 >> ntz,
+            exp2 + ntz as i32,
+            prec,
+            &mut res,
+        );
         // Need trailing zeroes?
         res.push_str("0".repeat(prec - min(prec, exp10 as usize)).as_str());
+    } else if exp2 < -(FRACTION_BITS as i32) {
+        // f < 1
+        (round, exp10) = bin_fract_2_scientific(signif2, exp2, prec, &mut res);
     } else {
-        let mut exp = 0_i32;
-        (round, exp) =
-            bin_fract_2_scientific(fract_signif2, fract_exp2, prec, &mut res);
-        exp10 += exp;
+        // 1 < f < 2²³⁶
+        (round, exp10) = bin_fast_2_scientific(signif2, exp2, prec, &mut res);
     }
     if round == Round::Up
         || (round == Round::ToEven && res.ends_with(['1', '3', '5', '7', '9']))
