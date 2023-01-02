@@ -409,7 +409,7 @@ mod format_exp_tests {
     }
 
     #[test]
-    fn test_one() {
+    fn test_shortest_one() {
         let f = f256::ONE;
         assert_eq!(format!("{f:e}"), "1e0");
         assert_eq!(format!("{f:>10e}"), "       1e0");
@@ -418,7 +418,7 @@ mod format_exp_tests {
     }
 
     #[test]
-    fn test_one_tenth() {
+    fn test_shortest_one_tenth() {
         let f = f256::from_str("-0.1e0").unwrap();
         assert_eq!(format!("{f:e}"), "-1e-1");
         assert_eq!(format!("{f:>10e}"), "     -1e-1");
@@ -427,7 +427,7 @@ mod format_exp_tests {
     }
 
     #[test]
-    fn test_one_half() {
+    fn test_shortest_one_half() {
         let f = f256::encode(0, -1, u256::new(0, 1));
         assert_eq!(format!("{f:e}"), "5e-1");
         assert_eq!(format!("{f:3e}"), "5e-1");
@@ -436,26 +436,35 @@ mod format_exp_tests {
     }
 
     #[test]
-    fn test_normal_gt1() {
+    fn test_shortest_normal_gt1() {
         let f = f256::from_str("320.1000009").unwrap();
         assert_eq!(format!("{f:e}"), "3.201000009e2");
     }
 
     #[test]
-    fn test_normal_near_zero() {
+    fn test_shortest_normal_near_zero() {
         let f = f256::from_str("1.000009e-82").unwrap();
         assert_eq!(format!("{f:e}"), "1.000009e-82");
     }
 
     #[test]
-    fn test_normal_near_ten_pow_70() {
+    fn test_shortest_normal_near_ten_pow_70() {
         let f = f256::from_str("-1.00480900e70").unwrap();
         assert_eq!(format!("{f:e}"), "-1.004809e70");
     }
 
     #[test]
-    fn test_normal_five_times_ten_pow_75() {
+    fn test_shortest_normal_five_times_ten_pow_75() {
         let f = f256::from_str("5e75").unwrap();
         assert_eq!(format!("{f:e}"), "5e75");
+    }
+
+    #[test]
+    fn test_shortest_f256_max() {
+        let f = f256::MAX;
+        assert_eq!(
+            format!("{f:e}"),
+            "1.6113257174857604736195721184520050106440238745496695174763712504\
+            9607183e78913");
     }
 }
