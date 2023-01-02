@@ -19,7 +19,7 @@ pub(super) fn get_power_of_five(n: u32) -> u256 {
 }
 
 #[inline]
-pub(super) fn is_multiple_of_pow5(x: u256, e: u32) -> bool {
+pub(super) fn is_multiple_of_pow5(x: &u256, e: u32) -> bool {
     if e == 0 {
         return true;
     }
@@ -31,8 +31,8 @@ pub(super) fn is_multiple_of_pow5(x: u256, e: u32) -> bool {
         return x % p.lo == 0;
     }
     let mut m = p;
-    while x > m {
-        if x == m {
+    while x > &m {
+        if x == &m {
             return true;
         }
         m += &p;

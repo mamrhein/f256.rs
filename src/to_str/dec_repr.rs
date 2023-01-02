@@ -96,8 +96,8 @@ impl DecNumRepr {
         // Step 2: Compute the halfway points to the next smaller and larger
         // floating point values.
         let is_non_integer = exp2 < -(signif2.trailing_zeros() as i32);
-        let lower_signif2 = signif2 - 1 - is_non_integer as u32;
-        let upper_signif2 = signif2 + 2;
+        let lower_signif2 = &signif2 - (1 + is_non_integer as u32);
+        let upper_signif2 = &signif2 + 2;
 
         // Step 3: Convert the interval to a decimal power base.
         let mut exp10: i32;
@@ -131,12 +131,12 @@ impl DecNumRepr {
             if g <= 102 {
                 // Only one of lower_signif10, signif10, upper_signif10 can be a
                 // multiple of 5, if any.
-                if signif2 % 5_u64 == 0 {
-                    rem_zero = is_multiple_of_pow5(signif2, g as u32);
+                if &signif2 % 5_u64 == 0 {
+                    rem_zero = is_multiple_of_pow5(&signif2, g as u32);
                 } else if accept_bounds {
                     lower_rem_zero =
-                        is_multiple_of_pow5(lower_signif2, g as u32);
-                } else if is_multiple_of_pow5(upper_signif2, g as u32) {
+                        is_multiple_of_pow5(&lower_signif2, g as u32);
+                } else if is_multiple_of_pow5(&upper_signif2, g as u32) {
                     upper_signif10.decr();
                 }
             }

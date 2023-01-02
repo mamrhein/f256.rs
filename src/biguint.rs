@@ -16,6 +16,7 @@ use core::{
         SubAssign,
     },
 };
+use std::process::Output;
 
 const CHUNK_SIZE: u32 = 19;
 const CHUNK_BASE: u64 = 10_u64.pow(CHUNK_SIZE);
@@ -72,7 +73,7 @@ pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
 
 pub(crate) trait DivRem<RHS = Self> {
     type Output;
-    fn divrem(&self, rhs: RHS) -> Self::Output;
+    fn divrem(self, rhs: RHS) -> Self::Output;
 }
 
 /// Helper type representing unsigned integers of 256 bits.
@@ -255,7 +256,7 @@ impl u256 {
     #[allow(clippy::cast_possible_truncation)]
     #[inline]
     /// Raw transmutation to `[u64; 4]` (in native endian order).
-    pub(crate) const fn to_bits(self) -> [u64; 4] {
+    pub(crate) const fn to_bits(&self) -> [u64; 4] {
         [
             u128_lo(self.lo) as u64,
             u128_hi(self.lo) as u64,
@@ -334,8 +335,8 @@ impl u256 {
     }
 }
 
-impl Add<&Self> for u256 {
-    type Output = Self;
+impl Add<&Self> for &u256 {
+    type Output = u256;
 
     fn add(self, rhs: &Self) -> Self::Output {
         // TODO: change when [feature(bigint_helper_methods)] got stable
@@ -346,12 +347,12 @@ impl Add<&Self> for u256 {
             .hi
             .wrapping_add(rhs.hi)
             .wrapping_add((lo < rhs.lo) as u128);
-        Self { hi, lo }
+        Self::Output { hi, lo }
     }
 }
 
-impl Add<u32> for u256 {
-    type Output = Self;
+impl Add<u32> for &u256 {
+    type Output = u256;
 
     fn add(self, rhs: u32) -> Self::Output {
         // TODO: change when [feature(bigint_helper_methods)] got stable
@@ -359,7 +360,7 @@ impl Add<u32> for u256 {
         // let hi = self.hi.wrapping_add(carry);
         let lo = self.lo.wrapping_add(rhs as u128);
         let hi = self.hi.wrapping_add((lo < self.lo) as u128);
-        Self { hi, lo }
+        Self::Output { hi, lo }
     }
 }
 
@@ -384,8 +385,8 @@ impl AddAssign<u128> for u256 {
     }
 }
 
-impl Sub<&Self> for u256 {
-    type Output = Self;
+impl Sub<&Self> for &u256 {
+    type Output = u256;
 
     fn sub(self, rhs: &Self) -> Self::Output {
         // TODO: change when [feature(bigint_helper_methods)] got stable
@@ -396,12 +397,12 @@ impl Sub<&Self> for u256 {
             .hi
             .wrapping_sub(rhs.hi)
             .wrapping_sub((lo > self.lo) as u128);
-        Self { hi, lo }
+        Self::Output { hi, lo }
     }
 }
 
-impl Sub<u32> for u256 {
-    type Output = Self;
+impl Sub<u32> for &u256 {
+    type Output = u256;
 
     fn sub(self, rhs: u32) -> Self::Output {
         // TODO: change when [feature(bigint_helper_methods)] got stable
@@ -409,7 +410,7 @@ impl Sub<u32> for u256 {
         // let hi = self.hi.wrapping_add(borrow);
         let lo = self.lo.wrapping_sub(rhs as u128);
         let hi = self.hi.wrapping_sub((lo > self.lo) as u128);
-        Self { hi, lo }
+        Self::Output { hi, lo }
     }
 }
 
@@ -445,11 +446,11 @@ impl MulAssign<u128> for u256 {
     }
 }
 
-impl<'a> DivRem<u64> for u256 {
-    type Output = (Self, u64);
+impl DivRem<u64> for &u256 {
+    type Output = (u256, u64);
 
     /// Returns `self` / rhs, `self` % rhs
-    fn divrem(&self, rhs: u64) -> (Self, u64) {
+    fn divrem(self, rhs: u64) -> Self::Output {
         let (quot_hi, r) = u128_divrem(self.hi, rhs as u128);
         let (mut quot_lo, r) =
             u128_divrem((r << 64) + u128_hi(self.lo), rhs as u128);
@@ -460,7 +461,7 @@ impl<'a> DivRem<u64> for u256 {
     }
 }
 
-impl Rem<u64> for u256 {
+impl Rem<u64> for &u256 {
     type Output = u64;
 
     #[inline]
@@ -469,7 +470,7 @@ impl Rem<u64> for u256 {
     }
 }
 
-impl Rem<u128> for u256 {
+impl Rem<u128> for &u256 {
     type Output = u128;
 
     #[inline]
@@ -616,7 +617,7 @@ impl u512 {
     }
 }
 
-impl<'a> Rem<u64> for &'a u512 {
+impl Rem<u64> for &u512 {
     type Output = u64;
 
     #[inline(always)]
@@ -625,14 +626,14 @@ impl<'a> Rem<u64> for &'a u512 {
     }
 }
 
-impl<'a> Rem<u128> for &'a u512 {
+impl Rem<u128> for &u512 {
     type Output = u128;
 
     #[inline]
     fn rem(self, rhs: u128) -> Self::Output {
-        let mut rem = self.hi % rhs;
-        rem = u256::new(rem, self.lo.hi) % rhs;
-        rem = u256::new(rem, self.lo.lo) % rhs;
+        let mut rem = &self.hi % rhs;
+        rem = &u256::new(rem, self.lo.hi) % rhs;
+        rem = &u256::new(rem, self.lo.lo) % rhs;
         rem
     }
 }
