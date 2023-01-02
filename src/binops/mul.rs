@@ -125,7 +125,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
             };
         }
         // Adjust the remainder for correct final rounding.
-        let rem = ((bits << (u256::BITS - shift)).hi >> 64) as u64
+        let rem = ((&bits << (u256::BITS - shift)).hi >> 64) as u64
             | rem >> min(shift, u64::BITS - 1)
             | (rem != 0) as u64;
         bits >>= shift;

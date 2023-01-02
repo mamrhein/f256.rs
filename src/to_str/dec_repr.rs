@@ -118,10 +118,10 @@ impl DecNumRepr {
             let sh = (exp2 - g - h + 510) as u32;
             let luv = from_ge_lut(g as usize);
             lower_signif10 =
-                u256_truncating_mul_u512(&(lower_signif2 << sh), &luv);
-            signif10 = u256_truncating_mul_u512(&(signif2 << sh), &luv);
+                u256_truncating_mul_u512(&(&lower_signif2 << sh), &luv);
+            signif10 = u256_truncating_mul_u512(&(&signif2 << sh), &luv);
             upper_signif10 =
-                u256_truncating_mul_u512(&(upper_signif2 << sh), &luv);
+                u256_truncating_mul_u512(&(&upper_signif2 << sh), &luv);
             // exp2 >= 0 => rem_zero = signif10 % 10ᵍ == 0 = signif2 % 5ᵍ == 0
             // Analog for the lower and upper bound.
             // exp2 >= 0 => g >= 0
@@ -154,10 +154,10 @@ impl DecNumRepr {
             let sh = (510 - g + h) as u32;
             let luv = from_lt_lut(i as usize);
             lower_signif10 =
-                u256_truncating_mul_u512(&(lower_signif2 << sh), &luv);
-            signif10 = u256_truncating_mul_u512(&(signif2 << sh), &luv);
+                u256_truncating_mul_u512(&(&lower_signif2 << sh), &luv);
+            signif10 = u256_truncating_mul_u512(&(&signif2 << sh), &luv);
             upper_signif10 =
-                u256_truncating_mul_u512(&(upper_signif2 << sh), &luv);
+                u256_truncating_mul_u512(&(&upper_signif2 << sh), &luv);
             // exp2 < 0 => rem_zero = signif10 % 10ᵍ == 0 = signif2 % 2ᵍ == 0
             // Analog for the lower and upper bound.
             if g <= 1 {

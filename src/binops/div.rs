@@ -27,7 +27,7 @@ fn u256_div(x: &u256, y: &u256) -> u256 {
     let mut q = u256::new(0, 1);
     r -= y;
     for i in 1..=SIGNIFICAND_BITS {
-        let mut t = r << 1;
+        let mut t = &r << 1;
         t -= y;
         q <<= 1;
         r = t;
@@ -114,7 +114,7 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
             };
         }
         // Adjust the remainder for correct final rounding.
-        let rem = ((bits << (u256::BITS - shift)).hi >> 64) as u64;
+        let rem = ((&bits << (u256::BITS - shift)).hi >> 64) as u64;
         bits >>= shift;
         const TIE: u64 = 1_u64 << 63;
         if rem > TIE || (rem == TIE && ((bits.lo & 1) == 1)) {

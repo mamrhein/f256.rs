@@ -250,7 +250,7 @@ fn bin_fast_2_scientific(
         (
             signif2 >> k,
             0,
-            signif2.rem_pow2(k) << (SIGNIFICAND_BITS - k),
+            &signif2.rem_pow2(k) << (SIGNIFICAND_BITS - k),
             -(SIGNIFICAND_BITS as i32),
         )
     };

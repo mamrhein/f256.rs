@@ -70,8 +70,8 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
     // the significands use at most 237 bits in an u256.
     let mut a_exp = a.biased_exponent();
     let b_exp = b.biased_exponent();
-    let mut a_signif = a.significand() << 3;
-    let mut b_signif = b.significand() << 3;
+    let mut a_signif = &a.significand() << 3;
+    let mut b_signif = &b.significand() << 3;
 
     // Here a >= b => a_exp >= b_exp => a_exp - b_exp >= 0.
     // We adjust the significand of b by right-shifting it.
@@ -79,7 +79,7 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
     // the silent bit of b's significant is atmost to the position of the sticky
     // bit. Any further shift would have no effect on the result.
     let adj = min(a_exp - b_exp, SIGNIFICAND_BITS + 2);
-    let sticky_bit = !(adj == 0 || (b_signif << (u256::BITS - adj)).is_zero());
+    let sticky_bit = !(adj == 0 || (&b_signif << (u256::BITS - adj)).is_zero());
     b_signif >>= adj;
     b_signif.lo |= sticky_bit as u128;
 

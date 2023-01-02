@@ -239,6 +239,26 @@ impl u256 {
         }
     }
 
+    // TODO: remove this function and replaced calls to it by op <<
+    // when trait fns can be declared const.
+    pub(crate) const fn shift_left(&self, rhs: u32) -> u256 {
+        const LIMIT: u32 = u256::BITS - 1;
+        assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
+        match rhs {
+            1..=127 => u256 {
+                hi: self.hi << rhs | self.lo >> (128 - rhs),
+                lo: self.lo << rhs,
+            },
+            128 => u256 { hi: self.lo, lo: 0 },
+            129..=255 => u256 {
+                hi: self.lo << (rhs - 128),
+                lo: 0,
+            },
+            0 => *self,
+            _ => unreachable!(),
+        }
+    }
+
     #[cfg(target_endian = "big")]
     #[allow(clippy::cast_possible_truncation)]
     #[inline]
@@ -282,24 +302,6 @@ impl u256 {
         Self {
             hi: (bits[3] as u128) << 64 | (bits[2] as u128),
             lo: (bits[1] as u128) << 64 | (bits[0] as u128),
-        }
-    }
-
-    pub(crate) const fn shl(self, rhs: u32) -> Self {
-        const LIMIT: u32 = u256::BITS - 1;
-        assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
-        match rhs {
-            1..=127 => Self {
-                hi: self.hi << rhs | self.lo >> (128 - rhs),
-                lo: self.lo << rhs,
-            },
-            128 => Self { hi: self.lo, lo: 0 },
-            129..=255 => Self {
-                hi: self.lo << (rhs - 128),
-                lo: 0,
-            },
-            0 => self,
-            _ => unreachable!(),
         }
     }
 
@@ -482,11 +484,25 @@ impl Rem<u128> for &u256 {
     }
 }
 
-impl Shl<u32> for u256 {
-    type Output = Self;
+impl Shl<u32> for &u256 {
+    type Output = u256;
 
     fn shl(self, rhs: u32) -> Self::Output {
-        self.shl(rhs)
+        const LIMIT: u32 = u256::BITS - 1;
+        assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
+        match rhs {
+            1..=127 => Self::Output {
+                hi: self.hi << rhs | self.lo >> (128 - rhs),
+                lo: self.lo << rhs,
+            },
+            128 => Self::Output { hi: self.lo, lo: 0 },
+            129..=255 => Self::Output {
+                hi: self.lo << (rhs - 128),
+                lo: 0,
+            },
+            0 => self.clone(),
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -837,8 +853,8 @@ mod u256_shift_tests {
             hi: u128::MAX,
             lo: u128::MAX,
         };
-        assert_eq!(u << 0, u);
-        let v = u << 7;
+        assert_eq!(&u << 0, u);
+        let v = &u << 7;
         assert_eq!(
             v,
             u256 {
@@ -846,7 +862,7 @@ mod u256_shift_tests {
                 lo: u.lo << 7,
             }
         );
-        let v = u << 128;
+        let v = &u << 128;
         assert_eq!(
             v,
             u256 {
@@ -854,7 +870,7 @@ mod u256_shift_tests {
                 lo: 0,
             }
         );
-        let v = u << 132;
+        let v = &u << 132;
         assert_eq!(
             v,
             u256 {
@@ -862,7 +878,7 @@ mod u256_shift_tests {
                 lo: 0,
             }
         );
-        let v = u << 255;
+        let v = &u << 255;
         assert_eq!(
             v,
             u256 {

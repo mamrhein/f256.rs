@@ -47,7 +47,7 @@ impl f256 {
         };
         let msb = 127 - j.leading_zeros();
         Self::new(
-            u256::new(0, j).shl(FRACTION_BITS - msb),
+            u256::new(0, j).shift_left(FRACTION_BITS - msb),
             EXP_BIAS + msb,
             i.is_negative() as u32,
         )
@@ -80,7 +80,7 @@ impl f256 {
         }
         let msb = 127 - i.leading_zeros();
         Self::new(
-            u256::new(0, i).shl(FRACTION_BITS - msb),
+            u256::new(0, i).shift_left(FRACTION_BITS - msb),
             EXP_BIAS + msb,
             0_u32,
         )
@@ -95,7 +95,7 @@ impl f256 {
             return Self::ZERO;
         }
         let msb = 255 - i.leading_zeros();
-        Self::new(i.shl(FRACTION_BITS - msb), EXP_BIAS + msb, 0_u32)
+        Self::new(i.shift_left(FRACTION_BITS - msb), EXP_BIAS + msb, 0_u32)
     }
 }
 
