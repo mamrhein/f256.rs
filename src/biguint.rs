@@ -70,6 +70,11 @@ pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
     t
 }
 
+pub(crate) trait DivRem<RHS = Self> {
+    type Output;
+    fn divrem(&self, rhs: RHS) -> Self::Output;
+}
+
 /// Helper type representing unsigned integers of 256 bits.
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialOrd, PartialEq)]
@@ -186,17 +191,6 @@ impl u256 {
                 self.incr();
             }
         }
-    }
-
-    /// Returns `self` / rhs, `self` % rhs
-    pub(crate) fn divrem(&self, rhs: u64) -> (Self, u64) {
-        let (quot_hi, r) = u128_divrem(self.hi, rhs as u128);
-        let (mut quot_lo, r) =
-            u128_divrem((r << 64) + u128_hi(self.lo), rhs as u128);
-        quot_lo <<= 64;
-        let (t, r) = u128_divrem((r << 64) + u128_lo(self.lo), rhs as u128);
-        quot_lo += t;
-        (u256::new(quot_hi, quot_lo), r as u64)
     }
 
     /// Returns `self` / 10ⁿ, `self` % 10ⁿ
@@ -448,6 +442,21 @@ impl MulAssign<u128> for u256 {
         self.lo = tl.lo;
         let th = u128_widening_mul(self.hi, rhs);
         self.hi = th.lo.wrapping_add(tl.hi);
+    }
+}
+
+impl<'a> DivRem<u64> for u256 {
+    type Output = (Self, u64);
+
+    /// Returns `self` / rhs, `self` % rhs
+    fn divrem(&self, rhs: u64) -> (Self, u64) {
+        let (quot_hi, r) = u128_divrem(self.hi, rhs as u128);
+        let (mut quot_lo, r) =
+            u128_divrem((r << 64) + u128_hi(self.lo), rhs as u128);
+        quot_lo <<= 64;
+        let (t, r) = u128_divrem((r << 64) + u128_lo(self.lo), rhs as u128);
+        quot_lo += t;
+        (u256::new(quot_hi, quot_lo), r as u64)
     }
 }
 

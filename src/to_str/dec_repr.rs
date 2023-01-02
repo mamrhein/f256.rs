@@ -16,7 +16,10 @@ use super::{
     lt_lut::from_lt_lut,
     powers_of_five::is_multiple_of_pow5,
 };
-use crate::{biguint::u256_truncating_mul_u512, f256, u256};
+use crate::{
+    biguint::{u256_truncating_mul_u512, DivRem},
+    f256, u256,
+};
 
 /// Returns ⌊log₁₀(5ⁱ)⌋ for 0 <= i <= 262144.
 #[inline(always)]
