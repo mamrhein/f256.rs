@@ -845,7 +845,7 @@ impl f256 {
         }
         // 1 < |self| < 2²³⁶
         let n_fract_bits = FRACTION_BITS - (self.biased_exponent() - EXP_BIAS);
-        let mut abs_int_bits = &(abs_bits >> n_fract_bits) << n_fract_bits;
+        let mut abs_int_bits = &(&abs_bits >> n_fract_bits) << n_fract_bits;
         let c = adj(sign) as u32 * (abs_int_bits != abs_bits) as u32;
         abs_int_bits += &(&u256::new(0, c as u128) << n_fract_bits);
         Self {

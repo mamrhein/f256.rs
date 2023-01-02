@@ -248,7 +248,7 @@ fn bin_fast_2_scientific(
         // 1 < f < 2²³⁶
         let k = -exp2 as u32;
         (
-            signif2 >> k,
+            &signif2 >> k,
             0,
             &signif2.rem_pow2(k) << (SIGNIFICAND_BITS - k),
             -(SIGNIFICAND_BITS as i32),
@@ -392,7 +392,7 @@ pub(super) fn bin_2_dec_scientific(
     if exp2 >= -(ntz as i32) {
         // f is an integer.
         exp10 = bin_int_2_scientific(
-            signif2 >> ntz,
+            &signif2 >> ntz,
             exp2 + ntz as i32,
             prec,
             &mut res,

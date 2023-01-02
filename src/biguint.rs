@@ -530,8 +530,8 @@ impl ShlAssign<u32> for u256 {
     }
 }
 
-impl Shr<u32> for u256 {
-    type Output = Self;
+impl Shr<u32> for &u256 {
+    type Output = u256;
 
     fn shr(self, rhs: u32) -> Self::Output {
         const LIMIT: u32 = u256::BITS - 1;
@@ -546,7 +546,7 @@ impl Shr<u32> for u256 {
                 hi: 0,
                 lo: self.hi >> (rhs - 128),
             },
-            0 => self,
+            0 => self.clone(),
             _ => unreachable!(),
         }
     }
@@ -894,8 +894,8 @@ mod u256_shift_tests {
             hi: u128::MAX,
             lo: u128::MAX,
         };
-        assert_eq!(u >> 0, u);
-        let v = u >> 3;
+        assert_eq!(&u >> 0, u);
+        let v = &u >> 3;
         assert_eq!(
             v,
             u256 {
@@ -903,7 +903,7 @@ mod u256_shift_tests {
                 lo: u128::MAX,
             }
         );
-        let v = u >> 128;
+        let v = &u >> 128;
         assert_eq!(
             v,
             u256 {
@@ -911,7 +911,7 @@ mod u256_shift_tests {
                 lo: u128::MAX,
             }
         );
-        let v = u >> 140;
+        let v = &u >> 140;
         assert_eq!(
             v,
             u256 {

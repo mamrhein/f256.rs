@@ -119,7 +119,7 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
     // Get round, guard and sticky bit.
     let l3bits = (a_signif.lo & 0x7_u128) as u32;
     // Shift significand back, erase hidden bit and set exponent and sign.
-    let mut bits = a_signif >> 3;
+    let mut bits = &a_signif >> 3;
     bits.hi &= HI_FRACTION_MASK;
     bits.hi |= (a_exp as u128) << HI_FRACTION_BITS;
     bits.hi |= hi_sign;
