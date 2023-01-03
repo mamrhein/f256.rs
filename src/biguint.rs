@@ -194,13 +194,6 @@ impl u256 {
         }
     }
 
-    /// Returns `self` / 10ⁿ, `self` % 10ⁿ
-    pub(crate) fn divrem_pow10(&self, n: u32) -> (Self, u64) {
-        debug_assert!(n <= CHUNK_SIZE);
-        let d = 10_u64.pow(n);
-        self.div_rem(d)
-    }
-
     /// Returns `self` / 10ⁿ, rounded tie to even.
     pub(crate) fn div_pow10_rounded(&self, n: u32) -> Self {
         let mut q = *self;
