@@ -710,11 +710,26 @@ impl ShrAssign<u32> for u512 {
 }
 
 #[cfg(test)]
-mod u256_divrem_tests {
+mod u256_div_rem_tests {
     use super::*;
 
     #[test]
-    fn test_divrem10() {
+    fn test_div_rem() {
+        let v = u256::MAX;
+        assert_eq!(
+            v.div_rem(7000),
+            (
+                u256::new(
+                    48611766702991209066196372490252601,
+                    216614032428528827598971035816565592892
+                ),
+                3935
+            )
+        );
+    }
+
+    #[test]
+    fn test_div_rem10() {
         let v = u256::ZERO;
         assert_eq!(v.div_rem(10), (u256::ZERO, 0));
         let v = u256::new(0, 7);
@@ -733,7 +748,7 @@ mod u256_divrem_tests {
     }
 
     #[test]
-    fn test_divrem_pow10() {
+    fn test_div_rem_pow10() {
         let v = u256::ZERO;
         assert_eq!(v.div_rem(10_u64.pow(10)), (u256::ZERO, 0));
         let v = u256::new(0, 700003);
