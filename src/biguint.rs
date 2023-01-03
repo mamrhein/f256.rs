@@ -73,7 +73,7 @@ pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
 
 pub(crate) trait DivRem<RHS = Self> {
     type Output;
-    fn divrem(self, rhs: RHS) -> Self::Output;
+    fn div_rem(self, rhs: RHS) -> Self::Output;
 }
 
 /// Helper type representing unsigned integers of 256 bits.
@@ -198,7 +198,7 @@ impl u256 {
     pub(crate) fn divrem_pow10(&self, n: u32) -> (Self, u64) {
         debug_assert!(n <= CHUNK_SIZE);
         let d = 10_u64.pow(n);
-        self.divrem(d)
+        self.div_rem(d)
     }
 
     /// Returns `self` / 10ⁿ, rounded tie to even.
@@ -207,7 +207,7 @@ impl u256 {
         let mut r = 0_u64;
         if n <= CHUNK_SIZE {
             let d = 10_u64.pow(n);
-            (q, r) = q.divrem(d);
+            (q, r) = q.div_rem(d);
             let tie = d >> 1;
             if r > tie || (r == tie && (q.lo & 1) == 1) {
                 q.incr();
@@ -216,11 +216,11 @@ impl u256 {
             let n = (n - 1) / CHUNK_SIZE;
             let mut all_chunks_zero = true;
             for _ in 0..n {
-                (q, r) = q.divrem(CHUNK_BASE);
+                (q, r) = q.div_rem(CHUNK_BASE);
                 all_chunks_zero = all_chunks_zero && r == 0;
             }
             let d = 10_u64.pow(n % CHUNK_SIZE);
-            (q, r) = q.divrem(d);
+            (q, r) = q.div_rem(d);
             let tie = d >> 1;
             if r > tie || (r == tie && (q.lo & 1) == 1 && all_chunks_zero) {
                 q.incr();
@@ -452,7 +452,7 @@ impl DivRem<u64> for &u256 {
     type Output = (u256, u64);
 
     /// Returns `self` / rhs, `self` % rhs
-    fn divrem(self, rhs: u64) -> Self::Output {
+    fn div_rem(self, rhs: u64) -> Self::Output {
         let (quot_hi, r) = u128_divrem(self.hi, rhs as u128);
         let (mut quot_lo, r) =
             u128_divrem((r << 64) + u128_hi(self.lo), rhs as u128);
@@ -587,7 +587,7 @@ impl fmt::Display for u256 {
         let mut r = 0_u64;
         let mut idx = 0;
         while !t.is_zero() {
-            (t, r) = t.divrem(SEGMENT_BASE);
+            (t, r) = t.div_rem(SEGMENT_BASE);
             segments[idx] = r;
             idx += 1;
         }
@@ -723,12 +723,12 @@ mod u256_divrem_tests {
     #[test]
     fn test_divrem10() {
         let v = u256::ZERO;
-        assert_eq!(v.divrem(10), (u256::ZERO, 0));
+        assert_eq!(v.div_rem(10), (u256::ZERO, 0));
         let v = u256::new(0, 7);
-        assert_eq!(v.divrem(10), (u256::ZERO, 7));
+        assert_eq!(v.div_rem(10), (u256::ZERO, 7));
         let v = u256::MAX;
         assert_eq!(
-            v.divrem(10),
+            v.div_rem(10),
             (
                 u256::new(
                     34028236692093846346337460743176821145,
@@ -742,12 +742,12 @@ mod u256_divrem_tests {
     #[test]
     fn test_divrem_pow10() {
         let v = u256::ZERO;
-        assert_eq!(v.divrem(10_u64.pow(10)), (u256::ZERO, 0));
+        assert_eq!(v.div_rem(10_u64.pow(10)), (u256::ZERO, 0));
         let v = u256::new(0, 700003);
-        assert_eq!(v.divrem(10_u64.pow(5)), (u256::new(0, 7), 3));
+        assert_eq!(v.div_rem(10_u64.pow(5)), (u256::new(0, 7), 3));
         let v = u256::new(0, u128::MAX);
         assert_eq!(
-            v.divrem(10_u64.pow(18)),
+            v.div_rem(10_u64.pow(18)),
             (
                 u256::new(0, u128::MAX / 10_u128.pow(18)),
                 (u128::MAX % 10_u128.pow(18)) as u64
@@ -755,7 +755,7 @@ mod u256_divrem_tests {
         );
         let v = u256::MAX;
         assert_eq!(
-            v.divrem(10_u64.pow(18)),
+            v.div_rem(10_u64.pow(18)),
             (
                 u256::new(
                     340282366920938463463,
