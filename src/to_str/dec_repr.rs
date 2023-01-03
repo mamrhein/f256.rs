@@ -184,24 +184,26 @@ impl DecNumRepr {
         let mut i = 0_i32;
         let mut round_digit = 0_u64;
         if lower_rem_zero || rem_zero {
-            let (mut lower_quot, mut lower_rem) = lower_signif10.div_rem(10);
-            let (mut upper_quot, mut upper_rem) = upper_signif10.div_rem(10);
+            let (mut lower_quot, mut lower_rem) =
+                lower_signif10.div_rem(10_u64);
+            let (mut upper_quot, mut upper_rem) =
+                upper_signif10.div_rem(10_u64);
             while lower_quot < upper_quot {
-                (signif10, round_digit) = signif10.div_rem(10);
+                (signif10, round_digit) = signif10.div_rem(10_u64);
                 rem_zero &= round_digit == 0;
                 lower_signif10 = lower_quot;
                 lower_rem_zero &= lower_rem == 0;
                 upper_signif10 = upper_quot;
                 i += 1;
-                (lower_quot, lower_rem) = lower_signif10.div_rem(10);
-                (upper_quot, upper_rem) = upper_signif10.div_rem(10);
+                (lower_quot, lower_rem) = lower_signif10.div_rem(10_u64);
+                (upper_quot, upper_rem) = upper_signif10.div_rem(10_u64);
             }
             if lower_rem_zero {
                 while lower_rem == 0 && !lower_signif10.is_zero() {
-                    (signif10, round_digit) = signif10.div_rem(10);
+                    (signif10, round_digit) = signif10.div_rem(10_u64);
                     rem_zero &= round_digit == 0;
                     lower_signif10 = lower_quot;
-                    (lower_quot, lower_rem) = lower_signif10.div_rem(10);
+                    (lower_quot, lower_rem) = lower_signif10.div_rem(10_u64);
                     i += 1;
                 }
             }
@@ -217,25 +219,27 @@ impl DecNumRepr {
             // Can't have a tie.
             let mut round_up = false;
             // First, try to remove two digits.
-            let (mut lower_quot, mut lower_rem) = lower_signif10.div_rem(100);
-            let (mut upper_quot, mut upper_rem) = upper_signif10.div_rem(100);
+            let (mut lower_quot, mut lower_rem) =
+                lower_signif10.div_rem(100_u64);
+            let (mut upper_quot, mut upper_rem) =
+                upper_signif10.div_rem(100_u64);
             if upper_quot > lower_quot {
-                let (quot, rem) = signif10.div_rem(100);
+                let (quot, rem) = signif10.div_rem(100_u64);
                 round_up = rem >= 50;
                 signif10 = quot;
                 lower_signif10 = lower_quot;
                 upper_signif10 = upper_quot;
                 i += 2;
             }
-            (lower_quot, lower_rem) = lower_signif10.div_rem(10);
-            (upper_quot, upper_rem) = upper_signif10.div_rem(10);
+            (lower_quot, lower_rem) = lower_signif10.div_rem(10_u64);
+            (upper_quot, upper_rem) = upper_signif10.div_rem(10_u64);
             while upper_quot > lower_quot {
-                (signif10, round_digit) = signif10.div_rem(10);
+                (signif10, round_digit) = signif10.div_rem(10_u64);
                 round_up = round_digit >= 5;
                 lower_signif10 = lower_quot;
                 upper_signif10 = upper_quot;
-                (lower_quot, lower_rem) = lower_signif10.div_rem(10);
-                (upper_quot, upper_rem) = upper_signif10.div_rem(10);
+                (lower_quot, lower_rem) = lower_signif10.div_rem(10_u64);
+                (upper_quot, upper_rem) = upper_signif10.div_rem(10_u64);
                 i += 1;
             }
             if round_up || signif10 == lower_signif10 {

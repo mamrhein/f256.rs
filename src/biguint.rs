@@ -16,7 +16,6 @@ use core::{
         SubAssign,
     },
 };
-use std::process::Output;
 
 const CHUNK_SIZE: u32 = 19;
 const CHUNK_BASE: u64 = 10_u64.pow(CHUNK_SIZE);
@@ -192,6 +191,70 @@ impl u256 {
                 self.incr();
             }
         }
+    }
+
+    // Specialized version adapted from
+    // Henry S. Warren, Hacker’s Delight,
+    // originally found at http://www.hackersdelight.org/HDcode/divlu.c.txt.
+    // That code is in turn based on Algorithm D from
+    // D. E. Knuth, The Art of Computer Programming, Vol. 2, Ch. 4.3.1,
+    // adapted to the special case m = 4 and n = 2 and HI(x) < y (!).
+    // The link given above does not exist anymore, but the code can still be
+    // found at https://github.com/hcs0/Hackers-Delight/blob/master/divlu.c.txt.
+    /// Returns `self` / rhs, `self` % rhs
+    fn div_rem_u128_special(&self, rhs: u128) -> (Self, u128) {
+        debug_assert!(self.hi < rhs);
+        const B: u128 = 1 << 64;
+        // Normalize dividend and divisor, so that the divisor has its highest
+        // bit set, and get their 64-bit parts.
+        let shift = rhs.leading_zeros();
+        let x = self << shift;
+        let x32 = x.hi;
+        let x1 = u128_hi(x.lo);
+        let x0 = u128_lo(x.lo);
+        let y = rhs << shift;
+        let y1 = u128_hi(y);
+        let y0 = u128_lo(y);
+
+        let (mut q1, mut rhat) = u128_divrem(x32, y1);
+        // Now we have
+        // q1 * y1 + rhat = x32
+        // so that
+        // q1 * y1 * 2⁶⁴ + rhat * 2⁶⁴ + x1 = x32 * 2⁶⁴ + x1
+        while q1 >= B || q1 * y0 > rhat * B + x1 {
+            q1 -= 1;
+            rhat += y1;
+            if rhat >= B {
+                break;
+            }
+        }
+        // The loop did not change the equation given above. It was terminated
+        // if either q1 < 2⁶⁴ or rhat >= 2⁶⁴ or q1 * yn0 > rhat * 2⁶⁴ + x1.
+        // In these cases follows:
+        // q1 * y0 <= rhat * 2⁶⁴ + x1, therefor
+        // q1 * y1 * 2⁶⁴ + q1 * y0 <= x32 * 2⁶⁴ + x1, and
+        // q1 * y <= x32 * 2⁶⁴ + x1, and
+        // x32 * 2⁶⁴ + x1 - q1 * y >= 0.
+        // That means that the add-back step in Knuth's algorithm D is not
+        // required.
+
+        // Since the final quotient is < 2¹²⁸, this must also be true for
+        // x32 * 2⁶⁴ + x1 - q1 * y. Thus, in the following we can safely
+        // ignore any possible overflow in x32 * 2⁶⁴ or q1 * y.
+        let t = x32.wrapping_shl(64) + x1 - q1.wrapping_mul(y);
+        let (mut q0, mut rhat) = u128_divrem(t, y1);
+        while q0 >= B || q0 * y0 > rhat * B + x0 {
+            q0 -= 1;
+            rhat += y1;
+            if rhat >= B {
+                break;
+            }
+        }
+        // q = q1 * B + q0
+        let q = (q1 << 64) + q0;
+        // Denormalize remainder
+        let r = (t.wrapping_shl(64) + x0 - q0.wrapping_mul(y)) >> shift;
+        (u256::new(0_u128, q), r)
     }
 
     /// Returns `self` / 10ⁿ, rounded tie to even.
@@ -456,6 +519,29 @@ impl DivRem<u64> for &u256 {
     }
 }
 
+impl DivRem<u128> for &u256 {
+    type Output = (u256, u128);
+
+    /// Returns `self` / rhs, `self` % rhs
+    fn div_rem(self, rhs: u128) -> Self::Output {
+        if self.hi == 0 {
+            (u256::new(0_u128, self.lo / rhs), self.lo % rhs)
+        } else if u128_hi(rhs) == 0 {
+            let (quot, rem) = self.div_rem(u128_lo(rhs) as u64);
+            (quot, rem as u128)
+        } else if self.hi < rhs {
+            self.div_rem_u128_special(rhs)
+        } else {
+            let mut quot = *self;
+            let mut rem = 0_u128;
+            quot.hi %= rhs;
+            (quot, rem) = quot.div_rem_u128_special(rhs);
+            quot.hi = self.hi / rhs;
+            (quot, rem)
+        }
+    }
+}
+
 impl Rem<u64> for &u256 {
     type Output = u64;
 
@@ -715,9 +801,11 @@ mod u256_div_rem_tests {
 
     #[test]
     fn test_div_rem() {
+        let v = u256::new(0, u128::MAX - 1);
+        assert_eq!(v.div_rem(u128::MAX), (u256::ZERO, v.lo));
         let v = u256::MAX;
         assert_eq!(
-            v.div_rem(7000),
+            v.div_rem(7000_u64),
             (
                 u256::new(
                     48611766702991209066196372490252601,
@@ -726,17 +814,29 @@ mod u256_div_rem_tests {
                 3935
             )
         );
+        assert_eq!(
+            v.div_rem(10_u128.pow(28)),
+            (
+                u256::new(34028236692, 31934256858593286117999845820724523012),
+                564039457584007913129639935
+            )
+        );
+        let v = u256::new(70299, 93425685859328611799984582072);
+        assert_eq!(
+            v.div_rem(10_u128.pow(27) + 3),
+            (u256::new(0, 23921510112175146), 468697630784693143145201978)
+        )
     }
 
     #[test]
     fn test_div_rem10() {
         let v = u256::ZERO;
-        assert_eq!(v.div_rem(10), (u256::ZERO, 0));
+        assert_eq!(v.div_rem(10_u64), (u256::ZERO, 0));
         let v = u256::new(0, 7);
-        assert_eq!(v.div_rem(10), (u256::ZERO, 7));
+        assert_eq!(v.div_rem(10_u64), (u256::ZERO, 7));
         let v = u256::MAX;
         assert_eq!(
-            v.div_rem(10),
+            v.div_rem(10_u64),
             (
                 u256::new(
                     34028236692093846346337460743176821145,
