@@ -445,14 +445,24 @@ impl DivRem<u64> for &u256 {
     type Output = (u256, u64);
 
     /// Returns `self` / rhs, `self` % rhs
+    #[inline(always)]
     fn div_rem(self, rhs: u64) -> Self::Output {
-        let (quot_hi, r) = u128_divrem(self.hi, rhs as u128);
-        let (mut quot_lo, r) =
-            u128_divrem((r << 64) + u128_hi(self.lo), rhs as u128);
+        let (q, r) = self.div_rem(rhs as u128);
+        (q, r as u64)
+    }
+}
+
+impl DivRem<u128> for &u256 {
+    type Output = (u256, u128);
+
+    /// Returns `self` / rhs, `self` % rhs
+    fn div_rem(self, rhs: u128) -> Self::Output {
+        let (quot_hi, r) = u128_divrem(self.hi, rhs);
+        let (mut quot_lo, r) = u128_divrem((r << 64) + u128_hi(self.lo), rhs);
         quot_lo <<= 64;
-        let (t, r) = u128_divrem((r << 64) + u128_lo(self.lo), rhs as u128);
+        let (t, r) = u128_divrem((r << 64) + u128_lo(self.lo), rhs);
         quot_lo += t;
-        (u256::new(quot_hi, quot_lo), r as u64)
+        (u256::new(quot_hi, quot_lo), r)
     }
 }
 
@@ -717,7 +727,7 @@ mod u256_div_rem_tests {
     fn test_div_rem() {
         let v = u256::MAX;
         assert_eq!(
-            v.div_rem(7000),
+            v.div_rem(7000_u64),
             (
                 u256::new(
                     48611766702991209066196372490252601,
@@ -731,12 +741,12 @@ mod u256_div_rem_tests {
     #[test]
     fn test_div_rem10() {
         let v = u256::ZERO;
-        assert_eq!(v.div_rem(10), (u256::ZERO, 0));
+        assert_eq!(v.div_rem(10_u64), (u256::ZERO, 0));
         let v = u256::new(0, 7);
-        assert_eq!(v.div_rem(10), (u256::ZERO, 7));
+        assert_eq!(v.div_rem(10_u64), (u256::ZERO, 7));
         let v = u256::MAX;
         assert_eq!(
-            v.div_rem(10),
+            v.div_rem(10_u64),
             (
                 u256::new(
                     34028236692093846346337460743176821145,
