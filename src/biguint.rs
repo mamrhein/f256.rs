@@ -712,6 +712,23 @@ impl u512 {
     }
 }
 
+impl DivRem<u128> for &u512 {
+    type Output = (u512, u128);
+
+    /// Returns `self` / rhs, `self` % rhs
+    fn div_rem(self, rhs: u128) -> Self::Output {
+        let (quot_hi, mut rem) = self.hi.div_rem(rhs);
+        let mut t = u256::new(rem, self.lo.hi);
+        (t, rem) = t.div_rem(rhs);
+        debug_assert_eq!(t.hi, 0);
+        let mut quot_lo = u256::new(t.lo, 0); // t << 128
+        t = u256::new(rem, self.lo.lo);
+        (t, rem) = t.div_rem(rhs);
+        quot_lo += &t;
+        (u512::new(quot_hi, quot_lo), rem)
+    }
+}
+
 impl Rem<u64> for &u512 {
     type Output = u64;
 
@@ -1086,5 +1103,82 @@ mod u256_shift_tests {
         u = o;
         u >>= 255;
         assert_eq!(u, u256 { hi: 0, lo: 1 });
+    }
+}
+
+#[cfg(test)]
+mod u512_div_rem_tests {
+    use super::*;
+
+    #[test]
+    fn test_div_rem() {
+        let v = u512::MAX;
+        assert_eq!(
+            v.div_rem(2_u128),
+            (u512::new(&u256::MAX >> 1, u256::MAX), 1)
+        );
+    }
+
+    #[test]
+    fn test_div_rem10() {
+        let v = u512::ZERO;
+        assert_eq!(v.div_rem(10_u128), (u512::ZERO, 0_u128));
+        let v = u512::new(u256::ZERO, u256::new(0, 7));
+        assert_eq!(v.div_rem(10_u128), (u512::ZERO, 7_u128));
+        let v = u512::MAX;
+        assert_eq!(
+            v.div_rem(10_u128),
+            (
+                u512::new(
+                    u256::new(
+                        34028236692093846346337460743176821145,
+                        204169420152563078078024764459060926873
+                    ),
+                    u256::new(
+                        204169420152563078078024764459060926873,
+                        204169420152563078078024764459060926873
+                    )
+                ),
+                5
+            )
+        );
+    }
+
+    #[test]
+    fn test_div_rem_pow10() {
+        let v = u512::ZERO;
+        assert_eq!(v.div_rem(10_u128.pow(10)), (u512::ZERO, 0));
+        let v = u512::new(u256::ZERO, u256::new(2730, 490003));
+        assert_eq!(
+            v.div_rem(10_u128.pow(5)),
+            (
+                u512::new(
+                    u256::ZERO,
+                    u256::new(0, 9289708616941620052550126782887272177)
+                ),
+                64883
+            )
+        );
+        let v = u512::new(u256::ZERO, u256::MAX);
+        let d = 10_u128.pow(38);
+        let (q, r) = u256::MAX.div_rem(d);
+        assert_eq!(v.div_rem(d), (u512::new(u256::ZERO, q), r));
+        let v = u512::MAX;
+        assert_eq!(
+            v.div_rem(10_u128.pow(27)),
+            (
+                u512::new(
+                    u256::new(
+                        340282366920,
+                        319342568585932861179998458207245230120
+                    ),
+                    u256::new(
+                        191932681663488487842607845281633842426,
+                        86732842386697408091259742201350722586
+                    )
+                ),
+                811946569946433649006084095
+            )
+        );
     }
 }
