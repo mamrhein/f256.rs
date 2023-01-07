@@ -393,10 +393,10 @@ impl u256 {
     }
 }
 
-impl Add<&Self> for &u256 {
+impl Add for &u256 {
     type Output = u256;
 
-    fn add(self, rhs: &Self) -> Self::Output {
+    fn add(self, rhs: Self) -> Self::Output {
         // TODO: change when [feature(bigint_helper_methods)] got stable
         // let (lo, carry) = self.lo.carrying_add(rhs.lo, false);
         // let (hi, _) = self.hi.carrying_add(rhs.hi, carry);
@@ -443,10 +443,10 @@ impl AddAssign<u128> for u256 {
     }
 }
 
-impl Sub<&Self> for &u256 {
+impl Sub for &u256 {
     type Output = u256;
 
-    fn sub(self, rhs: &Self) -> Self::Output {
+    fn sub(self, rhs: Self) -> Self::Output {
         // TODO: change when [feature(bigint_helper_methods)] got stable
         // let (lo, borrow) = self.lo.borrowing_sub(rhs.lo, false);
         // let (hi, _) = self.hi.borrowing_sub(rhs.hi, borrow);
