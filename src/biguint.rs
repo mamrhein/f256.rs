@@ -567,8 +567,10 @@ impl Shl<u32> for &u256 {
     type Output = u256;
 
     fn shl(self, rhs: u32) -> Self::Output {
-        const LIMIT: u32 = u256::BITS - 1;
-        assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
+        assert!(
+            rhs <= (Self::Output::BITS - 1),
+            "Attempt to shift left with overflow."
+        );
         match rhs {
             1..=127 => Self::Output {
                 hi: self.hi << rhs | self.lo >> (128 - rhs),
@@ -587,8 +589,10 @@ impl Shl<u32> for &u256 {
 
 impl ShlAssign<u32> for u256 {
     fn shl_assign(&mut self, rhs: u32) {
-        const LIMIT: u32 = u256::BITS - 1;
-        assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
+        assert!(
+            rhs <= (Self::BITS - 1),
+            "Attempt to shift left with overflow."
+        );
         match rhs {
             1..=127 => {
                 self.hi <<= rhs;
@@ -613,8 +617,10 @@ impl Shr<u32> for &u256 {
     type Output = u256;
 
     fn shr(self, rhs: u32) -> Self::Output {
-        const LIMIT: u32 = u256::BITS - 1;
-        assert!(rhs <= LIMIT, "Attempt to shift right with overflow.");
+        assert!(
+            rhs <= (Self::Output::BITS - 1),
+            "Attempt to shift right with overflow."
+        );
         match rhs {
             1..=127 => Self::Output {
                 hi: self.hi >> rhs,
@@ -633,8 +639,10 @@ impl Shr<u32> for &u256 {
 
 impl ShrAssign<u32> for u256 {
     fn shr_assign(&mut self, rhs: u32) {
-        const LIMIT: u32 = u256::BITS - 1;
-        assert!(rhs <= LIMIT, "Attempt to shift right with overflow.");
+        assert!(
+            rhs <= (Self::BITS - 1),
+            "Attempt to shift right with overflow."
+        );
         match rhs {
             1..=127 => {
                 self.lo >>= rhs;
@@ -752,7 +760,10 @@ impl Rem<u128> for &u512 {
 
 impl ShrAssign<u32> for u512 {
     fn shr_assign(&mut self, rhs: u32) {
-        debug_assert!(rhs <= 512);
+        assert!(
+            rhs <= (Self::BITS - 1),
+            "Attempt to shift left with overflow."
+        );
         let mut k = rhs;
         match k {
             0..=127 => {
