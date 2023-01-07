@@ -91,6 +91,9 @@ impl u256 {
     /// Additive identity = 0.
     pub(crate) const ZERO: Self = Self::new(0, 0);
 
+    /// Multiplicative identity = 1.
+    pub(crate) const ONE: Self = Self::new(0, 1);
+
     /// Maximum value = 2²⁵⁶ - 1.
     pub(crate) const MAX: Self = Self::new(u128::MAX, u128::MAX);
 
@@ -168,28 +171,15 @@ impl u256 {
         self.hi += t << 64;
     }
 
-    /// Divide `self` inplace by `2^p` and round (tie to even).
-    pub(crate) fn idiv_pow2(&mut self, mut p: u32) {
-        debug_assert_ne!(p, 0);
-        debug_assert!(p < Self::BITS);
-        if p > 128 {
-            p -= 128;
-            let tie = 1 << (p - 1);
-            let hi_rem = self.hi & ((1 << p) - 1);
-            self.lo = self.hi >> p;
-            self.hi = 0;
-            if hi_rem > tie || (hi_rem == tie && (self.lo & 1_u128) == 1) {
-                self.incr();
-            }
-        } else {
-            let tie = 1 << (p - 1);
-            let lo_rem = self.hi & ((1 << p) - 1);
-            self.lo >>= p;
-            self.lo |= self.hi << (128 - p);
-            self.hi >>= p;
-            if lo_rem > tie || (lo_rem == tie && (self.lo & 1_u128) == 1) {
-                self.incr();
-            }
+    /// Divide `self` inplace by 2ⁿ and round (tie to even).
+    pub(crate) fn idiv_pow2(&mut self, mut n: u32) {
+        debug_assert_ne!(n, 0);
+        debug_assert!(n < Self::BITS);
+        let tie = &Self::ONE << (n - 1);
+        let rem = self.rem_pow2(n);
+        *self >>= n;
+        if rem > tie || (rem == tie && (self.lo & 1) == 1) {
+            self.incr();
         }
     }
 
