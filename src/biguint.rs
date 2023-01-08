@@ -12,8 +12,8 @@ use core::{
     fmt,
     mem::size_of,
     ops::{
-        Add, AddAssign, MulAssign, Rem, Shl, ShlAssign, Shr, ShrAssign, Sub,
-        SubAssign,
+        Add, AddAssign, BitOrAssign, MulAssign, Rem, Shl, ShlAssign, Shr,
+        ShrAssign, Sub, SubAssign,
     },
 };
 
@@ -245,6 +245,16 @@ impl u256 {
         // Denormalize remainder
         let r = (t.wrapping_shl(64) + x0 - q0.wrapping_mul(y)) >> shift;
         (u256::new(0_u128, q), r)
+    }
+
+    /// Returns `self` / `rhs`, rounded tie to even.
+    pub(crate) fn div_rounded(&self, rhs: &Self) -> Self {
+        let (mut quot, rem) = self.div_rem(rhs);
+        let tie = rhs >> 1;
+        if rem > tie || (rem == tie && (quot.lo & 1) == 1) {
+            quot.incr();
+        }
+        quot
     }
 
     /// Returns `self` / 10ⁿ, rounded tie to even.
@@ -532,6 +542,31 @@ impl DivRem<u128> for &u256 {
     }
 }
 
+impl DivRem<&u256> for &u256 {
+    type Output = (u256, u256);
+
+    /// Returns `self` / rhs, `self` % rhs
+    fn div_rem(self, rhs: &u256) -> Self::Output {
+        if rhs.hi == 0 {
+            let (quot, rem) = self.div_rem(rhs.lo);
+            (quot, u256::new(0, rem))
+        } else {
+            let mut quot = self.hi / rhs.hi;
+            let mut t = *rhs;
+            t *= quot;
+            if t > *self {
+                t -= rhs;
+                quot -= 1
+            } else if (&t + rhs) < *self {
+                t += rhs;
+                quot += 1
+            }
+            let rem = self - &t;
+            (u256::new(0, quot), rem)
+        }
+    }
+}
+
 impl Rem<u64> for &u256 {
     type Output = u64;
 
@@ -550,6 +585,13 @@ impl Rem<u128> for &u256 {
         rem = ((rem << 64) + u128_hi(self.lo)) % rhs;
         rem = ((rem << 64) + u128_lo(self.lo)) % rhs;
         rem
+    }
+}
+
+impl BitOrAssign for u256 {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.hi |= rhs.hi;
+        self.lo |= rhs.lo;
     }
 }
 
@@ -694,6 +736,9 @@ impl u512 {
     /// Additive identity = 0.
     pub(crate) const ZERO: Self = Self::new(u256::ZERO, u256::ZERO);
 
+    /// Multiplicative identity = 1.
+    pub(crate) const ONE: Self = Self::new(u256::ZERO, u256::ONE);
+
     /// Maximum value = 2⁵¹² - 1.
     pub(crate) const MAX: Self = Self::new(u256::MAX, u256::MAX);
 
@@ -707,6 +752,57 @@ impl u512 {
     #[inline]
     pub(crate) const fn is_zero(&self) -> bool {
         self.hi.is_zero() && self.lo.is_zero()
+    }
+
+    /// Add 1 to `self` inplace.
+    #[inline]
+    pub(crate) fn incr(&mut self) {
+        self.lo.incr();
+        if self.lo.is_zero() {
+            self.incr();
+        }
+    }
+
+    /// Divide `self` inplace by 2ⁿ and round (tie to even).
+    pub(crate) fn idiv_pow2(&mut self, mut n: u32) {
+        debug_assert_ne!(n, 0);
+        debug_assert!(n < u256::BITS);
+        let tie = &u256::ONE << (n - 1);
+        let rem = self.lo.rem_pow2(n);
+        *self >>= n;
+        if rem > tie || (rem == tie && (self.lo.lo & 1) == 1) {
+            self.incr();
+        }
+    }
+
+    /// Returns `self` / 10ⁿ, rounded tie to even.
+    pub(crate) fn div_pow10_rounded(&self, n: u32) -> Self {
+        const CHUNK_SIZE: u32 = 38;
+        const CHUNK_BASE: u128 = 10_u128.pow(CHUNK_SIZE);
+        let mut q = *self;
+        let mut r = 0_u128;
+        if n <= CHUNK_SIZE {
+            let d = 10_u128.pow(n);
+            (q, r) = q.div_rem(d);
+            let tie = d >> 1;
+            if r > tie || (r == tie && (q.lo.lo & 1) == 1) {
+                q.incr();
+            }
+        } else {
+            let n = (n - 1) / CHUNK_SIZE;
+            let mut all_chunks_zero = true;
+            for _ in 0..n {
+                (q, r) = q.div_rem(CHUNK_BASE);
+                all_chunks_zero = all_chunks_zero && r == 0;
+            }
+            let d = 10_u128.pow(n % CHUNK_SIZE);
+            (q, r) = q.div_rem(d);
+            let tie = d >> 1;
+            if r > tie || (r == tie && (q.lo.lo & 1) == 1 && all_chunks_zero) {
+                q.incr();
+            }
+        }
+        q
     }
 }
 
@@ -745,6 +841,32 @@ impl Rem<u128> for &u512 {
         rem = &u256::new(rem, self.lo.hi) % rhs;
         rem = &u256::new(rem, self.lo.lo) % rhs;
         rem
+    }
+}
+
+impl ShlAssign<u32> for u512 {
+    fn shl_assign(&mut self, rhs: u32) {
+        assert!(
+            rhs <= (Self::BITS - 1),
+            "Attempt to shift left with overflow."
+        );
+        match rhs {
+            1..=255 => {
+                self.hi <<= rhs;
+                self.hi |= &self.lo >> (256 - rhs);
+                self.lo <<= rhs;
+            }
+            256 => {
+                self.hi = self.lo;
+                self.lo = u256::ZERO;
+            }
+            257..=511 => {
+                self.hi = &self.lo << (rhs - 256);
+                self.lo = u256::ZERO;
+            }
+            0 => {}
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -810,6 +932,32 @@ impl ShrAssign<u32> for u512 {
                 self.hi.hi = 0;
             }
         }
+    }
+}
+
+impl fmt::Display for u512 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        const SEGMENT_SIZE: usize = 38;
+        const SEGMENT_BASE: u128 = 10_u128.pow(SEGMENT_SIZE as u32);
+        if self.hi.is_zero() {
+            return fmt::Display::fmt(&self.lo, f);
+        }
+        let mut segments: [u128; 5] = [0, 0, 0, 0, 0];
+        let mut t = *self;
+        let mut r = 0_u128;
+        let mut idx = 0;
+        while !t.is_zero() {
+            (t, r) = t.div_rem(SEGMENT_BASE);
+            segments[idx] = r;
+            idx += 1;
+        }
+        idx -= 1;
+        write!(f, "{}", segments[idx]);
+        while idx > 0 {
+            idx -= 1;
+            write!(f, "{:0SEGMENT_SIZE$}", segments[idx]);
+        }
+        Ok(())
     }
 }
 
