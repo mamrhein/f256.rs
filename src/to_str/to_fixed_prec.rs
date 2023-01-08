@@ -326,15 +326,10 @@ fn bin_fract_2_scientific(
     let mut round = Round::Down;
     let segment_idx =
         (-exp2 - (SIGNIFICAND_BITS as i32)) as u32 / COMPRESSION_RATE;
-    let mut n_signif_chunks = prec as u32 / CHUNK_SIZE + 1;
     let (n_zero_chunks, segment_shift) = get_segment_params(segment_idx);
     debug_assert!(segment_shift > exp2);
     let mut exp10 = -((n_zero_chunks * CHUNK_SIZE) as i32);
     let shift = (segment_shift - exp2) as u32;
-    assert!(
-        n_signif_chunks <= CHUNK_CUTOFF,
-        "Internal limit for significant fractional digits exceeded."
-    );
     let mut n_rem_digits = prec;
     let mut chunk_idx = 0_u32;
     let mut t = pow10_div_pow2(segment_idx, chunk_idx);
@@ -342,9 +337,8 @@ fn bin_fract_2_scientific(
     while chunk == 0 {
         exp10 -= CHUNK_SIZE as i32;
         chunk_idx += 1;
-        n_signif_chunks += 1;
         assert!(
-            n_signif_chunks <= CHUNK_CUTOFF,
+            chunk_idx < CHUNK_CUTOFF,
             "Internal limit for significant fractional digits exceeded."
         );
         t = pow10_div_pow2(segment_idx, chunk_idx);
@@ -365,10 +359,14 @@ fn bin_fract_2_scientific(
         chunk_size = n;
         n_digits = min(chunk_size as usize, n_rem_digits);
     }
-    while chunk_idx < n_signif_chunks - 1 {
+    while n_digits < n_rem_digits {
         buf.push_str(format!("{:01$}", chunk, n_digits).as_str());
         n_rem_digits -= n_digits;
         chunk_idx += 1;
+        assert!(
+            chunk_idx < CHUNK_CUTOFF,
+            "Internal limit for significant fractional digits exceeded."
+        );
         t = pow10_div_pow2(segment_idx, chunk_idx);
         chunk = mul_shift_mod(&signif2, &t, shift);
         chunk_size = CHUNK_SIZE;
@@ -616,6 +614,10 @@ mod to_scientific_tests {
         let f = f256::EPSILON;
         let s = bin_2_dec_scientific(f, 'E', 2);
         assert_eq!(s, "9.06E-72");
+        let s = bin_2_dec_scientific(f, 'e', 4);
+        assert_eq!(s, "9.0557e-72");
+        let s = bin_2_dec_scientific(f, 'e', 6);
+        assert_eq!(s, "9.055679e-72");
     }
 
     #[test]
