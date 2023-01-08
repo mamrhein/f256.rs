@@ -23,9 +23,13 @@ use super::{
     },
 };
 use crate::{
+    biguint::DivRem,
     f256,
-    to_str::{common::floor_log10, dec_repr::DecNumRepr},
-    u256, u512, FRACTION_BITS, SIGNIFICAND_BITS,
+    to_str::{
+        common::floor_log10, dec_repr::DecNumRepr,
+        powers_of_five::get_power_of_five,
+    },
+    u256, u512, EMAX, EMIN, FRACTION_BITS, SIGNIFICAND_BITS,
 };
 
 const CHUNK_BASE: u64 = 10_u64.pow(CHUNK_SIZE);
@@ -199,28 +203,105 @@ pub(super) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
 }
 
 #[inline]
-fn split_into_buf(buf: &mut String, s: &String) {
+fn split_into_buf(buf: &mut String, s: &str) {
     buf.push_str(&s[..1]);
     buf.push('.');
     buf.push_str(&s[1..]);
 }
 
-fn bin_int_2_scientific(
+fn bin_small_float_2_scientific(
     signif2: u256,
     exp2: i32,
     prec: usize,
     buf: &mut String,
-) -> i32 {
-    debug_assert!(exp2 >= 0);
-    let mut signif10 = u256::ZERO;
-    let mut exp10 = 0_i32;
-    if exp2 == 0 {
-        signif10 = signif2;
-        // TODO: need u256::log10
-        exp10 = floor_log10_pow2(signif2.msb() as i32);
+) -> (Round, i32) {
+    debug_assert!(exp2 > -(SIGNIFICAND_BITS as i32) && exp2 < 0);
+    let mut exp10 = floor_log10_pow2(FRACTION_BITS as i32 + exp2);
+    // Need to calculate the prec+1 left-most decimal digits of the number.
+    // -237 < exp2 < 0
+    // 0 <= exp10 < 71
+    // k = prec - exp10
+    // n = -exp2
+    // signif10 = ⌊signif2 × 10ᵏ / 2ⁿ⌋, rounded tie to even
+    let k = prec as i32 - exp10;
+    let n = -exp2;
+    // 0 <= prec <= 99 and 0 <= exp10 < 71 => -70 <= k <= 99
+    let signif10 = if k >= 0 {
+        // k >= 0 and 10ᵏ = 5ᵏ × 2ᵏ =>
+        // ⌊signif2 × 10ᵏ / 2ⁿ⌋ = ⌊signif2 × 5ᵏ × 2ᵏ⁻ⁿ⌋
+        let mut t = signif2.widening_mul(&get_power_of_five(k as u32));
+        if k < n {
+            // k < n => ⌊signif2 × 5ᵏ × 2ᵏ⁻ⁿ⌋ = ⌊signif2 × 5ᵏ / 2ⁿ⁻ᵏ⌋
+            // 0 < n < 237 and 0 <= k < n => 0 < (n - k) < 237
+            t.idiv_pow2((n - k) as u32);
+        } else {
+            // 0 < n < 237 and n <= k <= 99 => 0 < (k - n) < 99
+            t <<= (k - n) as u32;
+        }
+        t
     } else {
-        (signif10, exp10) = DecNumRepr::shortest_from_bin_repr(signif2, exp2);
+        // k < 0 and 10ᵏ = 5ᵏ × 2ᵏ =>
+        // ⌊signif2 × 10ᵏ / 2ⁿ⌋ = ⌊signif2 / (5⁻ᵏ × 2ⁿ⁻ᵏ)⌋
+        // The value of k has been choosen so that the resulting decimal
+        // significand is >= 1, thus the divident of the calculated
+        // quotient must be greater than or equal to the divisor.
+        // As signif2 < 2²³⁷ the same must hold for the divisor. Thus the
+        // following shift can't overflow.
+        let d = &get_power_of_five(-k as u32) << (n - k) as u32;
+        let mut t = signif2.div_rounded(&d);
+        u512::new(u256::ZERO, t)
+    };
+    let mut s = signif10.to_string();
+    if s.len() > prec + 1 {
+        // rounding overflow
+        s = s[..s.len() - 1].to_string();
+        exp10 += 1;
     }
+    if prec == 0 {
+        buf.push_str(&s);
+    } else {
+        split_into_buf(buf, &s);
+    }
+    (Round::Down, exp10)
+}
+
+fn bin_small_int_2_scientific(
+    signif2: u256,
+    exp2: i32,
+    prec: usize,
+    buf: &mut String,
+) -> (Round, i32) {
+    debug_assert!(exp2 >= 0 && exp2 <= (u512::BITS - SIGNIFICAND_BITS) as i32);
+    let mut exp10 = floor_log10_pow2(SIGNIFICAND_BITS as i32 + exp2);
+    // Need to calculate the prec+1 left-most decimal digits of the number.
+    // 0 <= exp2 <= 275
+    // 71 <= exp10 <= 154
+    // k = exp10 - prec
+    // n = exp2
+    // signif10 = ⌊signif2 × 2ⁿ / 10ᵏ⌋
+    let k = exp10 - prec as i32;
+    let mut t = u512::new(u256::ZERO, signif2);
+    t <<= exp2 as u32;
+    let signif10 = t.div_pow10_rounded(k as u32);
+    let s = signif10.to_string();
+    if prec == 0 {
+        buf.push_str(&s);
+    } else {
+        split_into_buf(buf, &s);
+    }
+    (Round::Down, exp10)
+}
+
+fn bin_large_int_2_scientific(
+    signif2: u256,
+    exp2: i32,
+    prec: usize,
+    buf: &mut String,
+) -> (Round, i32) {
+    debug_assert!(exp2 > (u512::BITS - SIGNIFICAND_BITS) as i32);
+    let mut round = Round::Down;
+    let (mut signif10, exp10) =
+        DecNumRepr::shortest_from_bin_repr(signif2, exp2);
     // TODO: need u256::log10
     let k = floor_log10_pow2(signif10.msb() as i32) - prec as i32;
     if k > 0 {
@@ -232,32 +313,6 @@ fn bin_int_2_scientific(
     } else {
         split_into_buf(buf, &s);
     }
-    exp10
-}
-
-fn bin_fast_2_scientific(
-    signif2: u256,
-    exp2: i32,
-    prec: usize,
-    buf: &mut String,
-) -> (Round, i32) {
-    debug_assert!(exp2 > -(SIGNIFICAND_BITS as i32) && exp2 < 0);
-    let mut round = Round::Down;
-    let mut exp10 = 0_i32;
-    let (int_signif2, int_exp2, fract_signif2, fract_exp2) = {
-        // 1 < f < 2²³⁶
-        let k = -exp2 as u32;
-        (
-            &signif2 >> k,
-            0,
-            &signif2.rem_pow2(k) << (SIGNIFICAND_BITS - k),
-            -(SIGNIFICAND_BITS as i32),
-        )
-    };
-    exp10 = bin_int_2_scientific(int_signif2, int_exp2, prec, buf);
-    let mut exp = 0_i32;
-    (round, exp) = bin_fract_2_scientific(fract_signif2, fract_exp2, prec, buf);
-    exp10 += exp;
     (round, exp10)
 }
 
@@ -383,34 +438,52 @@ pub(super) fn bin_2_dec_scientific(
 ) -> String {
     debug_assert!(f.is_finite());
     debug_assert!(f.is_sign_positive());
+    const EXP_LOWER_BOUND: i32 = EMIN - FRACTION_BITS as i32;
+    const FAST_LOWER_BOUND: i32 = -(FRACTION_BITS as i32);
+    const FAST_LOWER_BOUND_MINUS_1: i32 = FAST_LOWER_BOUND - 1;
+    const FAST_UPPER_BOUND: i32 = (u512::BITS - SIGNIFICAND_BITS) as i32;
+    const FAST_UPPER_BOUND_PLUS_1: i32 = FAST_UPPER_BOUND + 1;
+    const EXP_UPPER_BOUND: i32 = EMAX - FRACTION_BITS as i32;
     let mut exp2 = f.exponent();
     let mut signif2 = f.significand();
     let mut res = String::with_capacity(prec + 9);
     let mut round = Round::Down;
     let mut exp10 = 0_i32;
-    let ntz = signif2.trailing_zeros();
-    if exp2 >= -(ntz as i32) {
-        // f is an integer.
-        exp10 = bin_int_2_scientific(
-            &signif2 >> ntz,
-            exp2 + ntz as i32,
-            prec,
-            &mut res,
-        );
-        // Need trailing zeroes?
-        res.push_str("0".repeat(prec - min(prec, exp10 as usize)).as_str());
-    } else if exp2 < -(FRACTION_BITS as i32) {
-        // f < 1
-        (round, exp10) = bin_fract_2_scientific(signif2, exp2, prec, &mut res);
-    } else {
-        // 1 < f < 2²³⁶
-        (round, exp10) = bin_fast_2_scientific(signif2, exp2, prec, &mut res);
+    match exp2 {
+        // TODO: change the following ranges to exclusive upper bounds when
+        //  feature(exclusive_range_pattern) got stable.
+        FAST_LOWER_BOUND..=-1 => {
+            // 1 <= f < 2²³⁶
+            (round, exp10) =
+                bin_small_float_2_scientific(signif2, exp2, prec, &mut res);
+        }
+        0..=FAST_UPPER_BOUND => {
+            // 2²³⁶ <= f < 2⁴⁹¹
+            (round, exp10) =
+                bin_small_int_2_scientific(signif2, exp2, prec, &mut res);
+        }
+        EXP_LOWER_BOUND..=FAST_LOWER_BOUND_MINUS_1 => {
+            // f256::MIN <= f < 1
+            (round, exp10) =
+                bin_fract_2_scientific(signif2, exp2, prec, &mut res);
+        }
+        FAST_UPPER_BOUND_PLUS_1..=EXP_UPPER_BOUND => {
+            // 2⁴⁹¹ <= f <= f256::MAX
+            (round, exp10) =
+                bin_large_int_2_scientific(signif2, exp2, prec, &mut res);
+            // Need trailing zeroes?
+            res.push_str("0".repeat(prec - min(prec, exp10 as usize)).as_str());
+        }
+        _ => {
+            unreachable!()
+        }
     }
     if round == Round::Up
         || (round == Round::ToEven && res.ends_with(['1', '3', '5', '7', '9']))
     {
         exp10 += round_up_scientific_inplace(&mut res);
     }
+
     res.push(exp_mark);
     res.push_str(exp10.to_string().as_str());
     res
@@ -550,5 +623,15 @@ mod to_scientific_tests {
         let f = f256::MIN_GT_ZERO;
         let s = bin_2_dec_scientific(f, 'e', 20);
         assert_eq!(s, "2.24800708647703657297e-78984".to_string());
+    }
+
+    #[test]
+    fn test_rounding_overflow() {
+        let f = f256::from_str("97").unwrap();
+        let s = bin_2_dec_scientific(f, 'e', 0);
+        assert_eq!(s, "1e2");
+        let f = f256::from_str("9999999999999999999997").unwrap();
+        let s = bin_2_dec_scientific(f, 'e', 20);
+        assert_eq!(s, "1.00000000000000000000e22");
     }
 }

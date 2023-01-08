@@ -467,4 +467,16 @@ mod format_exp_tests {
             "1.6113257174857604736195721184520050106440238745496695174763712504\
             9607183e78913");
     }
+
+    #[test]
+    fn test_fixed_prec_one_tenth() {
+        let f = f256::from_str("-0.1e0").unwrap();
+        assert_eq!(format!("{f:.2e}"), "-1.00e-1");
+    }
+
+    #[test]
+    fn test_fixed_prec_ninetynine_and_a_half() {
+        let f = f256::from_str("99.5").unwrap();
+        assert_eq!(format!("{f:.0e}"), "1e2");
+    }
 }
