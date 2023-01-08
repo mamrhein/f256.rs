@@ -230,7 +230,7 @@ impl f256 {
     /// Smallest positive normal `f256` value: 2⁻²⁶²¹⁴² ≈ 2.4824 × 10⁻⁷⁸⁹¹³.
     pub const MIN_POSITIVE: Self = MIN_POSITIVE;
 
-    /// Smallest positive subnormal `f256` value: 2⁻²⁶²³⁷⁸ ≈ 10⁻⁷⁸⁹⁸⁴.
+    /// Smallest positive subnormal `f256` value: 2⁻²⁶²³⁷⁸ ≈ 2.248 × 10⁻⁷⁸⁹⁸⁴.
     pub const MIN_GT_ZERO: Self = MIN_GT_ZERO;
 
     /// Maximum possible power of 2 exponent: Eₘₐₓ + 1 = 2¹⁸ = 262144.
