@@ -42,12 +42,6 @@ enum Round {
     Down,
 }
 
-/// Calculate the segment index for POW2_DIV_POW10_TABLE from exponent
-#[inline(always)]
-fn calc_segment_idx(exp: u32) -> u32 {
-    (exp + COMPRESSION_RATE - 1) / COMPRESSION_RATE
-}
-
 /// Calculate ⌊x × y / 2ᵏ⌋ % B, where B = 10 ^ CHUNK_SIZE.
 #[inline(always)]
 fn mul_shift_mod(x: &u256, y: &u512, k: u32) -> u64 {
@@ -360,8 +354,10 @@ fn bin_fract_2_scientific(
         n_digits = min(chunk_size as usize, n_rem_digits);
     }
     while n_digits < n_rem_digits {
-        buf.push_str(format!("{:01$}", chunk, n_digits).as_str());
-        n_rem_digits -= n_digits;
+        if n_digits > 0 {
+            buf.push_str(format!("{:01$}", chunk, n_digits).as_str());
+            n_rem_digits -= n_digits;
+        }
         chunk_idx += 1;
         assert!(
             chunk_idx < CHUNK_CUTOFF,
