@@ -21,11 +21,11 @@ use crate::{
     f256, u256,
 };
 
-/// Returns ⌊log₁₀(5ⁱ)⌋ for 0 <= i <= 262144.
+/// Returns ⌊log₁₀(5ⁱ)⌋ for 0 <= i <= 262380.
 #[inline(always)]
 fn floor_log10_pow5(i: i32) -> i32 {
     debug_assert!(i >= 0);
-    debug_assert!(i <= 262144);
+    debug_assert!(i <= 262380);
     ((i as u128 * 24592820711491) >> 45) as i32
 }
 

@@ -448,6 +448,24 @@ mod format_exp_tests {
     }
 
     #[test]
+    fn test_shortest_min_positive() {
+        let f = f256::MIN_POSITIVE;
+        let s = "2.48242795146434978829932822291387172367768770607964686927095329791378756e-78913";
+        assert_eq!(format!("{f:e}"), s);
+        let g = f256::from_str(s).unwrap();
+        assert_eq!(f, g);
+    }
+
+    #[test]
+    fn test_shortest_min_gt_zero() {
+        let f = f256::MIN_GT_ZERO;
+        let s = "2e-78984";
+        assert_eq!(format!("{f:e}"), s);
+        let g = f256::from_str(s).unwrap();
+        assert_eq!(f, g);
+    }
+
+    #[test]
     fn test_shortest_normal_near_ten_pow_70() {
         let f = f256::from_str("-1.00480900e70").unwrap();
         assert_eq!(format!("{f:e}"), "-1.004809e70");
