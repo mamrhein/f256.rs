@@ -294,10 +294,12 @@ fn bin_large_int_2_scientific(
 ) -> (Round, i32) {
     debug_assert!(exp2 > (u512::BITS - SIGNIFICAND_BITS) as i32);
     let mut round = Round::Down;
-    let (mut signif10, exp10) =
+    let (mut signif10, mut exp10) =
         DecNumRepr::shortest_from_bin_repr(signif2, exp2);
-    // TODO: need u256::log10
-    let k = floor_log10_pow2(signif10.msb() as i32) - prec as i32;
+    // ???: need u256::log10 ?
+    let mut k = floor_log10_pow2(signif10.msb() as i32);
+    exp10 += k;
+    k -= prec as i32;
     if k > 0 {
         signif10 = signif10.div_pow10_rounded(k as u32);
     }
