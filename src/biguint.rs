@@ -269,12 +269,13 @@ impl u256 {
                 q.incr();
             }
         } else {
-            let n = (n - 1) / CHUNK_SIZE;
+            let n_full_chunks = (n - 1) / CHUNK_SIZE;
             let mut all_chunks_zero = true;
-            for _ in 0..n {
+            for _ in 0..n_full_chunks {
                 (q, r) = q.div_rem(CHUNK_BASE);
                 all_chunks_zero = all_chunks_zero && r == 0;
             }
+            // last chunk
             let d = 10_u64.pow(n % CHUNK_SIZE);
             (q, r) = q.div_rem(d);
             let tie = d >> 1;
