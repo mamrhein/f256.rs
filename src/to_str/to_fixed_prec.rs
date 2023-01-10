@@ -186,6 +186,12 @@ pub(super) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
     } else {
         exp2 = fp.exponent();
         signif2 = fp.significand();
+        if exp2 < EMIN {
+            // f is subnormal, adjust significand and exponent.
+            let adj = SIGNIFICAND_BITS - signif2.msb();
+            signif2 <<= adj;
+            exp2 -= adj as i32;
+        }
         round = bin_fract_2_dec_str(signif2, exp2, prec, &mut res)
     }
     if round == Round::Up
