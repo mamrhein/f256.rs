@@ -265,11 +265,48 @@ mod display_tests {
     }
 
     #[test]
+    fn test_shortest_min_positive() {
+        let f = f256::MIN_POSITIVE;
+        let s = format!("{f}");
+        let tail =
+            "000248242795146434978829932822291387172367768770607964686927095329\
+            791378756";
+        assert_eq!(s.len(), 78986);
+        assert!(s.ends_with(tail));
+        let g = f256::from_str(&s).unwrap();
+        assert_eq!(f, g);
+    }
+
+    #[test]
+    fn test_shortest_min_gt_zero() {
+        let f = f256::MIN_GT_ZERO;
+        let s = format!("{f}");
+        let tail =
+            "00000000000000000000000000000000000000000000000000000000000000002";
+        assert_eq!(s.len(), 78986);
+        assert!(s.ends_with(tail));
+        let g = f256::from_str(&s).unwrap();
+        assert_eq!(f, g);
+    }
+
+    #[test]
     fn test_shortest_normal_near_ten_pow_70() {
         let f = f256::from_str("-1.004809e70").unwrap();
         assert_eq!(format!("{f}"),
                    "-1004809000000000000000000000000000000000000000000000000000\
                    0000000000000");
+    }
+
+    #[test]
+    fn test_shortest_f256_max() {
+        let f = f256::MAX;
+        let s = format!("{f}");
+        let head = "16113257174857604736195721184520050106440238745496695174763\
+            7125049607183000";
+        assert_eq!(s.len(), 78914);
+        assert_eq!(&s[..head.len()], head);
+        let g = f256::from_str(&s).unwrap();
+        assert_eq!(f, g);
     }
 
     #[test]
@@ -340,6 +377,27 @@ mod display_tests {
                    "0.000000000000000000000000000000000000000000000000000000000\
                    0000000000000000000000001000009"
         );
+    }
+
+    #[test]
+    fn test_fixed_prec_min_positive() {
+        let f = f256::MIN_POSITIVE;
+        let s = format!("{f:.78930}");
+        let tail = "000248242795146434979";
+        assert_eq!(s.len(), 78932);
+        assert!(s.ends_with(tail));
+    }
+
+    #[test]
+    fn test_fixed_prec_min_gt_zero() {
+        let f = f256::MIN_GT_ZERO;
+        let s = format!("{f}");
+        let tail =
+            "00000000000000000000000000000000000000000000000000000000000000002";
+        assert_eq!(s.len(), 78986);
+        assert!(s.ends_with(tail));
+        let g = f256::from_str(&s).unwrap();
+        assert_eq!(f, g);
     }
 
     #[test]
@@ -487,14 +545,50 @@ mod format_exp_tests {
     }
 
     #[test]
+    fn test_fixed_prec_one_half() {
+        let f = f256::from_str("0.5").unwrap();
+        assert_eq!(format!("{f:.3e}"), "5.000e-1");
+    }
+
+    #[test]
     fn test_fixed_prec_one_tenth() {
         let f = f256::from_str("-0.1e0").unwrap();
         assert_eq!(format!("{f:.2e}"), "-1.00e-1");
     }
 
     #[test]
+    fn test_fixed_prec_epsilon() {
+        let f = -f256::EPSILON;
+        assert_eq!(format!("{f:^20.6e}"), "   -9.055679e-72    ");
+    }
+
+    #[test]
+    fn test_fixed_prec_2_pow_250() {
+        let f = f256::from_str("5.527147875260445e-76").unwrap();
+        assert_eq!(format!("{f:.8e}"), "5.52714788e-76");
+    }
+
+    #[test]
+    fn test_fixed_prec_f256_min_positive() {
+        let f = f256::MIN_POSITIVE;
+        assert_eq!(format!("{f:.4e}"), "2.4824e-78913");
+    }
+
+    #[test]
+    fn test_fixed_prec_f256_min_gt_zero() {
+        let f = f256::MIN_GT_ZERO;
+        assert_eq!(format!("{f:.5e}"), "2.24801e-78984");
+    }
+
+    #[test]
     fn test_fixed_prec_ninetynine_and_a_half() {
         let f = f256::from_str("99.5").unwrap();
         assert_eq!(format!("{f:.0e}"), "1e2");
+    }
+
+    #[test]
+    fn test_fixed_prec_f256_max() {
+        let f = f256::MAX;
+        assert_eq!(format!("{f:.4e}"), "1.6113e78913");
     }
 }
