@@ -432,7 +432,9 @@ pub(super) fn bin_2_dec_scientific(
 ) -> String {
     debug_assert!(f.is_finite());
     debug_assert!(f.is_sign_positive());
-    const EXP_LOWER_BOUND: i32 = EMIN - FRACTION_BITS as i32;
+    const SUBNORMAL_EXP_LOWER_BOUND: i32 = EMIN - FRACTION_BITS as i32;
+    const SUBNORMAL_EXP_UPPER_BOUND: i32 = EMIN - 1;
+    const NORMAL_EXP_LOWER_BOUND: i32 = EMIN;
     const FAST_LOWER_BOUND: i32 = -(FRACTION_BITS as i32);
     const FAST_LOWER_BOUND_MINUS_1: i32 = FAST_LOWER_BOUND - 1;
     const FAST_UPPER_BOUND: i32 = (u512::BITS - SIGNIFICAND_BITS) as i32;
@@ -456,8 +458,8 @@ pub(super) fn bin_2_dec_scientific(
             (round, exp10) =
                 bin_small_int_2_scientific(signif2, exp2, prec, &mut res);
         }
-        EXP_LOWER_BOUND..=FAST_LOWER_BOUND_MINUS_1 => {
-            // f256::MIN <= f < 1
+        NORMAL_EXP_LOWER_BOUND..=FAST_LOWER_BOUND_MINUS_1 => {
+            // f256::MIN_POSITIVE <= f < 1
             (round, exp10) =
                 bin_fract_2_scientific(signif2, exp2, prec, &mut res);
         }
@@ -467,6 +469,15 @@ pub(super) fn bin_2_dec_scientific(
                 bin_large_int_2_scientific(signif2, exp2, prec, &mut res);
             // Need trailing zeroes?
             res.push_str("0".repeat(prec - min(prec, exp10 as usize)).as_str());
+        }
+        SUBNORMAL_EXP_LOWER_BOUND..=SUBNORMAL_EXP_UPPER_BOUND => {
+            // f256::MIN_GT_ZERO <= f < MIN_POSITIVE
+            // f is subnormal, adjust significand and exponent.
+            let adj = SIGNIFICAND_BITS - signif2.msb();
+            signif2 <<= adj;
+            exp2 -= adj as i32;
+            (round, exp10) =
+                bin_fract_2_scientific(signif2, exp2, prec, &mut res);
         }
         _ => {
             unreachable!()
