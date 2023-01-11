@@ -17,11 +17,14 @@ mod powers_of_five;
 mod to_fixed_prec;
 
 use core::fmt::{self, Display, Write};
+use std::cmp::min;
 
 use dec_repr::DecNumRepr;
 use to_fixed_prec::{bin_2_dec_fixed_point, bin_2_dec_scientific};
 
 use crate::{f256, u256};
+
+const MAX_PREC: usize = 75;
 
 fn format_nan(form: &mut fmt::Formatter<'_>) -> fmt::Result {
     let nan = "NaN".to_string();
@@ -39,7 +42,7 @@ fn format_nan(form: &mut fmt::Formatter<'_>) -> fmt::Result {
 
 fn format_special(f: &f256, form: &mut fmt::Formatter<'_>) -> fmt::Result {
     if f.is_zero() {
-        let prec = form.precision().unwrap_or(0);
+        let prec = min(form.precision().unwrap_or(0), MAX_PREC);
         let s = format!("{:.*}", prec, 0.);
         form.pad_integral(f.is_sign_positive(), "", s.as_str())
     } else if f.is_nan() {
@@ -55,6 +58,9 @@ fn format_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
+    if prec > MAX_PREC {
+        panic!("Maximum precision exceeded: {prec} > {MAX_PREC}.")
+    }
     let s = bin_2_dec_fixed_point(f.abs(), prec);
     let start = s.starts_with('0') as usize;
     form.pad_integral(f.is_sign_positive(), "", &s[start..])
@@ -68,6 +74,11 @@ fn format_shortest(f: &f256, form: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 
 impl fmt::Display for f256 {
+    /// Formats the value using the given formatter.
+    ///
+    /// Panics:
+    /// -------
+    /// * The given precision exceeds 75.
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_special() {
             format_special(self, form)
@@ -86,7 +97,7 @@ fn format_scientific_special(
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
     if f.is_zero() {
-        let prec = form.precision().unwrap_or(0);
+        let prec = min(form.precision().unwrap_or(0), MAX_PREC);
         let s = match exp_mark {
             'e' => format!("{:.*e}", prec, 0.),
             'E' => format!("{:.*E}", prec, 0.),
@@ -123,6 +134,12 @@ fn format_scientific_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
+    if prec > MAX_PREC {
+        panic!(
+            "Maximum precision for scientific format exceeded: {prec} > \
+             {MAX_PREC}."
+        )
+    }
     let s = bin_2_dec_scientific(f.abs(), exp_mark, prec);
     form.pad_integral(f.is_sign_positive(), "", &s)
 }
@@ -139,12 +156,24 @@ fn format_scientific_shortest(
 }
 
 impl fmt::LowerExp for f256 {
+    /// Formats the value using the given formatter in scientific notation with
+    /// a lower-case `e`.
+    ///
+    /// Panics:
+    /// -------
+    /// * The given precision exceeds 75.
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         format_scientific_common(self, 'e', form)
     }
 }
 
 impl fmt::UpperExp for f256 {
+    /// Formats the value using the given formatter in scientific notation with
+    /// a lower-case `E`.
+    ///
+    /// Panics:
+    /// -------
+    /// * The given precision exceeds 75.
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         format_scientific_common(self, 'E', form)
     }
@@ -155,6 +184,13 @@ mod display_tests {
     use core::str::FromStr;
 
     use super::*;
+
+    #[test]
+    #[should_panic]
+    fn test_max_prec_exceeded() {
+        let f = f256::ONE;
+        let _ = format!("{f:.76}");
+    }
 
     #[test]
     fn test_zero() {
@@ -370,25 +406,6 @@ mod display_tests {
     }
 
     #[test]
-    fn test_fixed_prec_normal_near_zero() {
-        let f = f256::from_str("1.000009499e-82").unwrap();
-        assert_eq!(
-            format!("{f:.88}"),
-                   "0.000000000000000000000000000000000000000000000000000000000\
-                   0000000000000000000000001000009"
-        );
-    }
-
-    #[test]
-    fn test_fixed_prec_min_positive() {
-        let f = f256::MIN_POSITIVE;
-        let s = format!("{f:.78930}");
-        let tail = "000248242795146434979";
-        assert_eq!(s.len(), 78932);
-        assert!(s.ends_with(tail));
-    }
-
-    #[test]
     fn test_fixed_prec_min_gt_zero() {
         let f = f256::MIN_GT_ZERO;
         let s = format!("{f}");
@@ -416,6 +433,13 @@ mod format_exp_tests {
     use core::str::FromStr;
 
     use super::*;
+
+    #[test]
+    #[should_panic]
+    fn test_max_prec_exceeded() {
+        let f = f256::ONE;
+        let _ = format!("{f:.83e}");
+    }
 
     #[test]
     fn test_zero() {
