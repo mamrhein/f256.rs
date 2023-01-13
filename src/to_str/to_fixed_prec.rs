@@ -18,8 +18,8 @@ use super::{
     common::floor_log10_pow2,
     formatted::{Formatted, Part},
     pow10_div_pow2_lut::{
-        get_segment_params, pow10_div_pow2, ADDITIONAL_BITS, CHUNK_CUTOFF,
-        CHUNK_SIZE, COMPRESSION_RATE,
+        get_segment_params, pow10_div_pow2, CHUNK_BASE, CHUNK_CUTOFF,
+        CHUNK_SIZE, COMPRESSION_RATE, SHIFT,
     },
 };
 use crate::{
@@ -31,9 +31,6 @@ use crate::{
     },
     u256, u512, EMAX, EMIN, FRACTION_BITS, SIGNIFICAND_BITS,
 };
-
-const CHUNK_BASE: u64 = 10_u64.pow(CHUNK_SIZE);
-const SHIFT: u32 = ADDITIONAL_BITS + COMPRESSION_RATE;
 
 #[derive(PartialEq)]
 enum Round {
