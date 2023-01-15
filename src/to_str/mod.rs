@@ -13,6 +13,7 @@ mod formatted;
 mod ge_lut;
 mod lt_lut;
 mod pow10_div_pow2_lut;
+mod pow2_div_pow10_lut;
 mod powers_of_five;
 mod to_fixed_prec;
 
@@ -608,6 +609,18 @@ mod format_exp_tests {
     fn test_fixed_prec_ninetynine_and_a_half() {
         let f = f256::from_str("99.5").unwrap();
         assert_eq!(format!("{f:.0e}"), "1e2");
+    }
+
+    #[test]
+    fn test_fixed_prec_10_pow_305() {
+        let f = f256::from_str("7.8392e305").unwrap();
+        assert_eq!(format!("{f:.2e}"), "7.84e305");
+    }
+
+    #[test]
+    fn test_fixed_prec_10_pow_22093() {
+        let f = f256::from_str("5.900065e22093").unwrap();
+        assert_eq!(format!("{f:.5e}"), "5.90006e22093");
     }
 
     #[test]

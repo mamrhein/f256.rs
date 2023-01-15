@@ -18,15 +18,17 @@ use super::{
     common::floor_log10_pow2,
     formatted::{Formatted, Part},
     pow10_div_pow2_lut::{
-        get_segment_params, pow10_div_pow2, CHUNK_BASE, CHUNK_CUTOFF,
+        get_pow10_div_pow2_params, pow10_div_pow2, CHUNK_BASE, CHUNK_CUTOFF,
         CHUNK_SIZE, COMPRESSION_RATE, SHIFT,
     },
+    pow2_div_pow10_lut::pow2_div_pow10,
 };
 use crate::{
     biguint::DivRem,
     f256,
     to_str::{
         common::floor_log10, dec_repr::DecNumRepr,
+        pow2_div_pow10_lut::get_pow2_div_pow10_params,
         powers_of_five::get_power_of_five,
     },
     u256, u512, EMAX, EMIN, FRACTION_BITS, SIGNIFICAND_BITS,
@@ -63,7 +65,7 @@ fn bin_fract_2_dec_str(
     let segment_idx =
         (-exp2 - SIGNIFICAND_BITS as i32) as u32 / COMPRESSION_RATE;
     let n_chunks = prec as u32 / CHUNK_SIZE + 1;
-    let (n_zero_chunks, segment_shift) = get_segment_params(segment_idx);
+    let (n_zero_chunks, segment_shift) = get_pow10_div_pow2_params(segment_idx);
     debug_assert!(segment_shift > exp2);
     let shift = (segment_shift - exp2) as u32;
     if n_chunks <= n_zero_chunks {
@@ -297,70 +299,48 @@ fn bin_large_int_2_scientific(
 ) -> (Round, i32) {
     debug_assert!(exp2 > (u512::BITS - SIGNIFICAND_BITS) as i32);
     let mut round = Round::Down;
-    let (mut signif10, mut exp10) =
-        DecNumRepr::shortest_from_bin_repr(signif2, exp2);
-    // ???: need u256::log10 ?
-    let mut k = floor_log10_pow2(signif10.msb() as i32);
-    exp10 += k;
-    k -= prec as i32;
-    if k > 0 {
-        signif10 = signif10.div_pow10_rounded(k as u32);
-    }
-    let s = signif10.to_string();
-    if prec == 0 {
-        buf.push_str(&s);
-    } else {
-        split_into_buf(buf, &s);
-    }
-    (round, exp10)
-}
-
-fn bin_fract_2_scientific(
-    signif2: u256,
-    exp2: i32,
-    prec: usize,
-    buf: &mut String,
-) -> (Round, i32) {
-    debug_assert!(exp2 <= -(SIGNIFICAND_BITS as i32));
-    let mut round = Round::Down;
-    let segment_idx =
-        (-exp2 - (SIGNIFICAND_BITS as i32)) as u32 / COMPRESSION_RATE;
-    let (n_zero_chunks, segment_shift) = get_segment_params(segment_idx);
-    debug_assert!(segment_shift > exp2);
-    let mut exp10 = -((n_zero_chunks * CHUNK_SIZE) as i32);
-    let shift = (segment_shift - exp2) as u32;
-    let mut n_rem_digits = prec;
+    let segment_idx = exp2 as u32 / COMPRESSION_RATE;
+    let (mut n_chunks, segment_shift) = get_pow2_div_pow10_params(segment_idx);
+    let shift = segment_shift - exp2 as u32;
+    let mut n_rem_digits = prec as u32;
     let mut chunk_idx = 0_u32;
-    let mut t = pow10_div_pow2(segment_idx, chunk_idx);
+    let mut t = pow2_div_pow10(segment_idx, chunk_idx);
     let mut chunk = mul_shift_mod(&signif2, &t, shift);
-    while chunk == 0 {
-        exp10 -= CHUNK_SIZE as i32;
+    if chunk == 0 {
+        n_chunks -= 1;
         chunk_idx += 1;
-        assert!(
-            chunk_idx < CHUNK_CUTOFF,
-            "Internal limit for significant fractional digits exceeded."
-        );
-        t = pow10_div_pow2(segment_idx, chunk_idx);
+        t = pow2_div_pow10(segment_idx, chunk_idx);
         chunk = mul_shift_mod(&signif2, &t, shift);
     }
     let mut chunk_size = CHUNK_SIZE;
-    let mut n_digits = min(chunk_size as usize, n_rem_digits);
-    if buf.len() == 0 {
-        let mut n = floor_log10(chunk);
-        let d = 10_u64.pow(n);
+    // First chunk:
+    let mut n_digits = floor_log10(chunk);
+    let exp10 = n_digits + (n_chunks - 1) * CHUNK_SIZE;
+    if n_digits > n_rem_digits {
+        // First chunk is last chunk.
+        let d = 10_u64.pow(n_digits);
         let i = chunk / d;
         buf.push_str(i.to_string().as_str());
         if n_rem_digits > 0 {
             buf.push('.');
         }
-        exp10 -= (chunk_size - n) as i32;
         chunk %= d;
-        chunk_size = n;
-        n_digits = min(chunk_size as usize, n_rem_digits);
+        chunk_size = n_digits;
+        n_digits = min(chunk_size, n_rem_digits);
+    } else {
+        split_into_buf(buf, chunk.to_string().as_str());
+        n_rem_digits -= n_digits;
+        chunk_idx += 1;
+        debug_assert!(
+            chunk_idx < CHUNK_CUTOFF,
+            "Internal limit for significant fractional digits exceeded."
+        );
+        t = pow2_div_pow10(segment_idx, chunk_idx);
+        chunk = mul_shift_mod(&signif2, &t, shift);
     }
     while n_digits < n_rem_digits {
         if n_digits > 0 {
-            buf.push_str(format!("{:01$}", chunk, n_digits).as_str());
+            buf.push_str(format!("{:01$}", chunk, n_digits as usize).as_str());
             n_rem_digits -= n_digits;
         }
         chunk_idx += 1;
@@ -368,13 +348,13 @@ fn bin_fract_2_scientific(
             chunk_idx < CHUNK_CUTOFF,
             "Internal limit for significant fractional digits exceeded."
         );
-        t = pow10_div_pow2(segment_idx, chunk_idx);
+        t = pow2_div_pow10(segment_idx, chunk_idx);
         chunk = mul_shift_mod(&signif2, &t, shift);
         chunk_size = CHUNK_SIZE;
-        n_digits = min(chunk_size as usize, n_rem_digits);
+        n_digits = min(chunk_size, n_rem_digits);
     }
-    // last chunk
-    let d = 10_u64.pow(chunk_size - n_digits as u32);
+    // Last chunk:
+    let d = 10_u64.pow(chunk_size - n_digits);
     let rem = chunk % d;
     chunk /= d;
     let tie = d >> 1;
@@ -394,7 +374,91 @@ fn bin_fract_2_scientific(
             };
     }
     if n_digits > 0 {
-        buf.push_str(format!("{:01$}", chunk, n_rem_digits).as_str());
+        buf.push_str(format!("{:01$}", chunk, n_rem_digits as usize).as_str());
+    }
+    (round, exp10 as i32)
+}
+
+fn bin_fract_2_scientific(
+    signif2: u256,
+    exp2: i32,
+    prec: usize,
+    buf: &mut String,
+) -> (Round, i32) {
+    debug_assert!(exp2 <= -(SIGNIFICAND_BITS as i32));
+    let mut round = Round::Down;
+    let segment_idx =
+        (-exp2 - (SIGNIFICAND_BITS as i32)) as u32 / COMPRESSION_RATE;
+    let (n_zero_chunks, segment_shift) = get_pow10_div_pow2_params(segment_idx);
+    debug_assert!(segment_shift > exp2);
+    let mut exp10 = -((n_zero_chunks * CHUNK_SIZE) as i32);
+    let shift = (segment_shift - exp2) as u32;
+    let mut n_rem_digits = prec as u32;
+    let mut chunk_idx = 0_u32;
+    let mut t = pow10_div_pow2(segment_idx, chunk_idx);
+    let mut chunk = mul_shift_mod(&signif2, &t, shift);
+    while chunk == 0 {
+        exp10 -= CHUNK_SIZE as i32;
+        chunk_idx += 1;
+        assert!(
+            chunk_idx < CHUNK_CUTOFF,
+            "Internal limit for significant fractional digits exceeded."
+        );
+        t = pow10_div_pow2(segment_idx, chunk_idx);
+        chunk = mul_shift_mod(&signif2, &t, shift);
+    }
+    let mut chunk_size = CHUNK_SIZE;
+    let mut n_digits = min(chunk_size, n_rem_digits);
+    if buf.len() == 0 {
+        let mut n = floor_log10(chunk);
+        let d = 10_u64.pow(n);
+        let i = chunk / d;
+        buf.push_str(i.to_string().as_str());
+        if n_rem_digits > 0 {
+            buf.push('.');
+        }
+        exp10 -= (chunk_size - n) as i32;
+        chunk %= d;
+        chunk_size = n;
+        n_digits = min(chunk_size, n_rem_digits);
+    }
+    while n_digits < n_rem_digits {
+        if n_digits > 0 {
+            buf.push_str(format!("{:01$}", chunk, n_digits as usize).as_str());
+            n_rem_digits -= n_digits;
+        }
+        chunk_idx += 1;
+        assert!(
+            chunk_idx < CHUNK_CUTOFF,
+            "Internal limit for significant fractional digits exceeded."
+        );
+        t = pow10_div_pow2(segment_idx, chunk_idx);
+        chunk = mul_shift_mod(&signif2, &t, shift);
+        chunk_size = CHUNK_SIZE;
+        n_digits = min(chunk_size, n_rem_digits);
+    }
+    // last chunk
+    let d = 10_u64.pow(chunk_size - n_digits);
+    let rem = chunk % d;
+    chunk /= d;
+    let tie = d >> 1;
+    if rem > tie {
+        round = Round::Up;
+    } else if rem == tie {
+        // Need to check whether we really have a tie, i.e.
+        // signif2 * 10 ^ (prec + 1) / 2 ^ -exp2 is an
+        // integer. This is the case if the number of
+        // trailing zeroes of the numerator is greater or
+        // equal to -exp2.
+        round =
+            if (signif2.trailing_zeros() as i32) >= (-exp2 - prec as i32 - 1) {
+                Round::ToEven
+            } else {
+                Round::Up
+            };
+    }
+    if n_digits > 0 {
+        buf.push_str(format!("{:01$}", chunk, n_rem_digits as usize).as_str());
     }
     (round, exp10)
 }
