@@ -63,26 +63,26 @@ mod from_random_str_tests {
 
     #[test]
     fn test_fast_exact() {
-        run_tests("test_from_str_random_fast_exact.txt");
+        run_tests("test_from_str_fast_exact.txt");
     }
 
     #[test]
     fn test_fast_approx() {
-        run_tests("test_from_str_random_fast_approx.txt");
+        run_tests("test_from_str_fast_approx.txt");
     }
 
     #[test]
     fn test_normal() {
-        run_tests("test_from_str_random_normal.txt");
+        run_tests("test_from_str_normal.txt");
     }
 
     #[test]
     fn slowtest_subnormal() {
-        run_tests("test_from_str_random_subnormal.txt");
+        run_tests("test_from_str_subnormal.txt");
     }
 
     #[test]
     fn slowtest_extreme() {
-        run_tests("test_from_str_random_extreme.txt");
+        run_tests("test_from_str_extreme.txt");
     }
 }
