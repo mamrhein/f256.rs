@@ -373,6 +373,12 @@ impl f256 {
         }
     }
 
+    /// Only public for testing!!!
+    #[doc(hidden)]
+    pub fn from_sign_exp_signif(s: u32, t: i32, c: (u128, u128)) -> Self {
+        Self::encode(s, t, u256::new(c.0, c.1))
+    }
+
     /// Returns the sign bit of `self`: 0 = positive, 1 = negative.
     #[inline]
     pub(crate) const fn sign(&self) -> u32 {
