@@ -329,9 +329,76 @@ mod display_tests {
     #[test]
     fn test_shortest_normal_near_ten_pow_70() {
         let f = f256::from_str("-1.004809e70").unwrap();
-        assert_eq!(format!("{f}"),
+        let s = format!("{f}");
+        assert_eq!(s,
                    "-1004809000000000000000000000000000000000000000000000000000\
                    0000000000000");
+        let g = f256::from_str(&s).unwrap();
+        assert_eq!(f, g);
+    }
+
+    #[test]
+    fn test_shortest_normal_near_3_times_ten_pow_72() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            5,
+            (
+                324518553658426726783156020576278_u128,
+                181827047980905777921517454682111627119_u128,
+            ),
+        );
+        let s = format!("{f}");
+        assert_eq!(s,
+                   "35336941295567686591665950014860824089068155234144096205253\
+                   94194978172380");
+        let g = f256::from_str(&s).unwrap();
+        assert_eq!(
+            f,
+            g,
+            "\nf: {}\n   {:?}\ng: {}\n   {:?}\n",
+            &s,
+            f.as_sign_exp_signif(),
+            &g.to_string(),
+            g.as_sign_exp_signif()
+        );
+        let h = f256::from_str(
+            "35336941295567686591665950014860824089068155234144096205253\
+                   94194978172384").unwrap();
+        assert_eq!(
+            f,
+            h,
+            "\nf: {}\n   {:?}\nh: {}\n   {:?}\n",
+            &s,
+            f.as_sign_exp_signif(),
+            &h.to_string(),
+            h.as_sign_exp_signif()
+        );
+    }
+
+    #[test]
+    fn test_shortest_normal_near_ten_pow_73() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            4,
+            (
+                162259276829213363391578010288177_u128,
+                287198669047081428097154997580432370835_u128,
+            ),
+        );
+        let s = format!("{f}");
+        assert_eq!(s,
+                   "88342353238919216479164875037173063446811271749601431923299\
+                   0893842024750");
+        let g = f256::from_str(&s).unwrap();
+        assert_eq!(
+            f,
+            g,
+            "\nf: {}\n   {:?}\ng: {}\n   {:?}\n",
+            &s,
+            f.as_sign_exp_signif(),
+            &g.to_string(),
+            g.as_sign_exp_signif()
+        );
     }
 
     #[test]

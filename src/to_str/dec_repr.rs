@@ -130,7 +130,7 @@ impl DecNumRepr {
             // multiple of 5ᵍ.
             if g <= 102 {
                 // Only one of lower_signif10, signif10, upper_signif10 can be a
-                // multiple of 5, if any.
+                // multiple of 5ᵍ, if any.
                 if &signif2 % 5_u64 == 0 {
                     rem_zero = is_multiple_of_pow5(&signif2, g as u32);
                 } else if accept_bounds {
@@ -210,8 +210,6 @@ impl DecNumRepr {
             if round_digit > 5  // need to round up
                 || (round_digit == 5    // need to round to even
                 && (!rem_zero || (rem_zero && (signif10.lo & 1) == 1)))
-                || signif10 == lower_signif10
-            // signif10 out of bounds
             {
                 signif10.incr();
             }
