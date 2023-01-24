@@ -243,7 +243,8 @@ impl u256 {
         // q = q1 * B + q0
         let q = (q1 << 64) + q0;
         // Denormalize remainder
-        let r = (t.wrapping_shl(64) + x0 - q0.wrapping_mul(y)) >> shift;
+        let r = ((t.wrapping_shl(64) + x0).wrapping_sub(q0.wrapping_mul(y)))
+            >> shift;
         (u256::new(0_u128, q), r)
     }
 
