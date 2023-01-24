@@ -231,7 +231,7 @@ impl u256 {
         // Since the final quotient is < 2¹²⁸, this must also be true for
         // x32 * 2⁶⁴ + x1 - q1 * y. Thus, in the following we can safely
         // ignore any possible overflow in x32 * 2⁶⁴ or q1 * y.
-        let t = x32.wrapping_shl(64) + x1 - q1.wrapping_mul(y);
+        let t = (x32.wrapping_shl(64) + x1).wrapping_sub(q1.wrapping_mul(y));
         let (mut q0, mut rhat) = u128_divrem(t, y1);
         while q0 >= B || q0 * y0 > rhat * B + x0 {
             q0 -= 1;
