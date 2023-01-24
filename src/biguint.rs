@@ -555,10 +555,11 @@ impl DivRem<&u256> for &u256 {
             let mut quot = self.hi / rhs.hi;
             let mut t = *rhs;
             t *= quot;
-            if t > *self {
+            while t > *self {
                 t -= rhs;
                 quot -= 1
-            } else if (&t + rhs) < *self {
+            }
+            while (&t + rhs) < *self {
                 t += rhs;
                 quot += 1
             }
