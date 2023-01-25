@@ -275,13 +275,20 @@ fn bin_small_int_2_scientific(
     // Need to calculate the prec+1 left-most decimal digits of the number.
     // 0 <= exp2 <= 275
     // 71 <= exp10 <= 154
-    // k = exp10 - prec
     // n = exp2
-    // signif10 = ⌊signif2 × 2ⁿ / 10ᵏ⌋
     let k = exp10 - prec as i32;
-    let mut t = u512::new(u256::ZERO, signif2);
-    t <<= exp2 as u32;
-    let signif10 = t.div_pow10_rounded(k as u32);
+    // 0 <= prec <= 75
+    // -4 <= k <= 154
+    let signif10 = if k >= 0 {
+        // signif10 = ⌊signif2 × 2ⁿ / 10ᵏ⌋
+        let mut t = u512::new(u256::ZERO, signif2);
+        t <<= exp2 as u32;
+        t.div_pow10_rounded(k as u32)
+    } else {
+        // signif10 = ⌊signif2 × 2ⁿ × 10⁻ᵏ⌋ = ⌊signif2 × (5⁻ᵏ × 2ⁿ⁻ᵏ)⌋
+        let t = &get_power_of_five(-k as u32) << (exp2 - k) as u32;
+        signif2.widening_mul(&t)
+    };
     let s = signif10.to_string();
     if prec == 0 {
         buf.push_str(&s);
@@ -753,5 +760,21 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 9);
         assert_eq!(s, "4.676805239e49".to_string());
+    }
+
+    #[test]
+    fn test_near_1e71() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            0,
+            (
+                324518553658426726783156020576293,
+                211723174022145587833097996892173825913,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 73);
+        assert_eq!(s,
+                   "1.104279415486490205989560937964452094099678404234621628410\
+                   7225517843852100e71".to_string());
     }
 }
