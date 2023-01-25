@@ -685,6 +685,13 @@ mod format_exp_tests {
     }
 
     #[test]
+    fn test_fixed_prec_near_1e71() {
+        let f =
+            f256::from_str("-1.10427941548649020598956093796446e71").unwrap();
+        assert_eq!(format!("{f:.8e}"), "-1.10427942e71");
+    }
+
+    #[test]
     fn test_fixed_prec_10_pow_22093() {
         let f = f256::from_str("5.900065e22093").unwrap();
         assert_eq!(format!("{f:.5e}"), "5.90006e22093");

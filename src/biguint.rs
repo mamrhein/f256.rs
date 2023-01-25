@@ -802,6 +802,7 @@ impl u512 {
     pub(crate) fn div_pow10_rounded(&self, n: u32) -> Self {
         const CHUNK_SIZE: u32 = 38;
         const CHUNK_BASE: u128 = 10_u128.pow(CHUNK_SIZE);
+        debug_assert_ne!(n, 0);
         let mut q = *self;
         let mut r = 0_u128;
         if n <= CHUNK_SIZE {
@@ -812,16 +813,17 @@ impl u512 {
                 q.incr();
             }
         } else {
-            let n = (n - 1) / CHUNK_SIZE;
+            let n_chunks = n / CHUNK_SIZE;
             let mut all_chunks_zero = true;
-            for _ in 0..n {
+            for _ in 0..n_chunks {
                 (q, r) = q.div_rem(CHUNK_BASE);
                 all_chunks_zero = all_chunks_zero && r == 0;
             }
             let d = 10_u128.pow(n % CHUNK_SIZE);
             (q, r) = q.div_rem(d);
             let tie = d >> 1;
-            if r > tie || (r == tie && (q.lo.lo & 1) == 1 && all_chunks_zero) {
+            if r > tie || (r == tie && ((q.lo.lo & 1) == 1 || !all_chunks_zero))
+            {
                 q.incr();
             }
         }

@@ -279,7 +279,7 @@ fn bin_small_int_2_scientific(
     let k = exp10 - prec as i32;
     // 0 <= prec <= 75
     // -4 <= k <= 154
-    let signif10 = if k >= 0 {
+    let signif10 = if k > 0 {
         // signif10 = ⌊signif2 × 2ⁿ / 10ᵏ⌋
         let mut t = u512::new(u256::ZERO, signif2);
         t <<= exp2 as u32;
@@ -763,7 +763,7 @@ mod to_scientific_tests {
     }
 
     #[test]
-    fn test_near_1e71() {
+    fn test_near_1e71_p73() {
         let f = f256::from_sign_exp_signif(
             0,
             0,
@@ -776,5 +776,35 @@ mod to_scientific_tests {
         assert_eq!(s,
                    "1.104279415486490205989560937964452094099678404234621628410\
                    7225517843852100e71".to_string());
+    }
+
+    #[test]
+    fn test_near_1e71_p32() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            3,
+            (
+                40564819207303340847894502572036,
+                30633738155744440067036836117427062411,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 32);
+        assert_eq!(s, "1.10427941548649020598956093796444e71".to_string());
+    }
+
+    #[test]
+    fn test_near_1e71_p71() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            0,
+            (
+                324518553658426726783156020576302,
+                114739602320310674262284750468945069455,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 71);
+        assert_eq!(s,
+                   "1.104279415486490205989560937964481749676984270347197623992\
+                   92717863585167e71".to_string());
     }
 }
