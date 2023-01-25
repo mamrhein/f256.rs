@@ -549,20 +549,40 @@ impl DivRem<&u256> for &u256 {
 
     /// Returns `self` / rhs, `self` % rhs
     fn div_rem(self, rhs: &u256) -> Self::Output {
+        debug_assert!(!rhs.is_zero());
         if rhs.hi == 0 {
             let (quot, rem) = self.div_rem(rhs.lo);
             (quot, u256::new(0, rem))
+        } else if rhs.hi > self.hi {
+            // self < rhs
+            return (u256::ZERO, *self);
         } else {
-            let mut quot = self.hi / rhs.hi;
+            // estimate the quotient
+            let nlz = self.hi.leading_zeros();
+            let mut quot = (self << nlz).hi / (rhs << nlz).hi;
+            // trim the estimate
             let mut t = *rhs;
             t *= quot;
-            while t > *self {
-                t -= rhs;
-                quot -= 1
-            }
-            while (&t + rhs) < *self {
-                t += rhs;
-                quot += 1
+            if t > *self {
+                let mut d = &t - self;
+                let (mut n, _) = d.div_rem(rhs);
+                n.incr();
+                debug_assert_eq!(n.hi, 0);
+                quot -= n.lo;
+                d = *rhs;
+                d *= n.lo;
+                t -= &d;
+            } else {
+                let u = &t + rhs;
+                if u < *self {
+                    let mut d = self - &t;
+                    let (n, _) = d.div_rem(rhs);
+                    debug_assert_eq!(n.hi, 0);
+                    quot += n.lo;
+                    d = *rhs;
+                    d *= n.lo;
+                    t += &d;
+                }
             }
             let rem = self - &t;
             (u256::new(0, quot), rem)
