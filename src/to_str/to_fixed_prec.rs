@@ -712,4 +712,46 @@ mod to_scientific_tests {
         let s = bin_2_dec_scientific(f, 'e', 20);
         assert_eq!(s, "1.00000000000000000000e22");
     }
+
+    #[test]
+    fn test_near_6e51() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -63,
+            (
+                162259276829213363391578010288171,
+                6509687757833892565831669291823167287,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 16);
+        assert_eq!(s, "5.9863107065073784e51".to_string());
+    }
+
+    #[test]
+    fn test_near_9e46() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -80,
+            (
+                324518553658426726783156020576260,
+                131182013909294755642979131487572278739,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 27);
+        assert_eq!(s, "9.134385233318143238773030204e46".to_string());
+    }
+
+    #[test]
+    fn test_near_5e49() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -70,
+            (
+                162259276829213363391578010288165,
+                333798641618909605187797312347902131237,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 9);
+        assert_eq!(s, "4.676805239e49".to_string());
+    }
 }
