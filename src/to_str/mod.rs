@@ -716,6 +716,13 @@ mod format_exp_tests {
     }
 
     #[test]
+    fn test_1e153() {
+        let f = f256::from_str("-1e153").unwrap();
+        let s = format!("{f:.0e}");
+        assert_eq!(s, "-1e153");
+    }
+
+    #[test]
     fn test_fixed_prec_f256_max() {
         let f = f256::MAX;
         assert_eq!(format!("{f:.4e}"), "1.6113e78913");
