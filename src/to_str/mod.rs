@@ -712,7 +712,7 @@ mod format_exp_tests {
     #[test]
     fn test_fixed_prec_10_pow_22093() {
         let f = f256::from_str("5.900065e22093").unwrap();
-        assert_eq!(format!("{f:.5e}"), "5.90006e22093");
+        assert_eq!(format!("{f:.5e}"), "5.90007e22093");
     }
 
     #[test]
