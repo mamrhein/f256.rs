@@ -813,13 +813,13 @@ impl u512 {
                 q.incr();
             }
         } else {
-            let n_chunks = n / CHUNK_SIZE;
+            let n_chunks = (n - 1) / CHUNK_SIZE;
             let mut all_chunks_zero = true;
             for _ in 0..n_chunks {
                 (q, r) = q.div_rem(CHUNK_BASE);
                 all_chunks_zero = all_chunks_zero && r == 0;
             }
-            let d = 10_u128.pow(n % CHUNK_SIZE);
+            let d = 10_u128.pow(n - n_chunks * CHUNK_SIZE);
             (q, r) = q.div_rem(d);
             let tie = d >> 1;
             if r > tie || (r == tie && ((q.lo.lo & 1) == 1 || !all_chunks_zero))
