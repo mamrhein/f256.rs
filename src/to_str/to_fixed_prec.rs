@@ -15,23 +15,19 @@ use core::{
 };
 
 use super::{
-    common::floor_log10_pow2,
+    common::{floor_log10, floor_log10_pow2, floor_log10f},
+    dec_repr::DecNumRepr,
     formatted::{Formatted, Part},
     pow10_div_pow2_lut::{
         get_pow10_div_pow2_params, pow10_div_pow2, CHUNK_BASE, CHUNK_CUTOFF,
         CHUNK_SIZE, COMPRESSION_RATE, SHIFT,
     },
-    pow2_div_pow10_lut::pow2_div_pow10,
+    pow2_div_pow10_lut::{get_pow2_div_pow10_params, pow2_div_pow10},
+    powers_of_five::{get_power_of_five, is_multiple_of_pow5},
 };
 use crate::{
-    biguint::DivRem,
-    f256,
-    to_str::{
-        common::floor_log10, dec_repr::DecNumRepr,
-        pow2_div_pow10_lut::get_pow2_div_pow10_params,
-        powers_of_five::get_power_of_five,
-    },
-    u256, u512, EMAX, EMIN, FRACTION_BITS, SIGNIFICAND_BITS,
+    biguint::DivRem, f256, u256, u512, EMAX, EMIN, FRACTION_BITS,
+    SIGNIFICAND_BITS,
 };
 
 #[derive(PartialEq)]
@@ -164,7 +160,7 @@ pub(super) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
     let buf_len = if is_less_than_one {
         3 + prec
     } else {
-        floor_log10_pow2(exp2 + FRACTION_BITS as i32) as usize + 3 + prec
+        floor_log10_pow2(exp2 + SIGNIFICAND_BITS as i32) as usize + 3 + prec
     };
     let mut res = String::with_capacity(buf_len);
     // Preserve one char for carry
@@ -215,7 +211,7 @@ fn bin_small_float_2_scientific(
     buf: &mut String,
 ) -> (Round, i32) {
     debug_assert!(exp2 > -(SIGNIFICAND_BITS as i32) && exp2 < 0);
-    let mut exp10 = floor_log10_pow2(FRACTION_BITS as i32 + exp2);
+    let mut exp10 = floor_log10f(signif2, exp2);
     // Need to calculate the prec+1 left-most decimal digits of the number.
     // -237 < exp2 < 0
     // 0 <= exp10 < 71
@@ -271,7 +267,7 @@ fn bin_small_int_2_scientific(
     buf: &mut String,
 ) -> (Round, i32) {
     debug_assert!(exp2 >= 0 && exp2 <= (u512::BITS - SIGNIFICAND_BITS) as i32);
-    let mut exp10 = floor_log10_pow2(SIGNIFICAND_BITS as i32 + exp2);
+    let mut exp10 = floor_log10f(signif2, exp2);
     // Need to calculate the prec+1 left-most decimal digits of the number.
     // 0 <= exp2 <= 275
     // 71 <= exp10 <= 154
@@ -289,7 +285,12 @@ fn bin_small_int_2_scientific(
         let t = &get_power_of_five(-k as u32) << (exp2 - k) as u32;
         signif2.widening_mul(&t)
     };
-    let s = signif10.to_string();
+    let mut s = signif10.to_string();
+    if s.len() > prec + 1 {
+        // rounding overflow
+        s = s[..s.len() - 1].to_string();
+        exp10 += 1;
+    }
     if prec == 0 {
         buf.push_str(&s);
     } else {
@@ -344,12 +345,13 @@ fn bin_large_int_2_scientific(
         );
         t = pow2_div_pow10(segment_idx, chunk_idx);
         chunk = mul_shift_mod(&signif2, &t, shift);
+        chunk_size = CHUNK_SIZE;
+        n_digits = min(chunk_size, n_rem_digits);
     }
-    while n_digits < n_rem_digits {
-        if n_digits > 0 {
-            buf.push_str(format!("{:01$}", chunk, n_digits as usize).as_str());
-            n_rem_digits -= n_digits;
-        }
+    // Full chunks
+    while n_digits == chunk_size {
+        buf.push_str(format!("{:01$}", chunk, n_digits as usize).as_str());
+        n_rem_digits -= n_digits;
         chunk_idx += 1;
         assert!(
             chunk_idx < CHUNK_CUTOFF,
@@ -360,7 +362,7 @@ fn bin_large_int_2_scientific(
         chunk_size = CHUNK_SIZE;
         n_digits = min(chunk_size, n_rem_digits);
     }
-    // Last chunk:
+    // Last chunk (maybe for rounding only!)
     let d = 10_u64.pow(chunk_size - n_digits);
     let rem = chunk % d;
     chunk /= d;
@@ -368,17 +370,17 @@ fn bin_large_int_2_scientific(
     if rem > tie {
         round = Round::Up;
     } else if rem == tie {
-        // Need to check whether we really have a tie, i.e.
-        // signif2 * 10 ^ (prec + 1) / 2 ^ -exp2 is an
-        // integer. This is the case if the number of
-        // trailing zeroes of the numerator is greater or
-        // equal to -exp2.
-        round =
-            if (signif2.trailing_zeros() as i32) >= (-exp2 - prec as i32 - 1) {
-                Round::ToEven
-            } else {
-                Round::Up
-            };
+        let k = exp10 - prec as u32 - 1;
+        // Let m = signif2 and n = exp2.
+        // If we really have a tie, then m × 2ⁿ / 10ᵏ must be an integer.
+        // m × 2ⁿ / 10ᵏ = m × 2ⁿ⁻ᵏ / 5ᵏ
+        // Because 5ᵏ does not devide 2ⁿ⁻ᵏ, the condition above can hold only if
+        // 5ᵏ devides m. Because m < 2²³⁷ and 5¹⁰³ > 2²³⁷, this implies k < 103.
+        round = if k < 103 && is_multiple_of_pow5(&signif2, k) {
+            Round::ToEven
+        } else {
+            Round::Up
+        };
     }
     if n_digits > 0 {
         buf.push_str(format!("{:01$}", chunk, n_rem_digits as usize).as_str());
@@ -404,6 +406,7 @@ fn bin_fract_2_scientific(
     let mut chunk_idx = 0_u32;
     let mut t = pow10_div_pow2(segment_idx, chunk_idx);
     let mut chunk = mul_shift_mod(&signif2, &t, shift);
+    // There may be additional zero chunks caused by table compression.
     while chunk == 0 {
         exp10 -= CHUNK_SIZE as i32;
         chunk_idx += 1;
@@ -415,25 +418,37 @@ fn bin_fract_2_scientific(
         chunk = mul_shift_mod(&signif2, &t, shift);
     }
     let mut chunk_size = CHUNK_SIZE;
-    let mut n_digits = min(chunk_size, n_rem_digits);
-    if buf.len() == 0 {
-        let mut n = floor_log10(chunk);
-        let d = 10_u64.pow(n);
+    // First chunk:
+    let mut n_digits = floor_log10(chunk);
+    exp10 -= (chunk_size - n_digits) as i32;
+    if n_digits > n_rem_digits {
+        // First chunk is last chunk.
+        let d = 10_u64.pow(n_digits);
         let i = chunk / d;
         buf.push_str(i.to_string().as_str());
         if n_rem_digits > 0 {
             buf.push('.');
         }
-        exp10 -= (chunk_size - n) as i32;
         chunk %= d;
-        chunk_size = n;
+        chunk_size = n_digits;
+        n_digits = min(chunk_size, n_rem_digits);
+    } else {
+        split_into_buf(buf, chunk.to_string().as_str());
+        n_rem_digits -= n_digits;
+        chunk_idx += 1;
+        debug_assert!(
+            chunk_idx < CHUNK_CUTOFF,
+            "Internal limit for significant fractional digits exceeded."
+        );
+        t = pow10_div_pow2(segment_idx, chunk_idx);
+        chunk = mul_shift_mod(&signif2, &t, shift);
+        chunk_size = CHUNK_SIZE;
         n_digits = min(chunk_size, n_rem_digits);
     }
-    while n_digits < n_rem_digits {
-        if n_digits > 0 {
-            buf.push_str(format!("{:01$}", chunk, n_digits as usize).as_str());
-            n_rem_digits -= n_digits;
-        }
+    // Full chunks
+    while n_digits == chunk_size {
+        buf.push_str(format!("{:01$}", chunk, n_digits as usize).as_str());
+        n_rem_digits -= n_digits;
         chunk_idx += 1;
         assert!(
             chunk_idx < CHUNK_CUTOFF,
@@ -444,7 +459,7 @@ fn bin_fract_2_scientific(
         chunk_size = CHUNK_SIZE;
         n_digits = min(chunk_size, n_rem_digits);
     }
-    // last chunk
+    // Last chunk (maybe for rounding only!)
     let d = 10_u64.pow(chunk_size - n_digits);
     let rem = chunk % d;
     chunk /= d;
@@ -453,16 +468,15 @@ fn bin_fract_2_scientific(
         round = Round::Up;
     } else if rem == tie {
         // Need to check whether we really have a tie, i.e.
-        // signif2 * 10 ^ (prec + 1) / 2 ^ -exp2 is an
-        // integer. This is the case if the number of
-        // trailing zeroes of the numerator is greater or
-        // equal to -exp2.
-        round =
-            if (signif2.trailing_zeros() as i32) >= (-exp2 - prec as i32 - 1) {
-                Round::ToEven
-            } else {
-                Round::Up
-            };
+        // signif2 * 10 ^ (prec + 1) / 2 ^ -exp2 is an integer.
+        // This is the case if the number of trailing zeroes of the numerator is
+        // greater than or equal to -exp2.
+        round = if (signif2.trailing_zeros() + prec as u32 + 1) as i32 >= -exp2
+        {
+            Round::ToEven
+        } else {
+            Round::Up
+        };
     }
     if n_digits > 0 {
         buf.push_str(format!("{:01$}", chunk, n_rem_digits as usize).as_str());
@@ -763,6 +777,20 @@ mod to_scientific_tests {
     }
 
     #[test]
+    fn test_near_1e53_p30() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -58,
+            (
+                111204638850565804364613732798775,
+                53992318206422839663747108816097201329,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 30);
+        assert_eq!(s, "1.312872648118838857960020003483e53".to_string());
+    }
+
+    #[test]
     fn test_near_1e71_p73() {
         let f = f256::from_sign_exp_signif(
             0,
@@ -806,5 +834,81 @@ mod to_scientific_tests {
         assert_eq!(s,
                    "1.104279415486490205989560937964481749676984270347197623992\
                    92717863585167e71".to_string());
+    }
+
+    #[test]
+    fn test_near_1e153_1() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            273,
+            (
+                190239164977113327839599021215685,
+                51755389174173320950400950367778013131,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 0);
+        assert_eq!(s, "1e153".to_string());
+    }
+
+    #[test]
+    fn test_near_1e153_2() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            272,
+            (
+                413471794362977846403210123211276,
+                124164318988604946586367062043758872275,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 0);
+        assert_eq!(s, "1e153".to_string());
+    }
+
+    #[test]
+    fn test_near_2e154_p61() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            276,
+            (
+                476572172941463809973332496053458,
+                68728353086631173142785452318047905517,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 61);
+        assert_eq!(s,
+                   "1.969005496764332863783443912931624800937847641827908017905\
+                   9660e154".to_string());
+    }
+
+    #[test]
+    fn test_near_1e154_p59() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            280,
+            (
+                21818185152426254566033124806402,
+                292040079606001995347138042200221474811,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 59);
+        assert_eq!(
+            s,
+            "1.44230415231821555091417756482480990212576324553723504560651e154"
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn test_near_1e154_p20() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            276,
+            (
+                361137145230230407900995305707557,
+                110598383419209761764611943431534229547,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 20);
+        assert_eq!(s, "1.49207415878946667629e154".to_string());
     }
 }
