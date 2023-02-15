@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use core::f64::consts::LOG2_10;
+use core::f64::consts::LOG10_2;
 
 use crate::biguint::u256;
 
@@ -20,7 +20,7 @@ pub(super) fn floor_log10_pow2(i: i32) -> i32 {
 /// Returns ⌊log₁₀(m × 2ⁱ)⌋.
 #[inline(always)]
 pub(super) fn floor_log10f(m: u256, i: i32) -> i32 {
-    (((m.hi as f64).log2() + 128_f64 + (i as f64)) / LOG2_10).trunc() as i32
+    (((m.hi as f64).log2() + 128_f64 + (i as f64)) * LOG10_2).trunc() as i32
 }
 
 // The following code is copied from rust stdlib.
