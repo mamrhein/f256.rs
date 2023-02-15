@@ -163,3 +163,63 @@ mod random_f256_to_shortest_exp_tests {
         run_tests::<Record>("test_to_str_subnormal_shortest_exp.txt", &do_test);
     }
 }
+
+#[cfg(test)]
+mod random_f256_to_fixed_prec_exp_tests {
+    use super::*;
+
+    #[derive(Debug, Deserialize)]
+    #[repr(C)]
+    struct Record {
+        s: u32,
+        e: i32,
+        h: u128,
+        l: u128,
+        p: usize,
+        lit: String,
+    }
+
+    fn do_test(rec: &Record) {
+        let f = f256::from_sign_exp_signif(rec.s, rec.e, (rec.h, rec.l));
+        let p = rec.p;
+        let s = format!("{f:.*e}", p);
+        assert_eq!(rec.lit, s, "\nlit: {}\nstr: {}\n", &*rec.lit, &s);
+    }
+
+    #[test]
+    fn test_small_float() {
+        run_tests::<Record>(
+            "test_to_str_small_float_fixed_prec_exp.txt",
+            &do_test,
+        );
+    }
+
+    #[test]
+    fn test_small_int() {
+        run_tests::<Record>(
+            "test_to_str_small_int_fixed_prec_exp.txt",
+            &do_test,
+        );
+    }
+
+    #[test]
+    fn test_fract() {
+        run_tests::<Record>("test_to_str_fract_fixed_prec_exp.txt", &do_test);
+    }
+
+    #[test]
+    fn test_large_int() {
+        run_tests::<Record>(
+            "test_to_str_large_int_fixed_prec_exp.txt",
+            &do_test,
+        );
+    }
+
+    #[test]
+    fn test_subnormal() {
+        run_tests::<Record>(
+            "test_to_str_subnormal_fixed_prec_exp.txt",
+            &do_test,
+        );
+    }
+}
