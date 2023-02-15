@@ -410,7 +410,7 @@ fn bin_fract_2_scientific(
     while chunk == 0 {
         exp10 -= CHUNK_SIZE as i32;
         chunk_idx += 1;
-        assert!(
+        debug_assert!(
             chunk_idx < CHUNK_CUTOFF,
             "Internal limit for significant fractional digits exceeded."
         );
@@ -450,7 +450,7 @@ fn bin_fract_2_scientific(
         buf.push_str(format!("{:01$}", chunk, n_digits as usize).as_str());
         n_rem_digits -= n_digits;
         chunk_idx += 1;
-        assert!(
+        debug_assert!(
             chunk_idx < CHUNK_CUTOFF,
             "Internal limit for significant fractional digits exceeded."
         );
@@ -910,5 +910,91 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 20);
         assert_eq!(s, "1.49207415878946667629e154".to_string());
+    }
+
+    #[test]
+    fn test_near_10e_minus_10918_p64() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -36502,
+            (
+                447555113562244345125307681812305,
+                111083065766899325684028850678679662440,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 64);
+        assert_eq!(s, "9.677969339371647374674789631478211843426763786935989435\
+            5285173687e-10918".to_string());
+    }
+
+    #[test]
+    fn test_greatest_less_1_p54() {
+        let f = f256::ONE - f256::EPSILON;
+        let s = bin_2_dec_scientific(f, 'e', 54);
+        assert_eq!(
+            s,
+            "1.000000000000000000000000000000000000000000000000000000e0"
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn test_near_2e_minus_35402_p71() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -117838,
+            (
+                430291270053216327019827899538921,
+                38660543114844194825861158788102622161,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 71);
+        assert_eq!(s, "2.471570072197153940829180483920657748943792994870723271\
+            92157954211602055e-35402".to_string());
+    }
+
+    #[test]
+    fn test_near_2e_minus_35402_p70() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -117838,
+            (
+                430291270053216327019827899538921,
+                38660543114844194825861158788102622161,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 70);
+        assert_eq!(s, "2.471570072197153940829180483920657748943792994870723271\
+            9215795421160206e-35402".to_string());
+    }
+
+    #[test]
+    fn test_near_8e16807_p73() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            55598,
+            (
+                536040174375893933201096973487091,
+                307984350317190873395708741682215551557,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 73);
+        assert_eq!(s, "8.447646086055224609046497651648431840143361281963366366\
+            6796603174614594313e16807".to_string());
+    }
+
+    #[test]
+    fn test_near_8e16807_p67() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            55598,
+            (
+                536040174375893933201096973487091,
+                307984350317190873395708741682215551557,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 67);
+        assert_eq!(s, "8.447646086055224609046497651648431840143361281963366366\
+            6796603174615e16807".to_string());
     }
 }
