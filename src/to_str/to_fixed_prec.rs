@@ -998,7 +998,7 @@ mod to_scientific_tests {
     }
 
     #[test]
-    fn test_near_2e_minus_157535_p72() {
+    fn test_near_2e_minus_47352_p72() {
         let f = f256::from_sign_exp_signif(
             0,
             -157535,
@@ -1010,5 +1010,20 @@ mod to_scientific_tests {
         let s = bin_2_dec_scientific(f, 'e', 72);
         assert_eq!(s, "2.372882823780069989738354638128785919529692752357933380\
             060881450776866269e-47352".to_string());
+    }
+
+    #[test]
+    fn test_near_2e_minus_55309_p61() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -183968,
+            (
+                622361313473788073495577958636900,
+                21807422016073324498045687998560255045,
+            ),
+        );
+        let s = bin_2_dec_scientific(f, 'e', 61);
+        assert_eq!(s, "2.751944825690125768618234983557273839998107604792147797\
+            6588487e-55309".to_string());
     }
 }
