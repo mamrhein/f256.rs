@@ -336,7 +336,12 @@ fn bin_large_int_2_scientific(
         chunk_size = n_digits;
         n_digits = min(chunk_size, n_rem_digits);
     } else {
-        split_into_buf(buf, chunk.to_string().as_str());
+        let s = chunk.to_string();
+        if prec > 0 {
+            split_into_buf(buf, s.as_str());
+        } else {
+            buf.push_str(s.as_str());
+        }
         n_rem_digits -= n_digits;
         chunk_idx += 1;
         debug_assert!(
@@ -432,7 +437,12 @@ fn bin_fract_2_scientific(
         chunk_size = n_digits;
         n_digits = min(chunk_size, n_rem_digits);
     } else {
-        split_into_buf(buf, chunk.to_string().as_str());
+        let s = chunk.to_string();
+        if prec > 0 {
+            split_into_buf(buf, s.as_str());
+        } else {
+            buf.push_str(s.as_str());
+        }
         n_rem_digits -= n_digits;
         chunk_idx += 1;
         debug_assert!(
