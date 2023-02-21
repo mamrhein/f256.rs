@@ -727,4 +727,11 @@ mod format_exp_tests {
         let f = f256::MAX;
         assert_eq!(format!("{f:.4e}"), "1.6113e78913");
     }
+
+    #[test]
+    fn test_2e_minus_78888() {
+        let f = f256::from_str("-2e-78888").unwrap();
+        let s = format!("{f:.0e}");
+        assert_eq!(s, "-2e-78888");
+    }
 }
