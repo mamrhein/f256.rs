@@ -410,16 +410,13 @@ fn bin_fract_2_scientific(
     let mut chunk_idx = 0_u32;
     let mut t = pow10_div_pow2(segment_idx, chunk_idx as usize);
     let mut chunk = mul_shift_mod(&signif2, &t, shift);
-    // There may be additional zero chunks caused by table compression.
-    while chunk == 0 {
+    // There may be an additional zero chunk caused by table compression.
+    if chunk == 0 {
         exp10 -= CHUNK_SIZE as i32;
         chunk_idx += 1;
-        debug_assert!(
-            chunk_idx < CHUNK_CUTOFF,
-            "Internal limit for significant fractional digits exceeded."
-        );
         t = pow10_div_pow2(segment_idx, chunk_idx as usize);
         chunk = mul_shift_mod(&signif2, &t, shift);
+        debug_assert_ne!(chunk, 0);
     }
     let mut chunk_size = CHUNK_SIZE;
     // First chunk:
