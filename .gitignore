@@ -14,5 +14,3 @@ Cargo.lock
 # profiling data
 perf.data*
 flamegraph.*
-
-analysis
