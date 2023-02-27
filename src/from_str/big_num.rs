@@ -14,7 +14,7 @@
 /// adopted for `f256`.
 use core::cmp::{min, Ordering};
 
-use crate::{f256, from_str::common::AsciiNumLit, u256};
+use crate::{biguint::DivRem, f256, from_str::common::AsciiNumLit, u256};
 
 /// The maximum number of digits required to unambiguously round a `f256`,
 /// calculated by the formula:
@@ -254,6 +254,27 @@ impl Decimal {
     // in one go.
     /// Maximum number of bits for left / right shifts.
     pub(super) const MAX_SHIFT: u32 = u64::BITS - 4;
+
+    // Create new Decimal from an u256 value.
+    pub(super) fn from_u256(mut val: u256) -> Self {
+        const SEGMENT_BASE: u64 = 1_000_000_000_000_000_000;
+        let mut res = Self::default();
+        let mut segments: [u64; 5] = [0, 0, 0, 0, 0];
+        let mut r = 0_u64;
+        let mut idx = 0;
+        while !val.is_zero() {
+            (val, r) = val.div_rem(SEGMENT_BASE);
+            segments[idx] = r;
+            idx += 1;
+        }
+        idx -= 1;
+        res.add_digits(segments[idx], false);
+        while idx > 0 {
+            idx -= 1;
+            res.add_digits(segments[idx], true);
+        }
+        res
+    }
 
     fn add_digits(&mut self, mut int: u64, full: bool) {
         let mut digits: [u8; 18] = [0; 18];
@@ -636,6 +657,24 @@ mod tests {
         dec.add_digits(7934464, false);
         assert_eq!(dec.n_digits, 7);
         dec.add_digits(20081403759220, true);
+        assert_eq!(dec, &digits);
+        assert_eq!(dec.decimal_point, 0);
+        assert!(!dec.truncated);
+    }
+
+    #[test]
+    fn test_from_u256() {
+        let val = u256::new(
+            401609310945955079118279405485910,
+            168709353958551391248113314710179390005,
+        );
+        let dec = Decimal::from_u256(val);
+        let digits: [u8; 72] = [
+            1, 3, 6, 6, 6, 0, 5, 6, 6, 9, 0, 6, 1, 7, 6, 7, 5, 4, 1, 8, 7, 2,
+            3, 7, 8, 1, 3, 3, 7, 8, 5, 7, 5, 5, 0, 0, 9, 8, 2, 4, 5, 9, 8, 9,
+            6, 1, 2, 9, 5, 6, 6, 9, 1, 0, 7, 8, 3, 4, 1, 5, 0, 6, 5, 4, 8, 7,
+            9, 7, 4, 9, 6, 5,
+        ];
         assert_eq!(dec, &digits);
         assert_eq!(dec.decimal_point, 0);
         assert!(!dec.truncated);
