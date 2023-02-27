@@ -530,6 +530,11 @@ impl Decimal {
         }
         n
     }
+
+    // Multiply in-place by 10ⁿ.
+    pub(super) fn imul_10_pow(&mut self, n: i32) {
+        self.decimal_point += n;
+    }
 }
 
 #[cfg(test)]
