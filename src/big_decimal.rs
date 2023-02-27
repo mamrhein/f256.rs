@@ -14,13 +14,13 @@
 /// adopted for `f256`.
 use core::cmp::{min, Ordering};
 
-use crate::{biguint::DivRem, f256, from_str::common::AsciiNumLit, u256};
+use crate::{biguint::DivRem, f256, u256};
 
 /// The maximum number of digits required to unambiguously round a `f256`,
 /// calculated by the formula:
 /// -Eₘᵢₙ + p + ⌊(Eₘᵢₙ + 1) × log₁₀(2)⌋, where p = number of significand bits
 /// (See J.-M. Muller et al., Handbook of Floating-Point Arithmetic, Chapter 2).
-const MAX_DIGITS: usize = 183467;
+pub(super) const MAX_DIGITS: usize = 183467;
 
 /// Table for left shift: indexed by shift count giving number of new digits
 /// that need to be added. If the current value as digit sequence is greater or
@@ -277,7 +277,7 @@ impl Decimal {
         res
     }
 
-    fn add_digits(&mut self, mut int: u64, full: bool) {
+    pub(super) fn add_digits(&mut self, mut int: u64, full: bool) {
         let mut digits: [u8; 18] = [0; 18];
         let mut idx = 0;
         while int > 0 {
@@ -296,7 +296,7 @@ impl Decimal {
         self.n_digits += n_digits;
     }
 
-    fn add_digit(&mut self, digit: u8) {
+    pub(super) fn add_digit(&mut self, digit: u8) {
         if self.n_digits < MAX_DIGITS {
             self.digits[self.n_digits] = digit;
         } else if digit != 0 {
@@ -306,72 +306,10 @@ impl Decimal {
     }
 
     #[inline]
-    fn trim_trailing_zeroes(&mut self) {
+    pub(crate) fn trim_trailing_zeroes(&mut self) {
         while self.n_digits != 0 && self.digits[self.n_digits - 1] == 0 {
             self.n_digits -= 1;
         }
-    }
-
-    // Parse a valid non-zero decimal number into self.
-    #[allow(unsafe_code)]
-    pub(super) fn parse(&mut self, s: &str) {
-        let mut lit = AsciiNumLit::new(s.as_ref());
-
-        self.sign = lit.get_sign();
-
-        lit.skip_leading_zeroes(true);
-
-        // Parse significant digits.
-        lit.state.start_pos_signif = lit.len();
-        while let Some(c) = lit.first() {
-            let d = c.wrapping_sub(b'0');
-            if d < 10 {
-                self.add_digit(d);
-            } else if *c == b'.' {
-                lit.state.pos_radix_point = Some(lit.len());
-            } else {
-                break;
-            }
-            // SAFETY: safe because of call to lit.first above
-            unsafe {
-                lit.skip_1();
-            }
-        }
-        lit.state.end_pos_signif = lit.len();
-
-        // Check state.
-        debug_assert!(!lit.state.invalid);
-        let (mut n_digits, mut n_frac_digits) =
-            if let Some(pos) = lit.state.pos_radix_point {
-                (
-                    lit.state.start_pos_signif
-                        - (pos < lit.state.start_pos_signif) as usize
-                        - lit.state.end_pos_signif,
-                    pos - 1 - lit.state.end_pos_signif,
-                )
-            } else {
-                (lit.state.start_pos_signif - lit.state.end_pos_signif, 0)
-            };
-        debug_assert_ne!(n_digits, 0);
-        debug_assert_eq!(n_digits, self.n_digits);
-        self.decimal_point = n_digits as i32 - n_frac_digits as i32;
-
-        // check for explicit exponent
-        let mut exponent = match lit.parse_exponent() {
-            Some(exp) => exp,
-            None => {
-                unreachable!();
-            }
-        };
-        self.decimal_point += exponent;
-
-        // Normalize self.
-        self.n_digits = min(self.n_digits, MAX_DIGITS);
-        self.trim_trailing_zeroes();
-        debug_assert!(
-            self.n_digits == 0
-                || self.digits[0] != 0 && self.digits[self.n_digits - 1] != 0
-        );
     }
 
     /// High precision non-rounding left shift. Computes self × 2ⁿ.
@@ -543,117 +481,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_frac_only_with_trailing_zeroes() {
-        let s = "-.000000000000000010000000000000000000000000000000000000\
-            00000000000000000000000000000000000000000000000000000000000000000";
-        let mut dec = Decimal::default();
-        dec.parse(s);
-        assert_eq!(dec.n_digits, 1);
-        assert_eq!(dec.digits[0], 1);
-        assert_eq!(dec.decimal_point, -16);
-        assert!(!dec.truncated);
-    }
-
-    #[test]
-    fn parse_frac_only_without_trailing_zeroes() {
-        let s = ".3000001";
-        let mut dec = Decimal::default();
-        dec.parse(s);
-        assert_eq!(dec.n_digits, 7);
-        assert_eq!(dec.digits[0], 3);
-        assert_eq!(dec.digits[6], 1);
-        assert_eq!(dec.decimal_point, 0);
-        assert!(!dec.truncated);
-    }
-
-    #[test]
-    fn parse_nonzero_digits_with_dot_and_trailing_zeroes_without_exp() {
-        let s = "-750.629394531250000000000000000000000000000000000000";
-        let mut dec = Decimal::default();
-        dec.parse(s);
-        assert_eq!(dec.n_digits, 14);
-        assert_eq!(dec.digits[0], 7);
-        assert_eq!(dec.digits[13], 5);
-        assert_eq!(dec.decimal_point, 3);
-        assert!(!dec.truncated);
-    }
-
-    #[test]
-    fn parse_nonzero_digits_with_dot_and_trailing_zeroes_and_exp() {
-        let s = "-7.62939453125000000000000000000000000000000000000000000\
-            0000000000000000000000000000000000000000000000000000000000000000000\
-            00e-06";
-        let mut dec = Decimal::default();
-        dec.parse(s);
-        assert_eq!(dec.n_digits, 12);
-        assert_eq!(dec.digits[0], 7);
-        assert_eq!(dec.digits[11], 5);
-        assert_eq!(dec.decimal_point, -5);
-        assert!(!dec.truncated);
-    }
-
-    #[test]
-    fn parse_max_digits_with_trailing_zeroes() {
-        let mut s = "1.".to_string();
-        s.push_str(&*"0".repeat(MAX_DIGITS - 2));
-        s.push('9');
-        s.push('0');
-        s.push('0');
-        let s = s.as_str();
-        let mut dec = Decimal::default();
-        dec.parse(s);
-        assert_eq!(dec.n_digits, MAX_DIGITS);
-        assert_eq!(dec.digits[0], 1);
-        assert_eq!(dec.digits[MAX_DIGITS - 1], 9);
-        assert_eq!(dec.decimal_point, 1);
-        assert!(!dec.truncated);
-    }
-
-    #[test]
-    fn parse_max_digits_exceeded() {
-        let mut s = "1.".to_string();
-        s.push_str(&*"0".repeat(MAX_DIGITS - 1));
-        s.push('9');
-        let s = s.as_str();
-        let mut dec = Decimal::default();
-        dec.parse(s);
-        assert_eq!(dec.n_digits, 1);
-        assert_eq!(dec.digits[0], 1);
-        assert_eq!(dec.decimal_point, 1);
-        assert!(dec.truncated);
-    }
-
-    #[test]
-    fn test_shift_right() {
-        let mut dec = Decimal::default();
-        let digits: [u8; 42] = [
-            5, 5, 8, 4, 0, 6, 9, 6, 7, 6, 6, 9, 7, 2, 5, 4, 1, 8, 0, 9, 0, 8,
-            2, 0, 3, 1, 2, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ];
-        dec.parse("299.792458");
-        dec.right_shift(29);
-        assert_eq!(dec.n_digits, 28);
-        assert_eq!(dec, &digits);
-        assert_eq!(dec.decimal_point, -6);
-        assert!(!dec.truncated);
-    }
-
-    #[test]
-    fn test_shift_left() {
-        let mut dec = Decimal::default();
-        let digits: [u8; 42] = [
-            9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 3, 4, 4, 6, 4, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ];
-        dec.parse("4.768371582");
-        dec.left_shift(21);
-        assert_eq!(dec.n_digits, 16);
-        assert_eq!(dec, &digits);
-        assert_eq!(dec.decimal_point, 7);
-        assert!(!dec.truncated);
-    }
-
-    #[test]
     fn test_add_digits() {
         let mut dec = Decimal::default();
         let digits: [u8; 25] = [
@@ -683,6 +510,36 @@ mod tests {
         ];
         assert_eq!(dec, &digits);
         assert_eq!(dec.decimal_point, digits.len() as i32);
+        assert!(!dec.truncated);
+    }
+
+    #[test]
+    fn test_shift_right() {
+        let mut dec = Decimal::from_u256(u256::new(0, 299792458));
+        dec.imul_10_pow(-6);
+        let digits: [u8; 42] = [
+            5, 5, 8, 4, 0, 6, 9, 6, 7, 6, 6, 9, 7, 2, 5, 4, 1, 8, 0, 9, 0, 8,
+            2, 0, 3, 1, 2, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        dec.right_shift(29);
+        assert_eq!(dec.n_digits, 28);
+        assert_eq!(dec, &digits);
+        assert_eq!(dec.decimal_point, -6);
+        assert!(!dec.truncated);
+    }
+
+    #[test]
+    fn test_shift_left() {
+        let mut dec = Decimal::from_u256(u256::new(0, 4768371582));
+        dec.imul_10_pow(-9);
+        let digits: [u8; 42] = [
+            9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 3, 4, 4, 6, 4, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        dec.left_shift(21);
+        assert_eq!(dec.n_digits, 16);
+        assert_eq!(dec, &digits);
+        assert_eq!(dec.decimal_point, 7);
         assert!(!dec.truncated);
     }
 }

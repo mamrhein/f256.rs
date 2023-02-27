@@ -7,7 +7,6 @@
 // $Source$
 // $Revision$
 
-mod big_num;
 mod common;
 mod fast_approx;
 mod fast_exact;

@@ -65,6 +65,7 @@ use core::{
     ops::Neg,
 };
 
+mod big_decimal;
 mod biguint;
 mod binops;
 mod from_float;
