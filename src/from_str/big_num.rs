@@ -255,6 +255,25 @@ impl Decimal {
     /// Maximum number of bits for left / right shifts.
     pub(super) const MAX_SHIFT: u32 = u64::BITS - 4;
 
+    fn add_digits(&mut self, mut int: u64, full: bool) {
+        let mut digits: [u8; 18] = [0; 18];
+        let mut idx = 0;
+        while int > 0 {
+            digits[idx] = (int % 10) as u8;
+            int /= 10;
+            idx += 1;
+        }
+        if full {
+            idx = digits.len();
+        }
+        let n_digits = idx;
+        for i in self.n_digits..self.n_digits + n_digits {
+            idx -= 1;
+            self.digits[i] = digits[idx];
+        }
+        self.n_digits += n_digits;
+    }
+
     fn add_digit(&mut self, digit: u8) {
         if self.n_digits < MAX_DIGITS {
             self.digits[self.n_digits] = digit;
@@ -604,6 +623,21 @@ mod tests {
         assert_eq!(dec.n_digits, 16);
         assert_eq!(dec, &digits);
         assert_eq!(dec.decimal_point, 7);
+        assert!(!dec.truncated);
+    }
+
+    #[test]
+    fn test_add_digits() {
+        let mut dec = Decimal::default();
+        let digits: [u8; 25] = [
+            7, 9, 3, 4, 4, 6, 4, 0, 0, 0, 0, 2, 0, 0, 8, 1, 4, 0, 3, 7, 5, 9,
+            2, 2, 0,
+        ];
+        dec.add_digits(7934464, false);
+        assert_eq!(dec.n_digits, 7);
+        dec.add_digits(20081403759220, true);
+        assert_eq!(dec, &digits);
+        assert_eq!(dec.decimal_point, 0);
         assert!(!dec.truncated);
     }
 }
