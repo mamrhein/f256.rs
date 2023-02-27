@@ -17,7 +17,7 @@ use super::{
     powers_of_five::is_multiple_of_pow5,
 };
 use crate::{
-    biguint::{u256_truncating_mul_u512, DivRem},
+    big_uint::{u256_truncating_mul_u512, DivRem},
     f256, u256,
 };
 

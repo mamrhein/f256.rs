@@ -14,7 +14,7 @@
 /// adopted for `f256`.
 use core::cmp::{min, Ordering};
 
-use crate::{biguint::DivRem, f256, u256};
+use crate::{big_uint::DivRem, f256, u256};
 
 /// The maximum number of digits required to unambiguously round a `f256`,
 /// calculated by the formula:

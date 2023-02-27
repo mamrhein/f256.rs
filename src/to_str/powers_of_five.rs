@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use crate::{biguint::DivRem, u256};
+use crate::{big_uint::DivRem, u256};
 
 pub(super) const MAX_EXP: u32 = 102;
 

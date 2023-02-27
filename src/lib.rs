@@ -66,14 +66,14 @@ use core::{
 };
 
 mod big_decimal;
-mod biguint;
+mod big_uint;
 mod binops;
 mod from_float;
 mod from_int;
 mod from_str;
 mod to_str;
 
-use crate::biguint::{u256, u512};
+use crate::big_uint::{u256, u512};
 
 /// Precision level in relation to single precision float (f32) = 8
 pub(crate) const PREC_LEVEL: u32 = 8;

@@ -26,7 +26,7 @@ use super::{
     powers_of_five::{get_power_of_five, is_multiple_of_pow5},
 };
 use crate::{
-    biguint::DivRem, f256, u256, u512, EMAX, EMIN, FRACTION_BITS,
+    big_uint::DivRem, f256, u256, u512, EMAX, EMIN, FRACTION_BITS,
     SIGNIFICAND_BITS,
 };
 
