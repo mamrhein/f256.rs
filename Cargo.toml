@@ -11,6 +11,7 @@ documentation = "https://docs.rs/f256/"
 license-file = "LICENSE.TXT"
 keywords = ["number", "precision", "floating-point", "arithmetics"]
 categories = ["data-structures", "mathematics"]
+exclude = ["tests/*"]
 
 [dependencies]
 num-traits = { version = "0.2.0", optional = true }
