@@ -65,13 +65,9 @@ use core::{
     ops::Neg,
 };
 
-mod big_decimal;
 mod big_uint;
 mod binops;
-mod from_float;
-mod from_int;
-mod from_str;
-mod to_str;
+mod conv;
 
 use crate::big_uint::{u256, u512};
 
