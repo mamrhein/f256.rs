@@ -273,6 +273,7 @@ impl Decimal {
             idx -= 1;
             res.add_digits(segments[idx], true);
         }
+        res.decimal_point = res.n_digits as i32;
         res
     }
 
@@ -681,7 +682,7 @@ mod tests {
             9, 7, 4, 9, 6, 5,
         ];
         assert_eq!(dec, &digits);
-        assert_eq!(dec.decimal_point, 0);
+        assert_eq!(dec.decimal_point, digits.len() as i32);
         assert!(!dec.truncated);
     }
 }
