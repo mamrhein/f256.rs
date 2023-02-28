@@ -248,22 +248,16 @@ impl PartialOrd<&[u8]> for Decimal {
     }
 }
 
-impl Decimal {
-    // We use an u64 as accumulator in the shifting functions and need 4 bits
-    // to shift a decimal digit [0..9] in and out. Thus, we shift atmost 60 bits
-    // in one go.
-    /// Maximum number of bits for left / right shifts.
-    pub(crate) const MAX_SHIFT: u32 = u64::BITS - 4;
-
+impl From<u256> for Decimal {
     // Create new Decimal from an u256 value.
-    pub(crate) fn from_u256(mut val: u256) -> Self {
+    fn from(mut value: u256) -> Self {
         const SEGMENT_BASE: u64 = 1_000_000_000_000_000_000;
         let mut res = Self::default();
         let mut segments: [u64; 5] = [0, 0, 0, 0, 0];
         let mut r = 0_u64;
         let mut idx = 0;
-        while !val.is_zero() {
-            (val, r) = val.div_rem(SEGMENT_BASE);
+        while !value.is_zero() {
+            (value, r) = value.div_rem(SEGMENT_BASE);
             segments[idx] = r;
             idx += 1;
         }
@@ -276,6 +270,14 @@ impl Decimal {
         res.decimal_point = res.n_digits as i32;
         res
     }
+}
+
+impl Decimal {
+    // We use an u64 as accumulator in the shifting functions and need 4 bits
+    // to shift a decimal digit [0..9] in and out. Thus, we shift atmost 60 bits
+    // in one go.
+    /// Maximum number of bits for left / right shifts.
+    pub(crate) const MAX_SHIFT: u32 = u64::BITS - 4;
 
     pub(crate) fn add_digits(&mut self, mut int: u64, full: bool) {
         let mut digits: [u8; 18] = [0; 18];
@@ -501,7 +503,7 @@ mod tests {
             401609310945955079118279405485910,
             168709353958551391248113314710179390005,
         );
-        let dec = Decimal::from_u256(val);
+        let dec = Decimal::from(val);
         let digits: [u8; 72] = [
             1, 3, 6, 6, 6, 0, 5, 6, 6, 9, 0, 6, 1, 7, 6, 7, 5, 4, 1, 8, 7, 2,
             3, 7, 8, 1, 3, 3, 7, 8, 5, 7, 5, 5, 0, 0, 9, 8, 2, 4, 5, 9, 8, 9,
@@ -515,7 +517,7 @@ mod tests {
 
     #[test]
     fn test_shift_right() {
-        let mut dec = Decimal::from_u256(u256::new(0, 299792458));
+        let mut dec = Decimal::from(u256::new(0, 299792458));
         dec.imul_10_pow(-6);
         let digits: [u8; 42] = [
             5, 5, 8, 4, 0, 6, 9, 6, 7, 6, 6, 9, 7, 2, 5, 4, 1, 8, 0, 9, 0, 8,
@@ -530,7 +532,7 @@ mod tests {
 
     #[test]
     fn test_shift_left() {
-        let mut dec = Decimal::from_u256(u256::new(0, 4768371582));
+        let mut dec = Decimal::from(u256::new(0, 4768371582));
         dec.imul_10_pow(-9);
         let digits: [u8; 42] = [
             9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 3, 4, 4, 6, 4, 0, 0, 0, 0, 0, 0,
