@@ -1,6 +1,6 @@
 [package]
 name = "f256_pow10_div_pow2_lut"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Michael Amrhein <michael@adrhinum.de>"]
 description = "Lookup table for crate `f256`."
