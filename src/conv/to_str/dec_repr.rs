@@ -9,15 +9,16 @@
 
 use core::{cmp::max, fmt, mem::MaybeUninit};
 
+use f256_pow2_div_pow5_lut;
+use f256_pow5_div_pow2_lut;
+
 use super::{
     common::floor_log10_pow2,
     formatted::{Formatted, Part},
-    ge_lut::from_ge_lut,
-    lt_lut::from_lt_lut,
     powers_of_five::is_multiple_of_pow5,
 };
 use crate::{
-    big_uint::{u256_truncating_mul_u512, DivRem},
+    big_uint::{u256_truncating_mul_u512, u512, DivRem},
     f256, u256,
 };
 
@@ -41,6 +42,24 @@ fn floor_log2_pow5(i: i32) -> i32 {
 #[inline(always)]
 fn ceil_log2_pow5(i: i32) -> i32 {
     floor_log2_pow5(i) + 1
+}
+
+#[inline(always)]
+fn lookup_pow2_div_pow5(idx: usize) -> u512 {
+    let t = f256_pow2_div_pow5_lut::lookup_pow2_div_pow5(idx);
+    u512 {
+        hi: u256::new(t.0, t.1),
+        lo: u256::new(t.2, t.3),
+    }
+}
+
+#[inline(always)]
+fn lookup_pow5_div_pow2(idx: usize) -> u512 {
+    let t = f256_pow5_div_pow2_lut::lookup_pow5_div_pow2(idx);
+    u512 {
+        hi: u256::new(t.0, t.1),
+        lo: u256::new(t.2, t.3),
+    }
 }
 
 /// Internal representation of a finite decimal number d as (s, k, w)
@@ -116,7 +135,7 @@ impl DecNumRepr {
             // we calulate (signif * 2ᵉ⁻ᵍ⁻ʰ⁺⁵¹⁰ * (⌊2ʰ / 5ᵍ⌋ + 1) * 4 / 2⁵¹².
             let h = floor_log2_pow5(g) + H;
             let sh = (exp2 - g - h + 510) as u32;
-            let luv = from_ge_lut(g as usize);
+            let luv = lookup_pow2_div_pow5(g as usize);
             lower_signif10 =
                 u256_truncating_mul_u512(&(&lower_signif2 << sh), &luv);
             signif10 = u256_truncating_mul_u512(&(&signif2 << sh), &luv);
@@ -152,7 +171,7 @@ impl DecNumRepr {
             // signif * ⌊5⁻ᵉ⁻ᵍ / 2ʰ⁻²⌋ * 2⁵¹⁰⁻ᵍ⁺ʰ / 2⁵¹².
             let h = ceil_log2_pow5(i) - H;
             let sh = (510 - g + h) as u32;
-            let luv = from_lt_lut(i as usize);
+            let luv = lookup_pow5_div_pow2(i as usize);
             lower_signif10 =
                 u256_truncating_mul_u512(&(&lower_signif2 << sh), &luv);
             signif10 = u256_truncating_mul_u512(&(&signif2 << sh), &luv);

@@ -14,15 +14,18 @@ use core::{
     ops::{AddAssign, Rem},
 };
 
+use f256_pow10_div_pow2_lut::{
+    get_pow10_div_pow2_params, lookup_pow10_div_pow2, CHUNK_BASE, CHUNK_CUTOFF,
+    CHUNK_SIZE, COMPRESSION_RATE, SHIFT,
+};
+use f256_pow2_div_pow10_lut::{
+    get_pow2_div_pow10_params, lookup_pow2_div_pow10,
+};
+
 use super::{
     common::{floor_log10, floor_log10_pow2, floor_log10f},
     dec_repr::DecNumRepr,
     formatted::{Formatted, Part},
-    pow10_div_pow2_lut::{
-        get_pow10_div_pow2_params, pow10_div_pow2, CHUNK_BASE, CHUNK_CUTOFF,
-        CHUNK_SIZE, COMPRESSION_RATE, SHIFT,
-    },
-    pow2_div_pow10_lut::{get_pow2_div_pow10_params, pow2_div_pow10},
     powers_of_five::{get_power_of_five, is_multiple_of_pow5},
 };
 use crate::{
@@ -49,6 +52,18 @@ fn mul_shift_mod(x: &u256, y: &u512, k: u32) -> u64 {
     }
     hi >>= (k - 256);
     &hi % CHUNK_BASE
+}
+
+#[inline(always)]
+fn pow2_div_pow10(segment_idx: usize, chunk_idx: usize) -> u512 {
+    let t = lookup_pow2_div_pow10(segment_idx, chunk_idx);
+    u512::new(u256::new(0, t.0), u256::new(t.1, t.2))
+}
+
+#[inline(always)]
+fn pow10_div_pow2(segment_idx: usize, chunk_idx: usize) -> u512 {
+    let t = lookup_pow10_div_pow2(segment_idx, chunk_idx);
+    u512::new(u256::new(0, t.0), u256::new(t.1, t.2))
 }
 
 fn bin_fract_2_dec_str(

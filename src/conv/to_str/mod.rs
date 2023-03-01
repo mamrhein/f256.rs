@@ -10,10 +10,6 @@
 mod common;
 mod dec_repr;
 mod formatted;
-mod ge_lut;
-mod lt_lut;
-mod pow10_div_pow2_lut;
-mod pow2_div_pow10_lut;
 mod powers_of_five;
 mod to_fixed_prec;
 
