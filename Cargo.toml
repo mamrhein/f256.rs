@@ -14,10 +14,10 @@ categories = ["data-structures", "mathematics"]
 exclude = ["analysis/*", "tests/*"]
 
 [dependencies]
-f256_pow2_div_pow5_lut = { version = "0.0.0", path = "pow2_div_pow5_lut" }
-f256_pow5_div_pow2_lut = { version = "0.0.0", path = "pow5_div_pow2_lut" }
-f256_pow2_div_pow10_lut = { version = "0.0.0", path = "pow2_div_pow10_lut" }
-f256_pow10_div_pow2_lut = { version = "0.0.0", path = "pow10_div_pow2_lut" }
+f256_pow2_div_pow5_lut = { version = "0.1.0", path = "pow2_div_pow5_lut" }
+f256_pow5_div_pow2_lut = { version = "0.1.0", path = "pow5_div_pow2_lut" }
+f256_pow2_div_pow10_lut = { version = "0.1.0", path = "pow2_div_pow10_lut" }
+f256_pow10_div_pow2_lut = { version = "0.1.0", path = "pow10_div_pow2_lut" }
 num-traits = { version = "0.2.0", optional = true }
 
 [dev-dependencies]

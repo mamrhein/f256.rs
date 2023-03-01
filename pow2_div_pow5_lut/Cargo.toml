@@ -1,8 +1,13 @@
 [package]
 name = "f256_pow2_div_pow5_lut"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Michael Amrhein <michael@adrhinum.de>"]
+description = "Lookup table for crate `f256`."
+readme = "README.md"
+homepage = "https://github.com/mamrhein/f256.rs"
+repository = "https://github.com/mamrhein/f256.rs"
+documentation = "https://docs.rs/f256/"
+license-file = "../LICENSE.TXT"
 
 [dependencies]
