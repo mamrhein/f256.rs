@@ -1,6 +1,6 @@
 [package]
 name = "f256"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Michael Amrhein <michael@adrhinum.de>"]
 description = "Octuple-precision floating-point arithmetic."
