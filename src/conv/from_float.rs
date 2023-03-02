@@ -35,16 +35,12 @@ trait Float: Copy + Clone {
     const FRACTION_BIAS: u64 = 1_u64 << Self::FRACTION_BITS;
     /// Number of bits to shift right for sign
     const SIGN_SHIFT: u32 = Self::TOTAL_BITS - 1;
-    // Sign mask
+    /// Sign mask
     const SIGN_MASK: u64 = 1_u64 << Self::SIGN_SHIFT;
     /// Abs mask
     const ABS_MASK: u64 = !Self::SIGN_MASK;
-    // Bit representation of +Inf
+    /// Bit representation of +Inf
     const INF: u64 = (Self::BIASED_EXP_MAX as u64) << Self::FRACTION_BITS;
-    // Bit representation of maximum normal value
-    const MAX: u64 = (((Self::BIASED_EXP_MAX - 1) as u64)
-        << Self::FRACTION_BITS)
-        | Self::FRACTION_MASK;
     /// Raw transmutation to u64.
     fn to_bits(self) -> u64;
 }
