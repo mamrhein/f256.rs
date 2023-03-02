@@ -372,6 +372,7 @@ impl f256 {
 
     /// Only public for testing!!!
     #[doc(hidden)]
+    #[must_use]
     pub fn from_sign_exp_signif(s: u32, t: i32, c: (u128, u128)) -> Self {
         Self::encode(s, t, u256::new(c.0, c.1))
     }
@@ -473,6 +474,7 @@ impl f256 {
 
     /// Only public for testing!!!
     #[doc(hidden)]
+    #[must_use]
     pub fn as_sign_exp_signif(&self) -> (u32, i32, (u128, u128)) {
         let (s, t, c) = self.decode();
         (s, t, (c.hi, c.lo))
