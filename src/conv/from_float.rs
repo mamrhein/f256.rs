@@ -11,21 +11,24 @@ use core::ops::Neg;
 
 use crate::{f256, u256};
 
+// TODO: use core::cmp::min when it got stable in const context
+const fn min(x: u32, y: u32) -> u32 {
+    x - x.saturating_sub(y)
+}
+
 trait Float: Copy + Clone {
     /// Precision level in relation to single precision float (f32)
     const PREC_LEVEL: u32;
     /// Total number of bits
     const TOTAL_BITS: u32 = 1_u32 << Self::PREC_LEVEL;
     /// Number of exponent bits
-    const EXP_BITS: u32 = 4 * Self::PREC_LEVEL - 13;
-    /// Number of significand bits
-    const SIGNIFICAND_BITS: u32 = Self::TOTAL_BITS - Self::EXP_BITS;
+    const EXP_BITS: u32 = 4 * Self::PREC_LEVEL - min(6, Self::PREC_LEVEL) - 7;
     /// Number of fraction bits
-    const FRACTION_BITS: u32 = Self::SIGNIFICAND_BITS - 1;
+    const FRACTION_BITS: u32 = Self::TOTAL_BITS - Self::EXP_BITS - 1;
     /// Maximum value of biased base 2 exponent
-    const EXP_MAX: u32 = (1_u32 << Self::EXP_BITS) - 1;
+    const BIASED_EXP_MAX: u32 = (1_u32 << Self::EXP_BITS) - 1;
     /// Base 2 exponent bias (incl. radix adjustment)
-    const EXP_BIAS: u32 = (Self::EXP_MAX >> 1) + Self::FRACTION_BITS;
+    const EXP_BIAS_ADJ: u32 = (Self::BIASED_EXP_MAX >> 1) + Self::FRACTION_BITS;
     /// Fraction mask
     const FRACTION_MASK: u64 = (1_u64 << Self::FRACTION_BITS) - 1;
     /// Fraction bias
@@ -37,9 +40,10 @@ trait Float: Copy + Clone {
     /// Abs mask
     const ABS_MASK: u64 = !Self::SIGN_MASK;
     // Bit representation of +Inf
-    const INF: u64 = (Self::EXP_MAX as u64) << Self::FRACTION_BITS;
+    const INF: u64 = (Self::BIASED_EXP_MAX as u64) << Self::FRACTION_BITS;
     // Bit representation of maximum normal value
-    const MAX: u64 = (((Self::EXP_MAX - 1) as u64) << Self::FRACTION_BITS)
+    const MAX: u64 = (((Self::BIASED_EXP_MAX - 1) as u64)
+        << Self::FRACTION_BITS)
         | Self::FRACTION_MASK;
     /// Raw transmutation to u64.
     fn to_bits(self) -> u64;
@@ -71,11 +75,10 @@ impl<F: Float> From<F> for f256 {
         let abs_bits = bits & F::ABS_MASK;
         let sign = (bits >> F::SIGN_SHIFT) as u32;
 
-        if abs_bits.wrapping_sub(1) < F::MAX {
+        if abs_bits >= F::FRACTION_BIAS && abs_bits < F::INF {
             // Normal value
-            let exp = ((bits >> F::FRACTION_BITS as u64) & F::EXP_MAX as u64)
-                as u32 as i32
-                - F::EXP_BIAS as i32;
+            let exp = (abs_bits >> F::FRACTION_BITS as u64) as i32
+                - F::EXP_BIAS_ADJ as i32;
             let significand = u256 {
                 hi: 0,
                 lo: ((bits & F::FRACTION_MASK) | F::FRACTION_BIAS) as u128,
@@ -88,7 +91,7 @@ impl<F: Float> From<F> for f256 {
             // subnormal
             Self::encode(
                 sign,
-                1 - F::EXP_BIAS as i32,
+                1 - F::EXP_BIAS_ADJ as i32,
                 u256 {
                     hi: 0,
                     lo: (bits & F::FRACTION_MASK) as u128,
@@ -131,11 +134,67 @@ mod from_f64_tests {
         assert_eq!(f256::from(1_f64), f256::ONE);
         assert_eq!(f256::from(-1_f64), f256::NEG_ONE);
         assert_eq!(f256::from(2_f64), f256::TWO);
-        let x = f256::from(3.5);
-        assert_eq!(x.decode(), (0, -1, u256::new(0, 7)));
-        let x = f256::from(-17.625);
-        assert_eq!(x.decode(), (1, -3, u256::new(0, 141)));
+        let x = f256::from(3.5_f64);
+        assert_eq!(x.as_sign_exp_signif(), (0, -1, (0, 7)));
+        let x = f256::from(-17.625_f64);
+        assert_eq!(x.as_sign_exp_signif(), (1, -3, (0, 141)));
+        let x = f256::from(0.0625_f64);
+        assert_eq!(x.as_sign_exp_signif(), (0, -4, (0, 1)));
+        let x = f256::from(109.04e-115_f64);
+        assert_eq!(x.as_sign_exp_signif(), (0, -428, (0, 7558297586173341)));
     }
 
-    // TODO: test subnormal values
+    #[test]
+    fn test_subnormal_values() {
+        let x = f256::from(7.4e-317_f64);
+        assert_eq!(x.as_sign_exp_signif(), (0, -1074, (0, 14977767)));
+        let x = f256::from(-0.984e-312_f64);
+        assert_eq!(x.as_sign_exp_signif(), (1, -1073, (0, 99581908627)));
+    }
+}
+
+#[cfg(test)]
+mod from_f32_tests {
+    use super::*;
+
+    #[test]
+    fn test_nan() {
+        assert!(f256::from(f32::NAN).is_nan());
+        assert!(f256::from(-f32::NAN).is_nan());
+    }
+
+    #[test]
+    fn test_inf() {
+        assert_eq!(f256::from(f32::INFINITY), f256::INFINITY);
+        assert_eq!(f256::from(f32::NEG_INFINITY), f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_zero() {
+        assert_eq!(f256::from(0_f32), f256::ZERO);
+        assert_eq!(f256::from(-0_f32), f256::NEG_ZERO);
+    }
+
+    #[test]
+    fn test_normal_values() {
+        assert_eq!(f256::from(1_f32), f256::ONE);
+        assert_eq!(f256::from(-1_f32), f256::NEG_ONE);
+        assert_eq!(f256::from(2_f32), f256::TWO);
+        let x = f256::from(3.5_f32);
+        assert_eq!(x.as_sign_exp_signif(), (0, -1, (0, 7)));
+        let x = f256::from(-17.625_f32);
+        assert_eq!(x.as_sign_exp_signif(), (1, -3, (0, 141)));
+        let x = f256::from(0.0625_f32);
+        assert_eq!(x.as_sign_exp_signif(), (0, -4, (0, 1)));
+        let x = f256::from(3.782e-38_f32);
+        assert_eq!(x.as_sign_exp_signif(), (0, -148, (0, 13494627)));
+    }
+
+    #[test]
+    fn test_subnormal_values() {
+        let x = f256::from(7.4e-317);
+        assert_eq!(x.as_sign_exp_signif(), (0, -1074, (0, 14977767)));
+        let x = f256::from(-0.984e-312);
+        assert_eq!(x.as_sign_exp_signif(), (1, -1073, (0, 99581908627)));
+    }
 }
