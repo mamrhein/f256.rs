@@ -472,8 +472,7 @@ impl f256 {
     }
 
     /// Only public for testing!!!
-    // TODO: hide doc
-    // #[doc(hidden)]
+    #[doc(hidden)]
     pub fn as_sign_exp_signif(&self) -> (u32, i32, (u128, u128)) {
         let (s, t, c) = self.decode();
         (s, t, (c.hi, c.lo))
