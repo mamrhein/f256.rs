@@ -76,7 +76,86 @@ mod sub_tests {
     }
 
     #[test]
-    fn test_subnormal() {
+    fn test_normal_small_diff() {
+        let x = f256::from_sign_exp_signif(
+            0,
+            -183,
+            (608472288109550112718437538580480, 7005),
+        );
+        assert!(x.is_normal());
+        let y = f256::from_sign_exp_signif(
+            0,
+            -183,
+            (608472288109550112718437538580480, 7001),
+        );
+        assert!(y.is_normal());
+        let z = f256::from_sign_exp_signif(0, -183, (0, 4));
+        assert!(z.is_normal());
+        assert_eq!(x - y, z);
+        assert_eq!(y - x, -z);
+    }
+
+    #[test]
+    fn test_normal_sub_normal_giving_subnormal() {
+        let x = f256::from_sign_exp_signif(
+            0,
+            -262376,
+            (324518553658426726783156020576256, 12009),
+        );
+        assert!(x.is_normal());
+        let y = f256::from_sign_exp_signif(
+            0,
+            -262377,
+            (567907468902246771870523036008448, 118321),
+        );
+        assert!(y.is_normal());
+        let z = f256::from_sign_exp_signif(
+            0,
+            -262377,
+            (
+                81129638414606681695789005144063,
+                340282366920938463463374607431768117153,
+            ),
+        );
+        assert!(z.is_subnormal());
+        assert_eq!(x - y, z);
+        assert_eq!(y - x, -z);
+    }
+
+    #[test]
+    fn test_normal_sub_normal_same_exp_giving_subnormal() {
+        let x = f256::from_sign_exp_signif(
+            0,
+            -262376,
+            (608472288109550112718437538580480, 7001),
+        );
+        assert!(x.is_normal());
+        let y = f256::from_sign_exp_signif(
+            0,
+            -262376,
+            (608472288109550112718437538580480, 7000),
+        );
+        assert!(y.is_normal());
+        let z = f256::from_sign_exp_signif(0, -262376, (0, 1));
+        assert!(z.is_subnormal());
+        assert_eq!(x - y, z);
+        assert_eq!(y - x, -z);
+    }
+
+    #[test]
+    fn test_subnormal_sub_subnormal() {
+        let x = f256::from_sign_exp_signif(0, -262378, (37538580480, 7031));
+        assert!(x.is_subnormal());
+        let y = f256::from_sign_exp_signif(0, -262378, (37538580480, 52));
+        assert!(y.is_subnormal());
+        let z = f256::from_sign_exp_signif(0, -262378, (0, 6979));
+        assert!(z.is_subnormal());
+        assert_eq!(x - y, z);
+        assert_eq!(y - x, -z);
+    }
+
+    #[test]
+    fn test_min_gt_zero() {
         assert_eq!(f256::MAX - f256::MIN_GT_ZERO, f256::MAX);
         assert_eq!(f256::MIN - f256::MIN_GT_ZERO, f256::MIN);
         assert_eq!(f256::MIN_GT_ZERO - f256::MAX, f256::MIN);
@@ -84,7 +163,6 @@ mod sub_tests {
         assert_eq!(f256::ONE - f256::MIN_GT_ZERO, f256::ONE);
         assert_eq!(f256::MIN_GT_ZERO - f256::ONE, f256::NEG_ONE);
         assert_eq!(f256::MIN_GT_ZERO - f256::MIN_GT_ZERO, f256::ZERO);
-        // TODO: sub two subnormals giving subnormal result
     }
 
     #[test]
