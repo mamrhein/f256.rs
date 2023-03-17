@@ -165,3 +165,18 @@ pub const E: f256 = f256 {
 // ln(10)
 // 2.30258509299404568401799145468436421
 // pub const LN_10: f256 = ;
+
+#[cfg(test)]
+mod consts_tests {
+    use super::*;
+
+    #[test]
+    fn test_pi() {
+        println!("{:?}", PI.as_sign_exp_signif());
+        println!("{:?}", FRAC_PI_2.as_sign_exp_signif());
+        println!("{:?}", FRAC_PI_4.as_sign_exp_signif());
+        println!("{:?}", FRAC_PI_8.as_sign_exp_signif());
+        println!("{:?}", FRAC_PI_3.as_sign_exp_signif());
+        println!("{:?}", FRAC_PI_6.as_sign_exp_signif());
+    }
+}

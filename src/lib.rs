@@ -359,16 +359,10 @@ impl f256 {
             _ => {}
         }
         // 3. Offset exponent
-        let biased_exponent = t + EXP_BIAS as i32;
-        debug_assert!(biased_exponent >= 0);
-        Self {
-            bits: u256 {
-                hi: (s as u128) << HI_SIGN_SHIFT
-                    | ((biased_exponent as u128) << HI_FRACTION_BITS)
-                    | (c.hi & HI_FRACTION_MASK),
-                lo: c.lo,
-            },
-        }
+        t += EXP_BIAS as i32;
+        debug_assert!(t >= 0);
+        // 4. Assemble struct f256
+        Self::new(c, t as u32, s)
     }
 
     /// Only public for testing!!!
