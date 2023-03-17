@@ -348,3 +348,58 @@ mod round_tests {
         assert_eq!(g.round(), f256::ZERO);
     }
 }
+
+#[cfg(test)]
+mod rad_degree_tests {
+    use ::f256::{
+        consts::{FRAC_PI_2, FRAC_PI_3, PI},
+        f256,
+    };
+
+    #[test]
+    fn test_to_degrees() {
+        let d180 = f256::from(180);
+        let d60 = f256::from(60);
+        let x = f256::ONE.to_degrees();
+        assert_eq!(
+            x.as_sign_exp_signif(),
+            (
+                0,
+                -228,
+                (
+                    72631029290303093375423554125059,
+                    97528794516718399009463026371013945029
+                )
+            )
+        );
+        let x = PI.to_degrees();
+        assert_eq!(x, d180);
+        let x = (f256::TWO * PI).to_degrees();
+        assert_eq!(x, f256::TWO * d180);
+        let x = FRAC_PI_3.to_degrees();
+        // Here we have a rounding error of 2⁻²³¹
+        assert_eq!(x - d60, f256::from_sign_exp_signif(0, -231, (0, 1)));
+    }
+
+    #[test]
+    fn test_to_radians() {
+        let d180 = f256::from(180);
+        let d90 = f256::from(90);
+        let x = f256::ONE.to_radians();
+        assert_eq!(
+            x.as_sign_exp_signif(),
+            (
+                0,
+                -241,
+                (
+                    181245351844781960018527624030536,
+                    122691704046858638295272262152299957397
+                )
+            )
+        );
+        let x = d180.to_radians();
+        assert_eq!(x, PI);
+        let x = d90.to_radians();
+        assert_eq!(x, FRAC_PI_2);
+    }
+}

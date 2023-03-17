@@ -592,20 +592,43 @@ impl f256 {
     }
 
     /// Converts radians to degrees.
+    ///
+    /// Returns self * (180 / π)
     #[must_use]
     #[inline]
     pub fn to_degrees(self) -> Self {
-        // self * (180.0f256 / consts::PI)
-        unimplemented!()
+        // 1 rad = 180 / π ≅ M / 2²⁵⁰
+        const M: u256 = u256::new(
+            304636616676435425756912514760952666071,
+            69798147688063442975655060594812004816,
+        );
+        const SH: i32 = 250_i32;
+        let signif = self.significand();
+        let exp = self.exponent();
+        let mut t = M.widening_mul(&signif);
+        let sh = signif.msb() + 256 - SIGNIFICAND_BITS;
+        t.idiv_pow2(sh);
+        Self::encode(self.sign(), exp - SH + sh as i32, t.lo)
     }
 
     /// Converts degrees to radians.
+    ///
+    /// Returns self * (π / 180)
     #[must_use]
     #[inline]
     pub fn to_radians(self) -> Self {
-        // let value: Self = consts::PI;
-        // self * (value / 180.0)
-        unimplemented!()
+        // π / 180 ≅ M / 2²⁶¹
+        const M: u256 = u256::new(
+            190049526055994088508387621895443694809,
+            953738875812114979603059177117484306,
+        );
+        const SH: i32 = 261_i32;
+        let signif = self.significand();
+        let exp = self.exponent();
+        let mut t = M.widening_mul(&signif);
+        let sh = signif.msb() + 256 - SIGNIFICAND_BITS;
+        t.idiv_pow2(sh);
+        Self::encode(self.sign(), exp - SH + sh as i32, t.lo)
     }
 
     /// Returns the maximum of the two numbers, ignoring NaN.
