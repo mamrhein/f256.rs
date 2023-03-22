@@ -135,7 +135,7 @@ pub(crate) const MIN_GT_ZERO_10_EXP: i32 = -78984;
 ///
 /// For details see [above](index.html).
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Default)]
 pub struct f256 {
     pub(crate) bits: u256,
 }
@@ -399,13 +399,8 @@ impl f256 {
     }
 
     /// Returns the fraction of `self`.
-    /// Pre-condition: `self` is finite!
     #[inline]
     pub(crate) const fn fraction(&self) -> u256 {
-        debug_assert!(
-            self.is_finite(),
-            "Attempt to extract fraction from Infinity or NaN."
-        );
         u256 {
             hi: self.bits.hi & HI_FRACTION_MASK,
             lo: self.bits.lo,
@@ -425,6 +420,27 @@ impl f256 {
         u256 {
             hi: (self.bits.hi & HI_FRACTION_MASK) | hidden_one,
             lo: self.bits.lo,
+        }
+    }
+
+    /// Extract sign, exponent and significand from self
+    pub(crate) fn split_raw(&self) -> (u32, i32, u256) {
+        const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
+        let sign = self.sign();
+        let biased_exp = self.biased_exponent();
+        let fraction = self.fraction();
+        match (biased_exp, fraction) {
+            (0, u256::ZERO) => (sign, 0, u256::ZERO),
+            (0, _) => (sign, EMIN, fraction),
+            (EXP_MAX, _) => (sign, biased_exp as i32, fraction),
+            _ => (
+                sign,
+                biased_exp as i32 - TOTAL_BIAS,
+                u256 {
+                    hi: fraction.hi | HI_FRACTION_BIAS,
+                    lo: fraction.lo,
+                },
+            ),
         }
     }
 

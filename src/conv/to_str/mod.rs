@@ -19,7 +19,7 @@ use std::cmp::min;
 use dec_repr::DecNumRepr;
 use to_fixed_prec::{bin_2_dec_fixed_point, bin_2_dec_scientific};
 
-use crate::{f256, u256};
+use crate::{f256, u256, EXP_MAX};
 
 const MAX_PREC: usize = 75;
 
@@ -84,6 +84,17 @@ impl fmt::Display for f256 {
                 Some(prec) => format_exact(self, prec, form),
                 None => format_shortest(self, form),
             }
+        }
+    }
+}
+
+impl fmt::Debug for f256 {
+    fn fmt(&self, form: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        let (sign, exp, signif) = self.split_raw();
+        if exp == EXP_MAX as i32 {
+            fmt::Debug::fmt(&self.to_string(), form)
+        } else {
+            fmt::Debug::fmt(&(sign, exp, (signif.hi, signif.lo)), form)
         }
     }
 }
@@ -507,6 +518,48 @@ mod display_tests {
             "131287264811883885796002000348253624778443062443856017.28632"
                 .to_string()
         );
+    }
+}
+
+#[cfg(test)]
+mod debug_tests {
+    use super::*;
+
+    #[test]
+    fn test_zero() {
+        assert_eq!(format!("{:?}", f256::ZERO), "(0, 0, (0, 0))");
+        assert_eq!(format!("{:?}", f256::NEG_ZERO), "(1, 0, (0, 0))");
+    }
+
+    #[test]
+    fn test_nan() {
+        let f = f256::NAN;
+        assert_eq!(format!("{f:?}"), "\"NaN\"");
+    }
+
+    #[test]
+    fn test_inf() {
+        let f = f256::INFINITY;
+        assert_eq!(format!("{f:?}"), "\"inf\"");
+    }
+
+    #[test]
+    fn test_neg_inf() {
+        let f = f256::NEG_INFINITY;
+        assert_eq!(format!("{f:?}"), "\"-inf\"");
+    }
+
+    #[test]
+    fn test_normal() {
+        assert_eq!(
+            format!("{:?}", f256::EPSILON),
+            "(0, -472, (324518553658426726783156020576256, 0))"
+        );
+    }
+
+    #[test]
+    fn test_subnormal() {
+        assert_eq!(format!("{:?}", f256::MIN_GT_ZERO), "(0, -262142, (0, 1))");
     }
 }
 
