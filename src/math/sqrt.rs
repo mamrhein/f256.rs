@@ -13,23 +13,20 @@ use crate::{
 };
 
 impl f256 {
-    /// Returns the square root of a `self`.
+    /// Returns the square root of `self`.
     ///
     /// Returns NaN if `self` is a negative number other than `-0.0`.
     ///
     /// # Examples
     ///
     /// ```
-    // let positive = 4.0_f64;
-    // let negative = -4.0_f64;
-    // let negative_zero = -0.0_f64;
-    //
-    // let abs_difference = (positive.sqrt() - 2.0).abs();
-    //
-    // assert!(abs_difference < 1e-10);
-    // assert!(negative.sqrt().is_nan());
-    // assert!(negative_zero.sqrt() == negative_zero);
+    /// # use f256::f256;
+    /// let f = f256::from(1822500);
+    /// assert_eq!(f.sqrt(), f256::from(1350));
+    /// assert!(f256::NEG_ONE.sqrt().is_nan());
+    /// assert!(f256::NEG_ZERO.sqrt() == f256::NEG_ZERO);
     /// ```
+    #[must_use]
     pub fn sqrt(self) -> Self {
         // Check whether `self` is negative or ∈ {-0, +0, +∞, NAN}.
         if self.bits > f256::NEG_ZERO.bits {
