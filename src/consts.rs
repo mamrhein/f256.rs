@@ -217,11 +217,19 @@ mod consts_tests {
 
     #[test]
     fn test_pi() {
-        println!("{:?}", PI.as_sign_exp_signif());
-        println!("{:?}", FRAC_PI_2.as_sign_exp_signif());
-        println!("{:?}", FRAC_PI_4.as_sign_exp_signif());
-        println!("{:?}", FRAC_PI_8.as_sign_exp_signif());
-        println!("{:?}", FRAC_PI_3.as_sign_exp_signif());
-        println!("{:?}", FRAC_PI_6.as_sign_exp_signif());
+        assert_eq!(PI * f256::TWO, TAU);
+        assert_eq!(PI / f256::TWO, FRAC_PI_2);
+        assert_eq!(PI, FRAC_PI_2 + FRAC_PI_2);
+        assert_eq!(PI / f256::from(3), FRAC_PI_3);
+        assert_eq!(PI / f256::from(4), FRAC_PI_4);
+        assert_eq!(PI / f256::from(6), FRAC_PI_6);
+        assert_eq!(PI / f256::from(8), FRAC_PI_8);
+        assert_eq!(f256::ONE / PI, FRAC_1_PI);
+        assert_eq!(f256::TWO / PI, FRAC_2_PI);
+    }
+
+    #[test]
+    fn test_phi() {
+        assert_eq!(PHI + f256::ONE, PHI * PHI);
     }
 }
