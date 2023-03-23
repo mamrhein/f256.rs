@@ -69,6 +69,7 @@ mod big_uint;
 mod binops;
 pub mod consts;
 mod conv;
+mod math;
 
 use crate::big_uint::{u256, u512};
 
