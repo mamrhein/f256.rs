@@ -560,29 +560,29 @@ pub(crate) fn bin_2_dec_scientific(
         // TODO: change the following ranges to exclusive upper bounds when
         //  feature(exclusive_range_pattern) got stable.
         FAST_LOWER_BOUND..=-1 => {
-            // 1 <= f < 2²³⁶
+            // 1 <= |f| < 2²³⁶
             (round, exp10) =
                 bin_small_float_2_scientific(signif2, exp2, prec, &mut res);
         }
         0..=FAST_UPPER_BOUND => {
-            // 2²³⁶ <= f < 2⁴⁹¹
+            // 2²³⁶ <= |f| < 2⁵¹²
             (round, exp10) =
                 bin_small_int_2_scientific(signif2, exp2, prec, &mut res);
         }
         NORMAL_EXP_LOWER_BOUND..=FAST_LOWER_BOUND_MINUS_1 => {
-            // f256::MIN_POSITIVE <= f < 1
+            // f256::MIN_POSITIVE <= |f| < 1
             (round, exp10) =
                 bin_fract_2_scientific(signif2, exp2, prec, &mut res);
         }
         FAST_UPPER_BOUND_PLUS_1..=EXP_UPPER_BOUND => {
-            // 2⁴⁹¹ <= f <= f256::MAX
+            // 2⁵¹² <= |f| <= f256::MAX
             (round, exp10) =
                 bin_large_int_2_scientific(signif2, exp2, prec, &mut res);
             // Need trailing zeroes?
             res.push_str("0".repeat(prec - min(prec, exp10 as usize)).as_str());
         }
         SUBNORMAL_EXP_LOWER_BOUND..=SUBNORMAL_EXP_UPPER_BOUND => {
-            // f256::MIN_GT_ZERO <= f < MIN_POSITIVE
+            // f256::MIN_GT_ZERO <= |f| < MIN_POSITIVE
             // f is subnormal, adjust significand and exponent.
             let adj = SIGNIFICAND_BITS - signif2.msb();
             signif2 <<= adj;
