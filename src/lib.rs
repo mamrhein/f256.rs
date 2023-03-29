@@ -316,7 +316,8 @@ impl f256 {
         debug_assert!(s == 0 || s == 1);
         debug_assert!(
             t >= EMIN - FRACTION_BITS as i32
-                && t <= EMAX - FRACTION_BITS as i32
+                && t <= EMAX - FRACTION_BITS as i32,
+            "Exponent limits exceeded: {t}"
         );
         debug_assert!(!c.is_zero());
         // We have an integer based representation `(-1)ˢ × 2ᵗ × c` and need to
