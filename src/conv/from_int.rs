@@ -173,7 +173,8 @@ mod from_signed_int_tests {
 
     #[test]
     fn test_from_i128() {
-        let numbers: [i128; 5] = [i128::MIN, -1, 0, 5_i128.pow(28), i128::MAX];
+        let numbers: [i128; 5] =
+            [i128::MIN, -1, 0, 5_i128.pow(28), i128::MAX];
         check_from_signed_int::<i128>(&numbers);
     }
 }

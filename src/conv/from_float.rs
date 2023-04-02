@@ -28,7 +28,8 @@ trait Float: Copy + Clone {
     /// Maximum value of biased base 2 exponent
     const BIASED_EXP_MAX: u32 = (1_u32 << Self::EXP_BITS) - 1;
     /// Base 2 exponent bias (incl. radix adjustment)
-    const EXP_BIAS_ADJ: u32 = (Self::BIASED_EXP_MAX >> 1) + Self::FRACTION_BITS;
+    const EXP_BIAS_ADJ: u32 =
+        (Self::BIASED_EXP_MAX >> 1) + Self::FRACTION_BITS;
     /// Fraction mask
     const FRACTION_MASK: u64 = (1_u64 << Self::FRACTION_BITS) - 1;
     /// Fraction bias

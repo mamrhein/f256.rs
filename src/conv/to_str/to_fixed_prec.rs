@@ -15,8 +15,8 @@ use core::{
 };
 
 use f256_pow10_div_pow2_lut::{
-    get_pow10_div_pow2_params, lookup_pow10_div_pow2, CHUNK_BASE, CHUNK_CUTOFF,
-    CHUNK_SIZE, COMPRESSION_RATE, SHIFT,
+    get_pow10_div_pow2_params, lookup_pow10_div_pow2, CHUNK_BASE,
+    CHUNK_CUTOFF, CHUNK_SIZE, COMPRESSION_RATE, SHIFT,
 };
 use f256_pow2_div_pow10_lut::{
     get_pow2_div_pow10_params, lookup_pow2_div_pow10,
@@ -155,8 +155,8 @@ fn round_up_fixed_point_inplace(num: &mut str) {
     }
 }
 
-/// Converts a positive finite binary float into a string representing a decimal
-/// number dₘ⋯d₀.d₋₁⋯d₋ₚ where d ∈ [0..9] and p is the given number of
+/// Converts a positive finite binary float into a string representing a
+/// decimal number dₘ⋯d₀.d₋₁⋯d₋ₚ where d ∈ [0..9] and p is the given number of
 /// fractional digits.
 /// The result may have an additional leading zero!
 pub(crate) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
@@ -205,7 +205,8 @@ pub(crate) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
         round = bin_fract_2_dec_str(signif2, exp2, prec, &mut res)
     }
     if round == Round::Up
-        || (round == Round::ToEven && res.ends_with(['1', '3', '5', '7', '9']))
+        || (round == Round::ToEven
+            && res.ends_with(['1', '3', '5', '7', '9']))
     {
         round_up_fixed_point_inplace(&mut res);
     }
@@ -281,7 +282,9 @@ fn bin_small_int_2_scientific(
     prec: usize,
     buf: &mut String,
 ) -> (Round, i32) {
-    debug_assert!(exp2 >= 0 && exp2 <= (u512::BITS - SIGNIFICAND_BITS) as i32);
+    debug_assert!(
+        exp2 >= 0 && exp2 <= (u512::BITS - SIGNIFICAND_BITS) as i32
+    );
     let mut exp10 = floor_log10f(signif2, exp2);
     // Need to calculate the prec+1 left-most decimal digits of the number.
     // 0 <= exp2 <= 275
@@ -394,8 +397,9 @@ fn bin_large_int_2_scientific(
         // Let m = signif2 and n = exp2.
         // If we really have a tie, then m × 2ⁿ / 10ᵏ must be an integer.
         // m × 2ⁿ / 10ᵏ = m × 2ⁿ⁻ᵏ / 5ᵏ
-        // Because 5ᵏ does not devide 2ⁿ⁻ᵏ, the condition above can hold only if
-        // 5ᵏ devides m. Because m < 2²³⁷ and 5¹⁰³ > 2²³⁷, this implies k < 103.
+        // Because 5ᵏ does not devide 2ⁿ⁻ᵏ, the condition above can hold only
+        // if 5ᵏ devides m. Because m < 2²³⁷ and 5¹⁰³ > 2²³⁷, this
+        // implies k < 103.
         round = if k < 103 && is_multiple_of_pow5(&signif2, k) {
             Round::ToEven
         } else {
@@ -403,7 +407,9 @@ fn bin_large_int_2_scientific(
         };
     }
     if n_digits > 0 {
-        buf.push_str(format!("{:01$}", chunk, n_rem_digits as usize).as_str());
+        buf.push_str(
+            format!("{:01$}", chunk, n_rem_digits as usize).as_str(),
+        );
     }
     (round, exp10 as i32)
 }
@@ -490,17 +496,19 @@ fn bin_fract_2_scientific(
     } else if rem == tie {
         // Need to check whether we really have a tie, i.e.
         // signif2 * 10 ^ (prec + 1) / 2 ^ -exp2 is an integer.
-        // This is the case if the number of trailing zeroes of the numerator is
-        // greater than or equal to -exp2.
-        round = if (signif2.trailing_zeros() + prec as u32 + 1) as i32 >= -exp2
-        {
-            Round::ToEven
-        } else {
-            Round::Up
-        };
+        // This is the case if the number of trailing zeroes of the numerator
+        // is greater than or equal to -exp2.
+        round =
+            if (signif2.trailing_zeros() + prec as u32 + 1) as i32 >= -exp2 {
+                Round::ToEven
+            } else {
+                Round::Up
+            };
     }
     if n_digits > 0 {
-        buf.push_str(format!("{:01$}", chunk, n_rem_digits as usize).as_str());
+        buf.push_str(
+            format!("{:01$}", chunk, n_rem_digits as usize).as_str(),
+        );
     }
     (round, exp10)
 }
@@ -533,9 +541,9 @@ fn round_up_scientific_inplace(num: &mut str) -> i32 {
     carry
 }
 
-/// Converts a positive finite binary float into a string representing a decimal
-/// number d₀.d₋₁⋯d₋ₚEe where d ∈ [0..9], e ∈ [-78912..78913], E is the given
-/// exponent marker and p is the given number of fractional digits.
+/// Converts a positive finite binary float into a string representing a
+/// decimal number d₀.d₋₁⋯d₋ₚEe where d ∈ [0..9], e ∈ [-78912..78913], E is
+/// the given exponent marker and p is the given number of fractional digits.
 pub(crate) fn bin_2_dec_scientific(
     f: f256,
     exp_mark: char,
@@ -579,7 +587,9 @@ pub(crate) fn bin_2_dec_scientific(
             (round, exp10) =
                 bin_large_int_2_scientific(signif2, exp2, prec, &mut res);
             // Need trailing zeroes?
-            res.push_str("0".repeat(prec - min(prec, exp10 as usize)).as_str());
+            res.push_str(
+                "0".repeat(prec - min(prec, exp10 as usize)).as_str(),
+            );
         }
         SUBNORMAL_EXP_LOWER_BOUND..=SUBNORMAL_EXP_UPPER_BOUND => {
             // f256::MIN_GT_ZERO <= |f| < MIN_POSITIVE
@@ -595,7 +605,8 @@ pub(crate) fn bin_2_dec_scientific(
         }
     }
     if round == Round::Up
-        || (round == Round::ToEven && res.ends_with(['1', '3', '5', '7', '9']))
+        || (round == Round::ToEven
+            && res.ends_with(['1', '3', '5', '7', '9']))
     {
         exp10 += round_up_scientific_inplace(&mut res);
     }

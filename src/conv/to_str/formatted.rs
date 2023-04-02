@@ -77,7 +77,8 @@ impl<'a> Formatted<'a> {
         Ok(())
     }
 
-    /// Writes the formatted parts to the formatter after applying the padding.
+    /// Writes the formatted parts to the formatter after applying the
+    /// padding.
     pub fn pad_parts(
         &self,
         is_sign_negative: bool,

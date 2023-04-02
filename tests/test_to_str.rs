@@ -160,7 +160,10 @@ mod random_f256_to_shortest_exp_tests {
 
     #[test]
     fn slowtest_subnormal() {
-        run_tests::<Record>("test_to_str_subnormal_shortest_exp.txt", &do_test);
+        run_tests::<Record>(
+            "test_to_str_subnormal_shortest_exp.txt",
+            &do_test,
+        );
     }
 }
 

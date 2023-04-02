@@ -23,8 +23,8 @@ use slow_exact::f256_exact;
 use super::big_decimal::{Decimal, MAX_DIGITS};
 use crate::{f256, u256, HI_FRACTION_BIAS, MIN_GT_ZERO_10_EXP};
 
-/// Minimum possible subnormal power of 10 exponent - adjustment of significand:
-/// ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉.
+/// Minimum possible subnormal power of 10 exponent - adjustment of
+/// significand: ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉.
 pub(self) const MIN_10_EXP_CUTOFF: i32 = -79056;
 
 // The internals of ParseFloatError are not public. The following hack is used
@@ -46,7 +46,8 @@ fn calc_normal_f256(
     signif_truncated: bool,
 ) -> f256 {
     // The transformation of the decimal representation is implemented as a
-    // sequence of faster to slower algorithms, chained together by tail calls.
+    // sequence of faster to slower algorithms, chained together by tail
+    // calls.
     fast_exact(lit, sign, exp10, signif10, signif_truncated)
 }
 
@@ -71,11 +72,11 @@ impl FromStr for f256 {
                 // repr.digit_limit_exceeded is false.
                 // We need to transform f(s, w, k) it into one of
                 //  • f'(s, m, e) so that f' = (-1)ˢ × (1 + m × 2¹⁻ᵖ) × 2ᵉ and
-                //    f' ≈ f, where p = 237, Eₘᵢₙ <= e <= Eₘₐₓ and 0 < m < 2ᵖ⁻¹,
-                //  • f'(s, m, e) so that f' = (-1)ˢ × (m × 2¹⁻ᵖ) × 2⁻²⁶²¹⁴³
-                //    where p = 237, e < Eₘᵢₙ and 0 < m < 2ᵖ⁻¹,
-                //  • ±0 if w = 0 or e < Eₘᵢₙ + 1 - p,
-                //  • ±Infinity if e > Eₘₐₓ.
+                //    f' ≈ f, where p = 237, Eₘᵢₙ <= e <= Eₘₐₓ and 0 < m <
+                // 2ᵖ⁻¹,  • f'(s, m, e) so that f' = (-1)ˢ ×
+                // (m × 2¹⁻ᵖ) × 2⁻²⁶²¹⁴³    where p = 237, e <
+                // Eₘᵢₙ and 0 < m < 2ᵖ⁻¹,  • ±0 if w = 0 or e
+                // < Eₘᵢₙ + 1 - p,  • ±Infinity if e > Eₘₐₓ.
 
                 // k < ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉
                 // => e < Eₘᵢₙ + 1 - p
@@ -126,7 +127,8 @@ mod cmp_algos_tests {
             let signif10 = repr.significand;
             let signif_truncated = repr.signif_truncated;
             let fe = fast_exact(lit, sign, exp10, signif10, signif_truncated);
-            let fa = fast_approx(lit, sign, exp10, signif10, signif_truncated);
+            let fa =
+                fast_approx(lit, sign, exp10, signif10, signif_truncated);
             let fs = f256_exact(lit);
             if fe != fa || fa != fs {
                 println!("> {}", lit);

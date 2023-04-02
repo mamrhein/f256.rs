@@ -98,9 +98,9 @@ impl DecNumRepr {
         mut signif2: u256,
         mut exp2: i32,
     ) -> (u256, i32) {
-        // This is an implementation of the algorithm presented by Ulf Adams in
-        // his PLDI'18 paper `Ryū: Fast Float-to-String Conversion`, available
-        // at [https://dl.acm.org/doi/pdf/10.1145/3296979.3192369], adapted to
+        // This is an implementation of the algorithm presented by Ulf Adams
+        // in his PLDI'18 paper `Ryū: Fast Float-to-String
+        // Conversion`, available at [https://dl.acm.org/doi/pdf/10.1145/3296979.3192369], adapted to
         // f256.
 
         // Max number of bits needed to store ⌊2ʰ / 5ᵍ⌋ + 1 or ⌊5⁻ᵉ⁻ᵍ / 2ʰ⌋.
@@ -148,8 +148,8 @@ impl DecNumRepr {
             // g > 102 => 5ᵍ > 2²³⁹ => signif2 and its bounds can't be a
             // multiple of 5ᵍ.
             if g <= 102 {
-                // Only one of lower_signif10, signif10, upper_signif10 can be a
-                // multiple of 5ᵍ, if any.
+                // Only one of lower_signif10, signif10, upper_signif10 can be
+                // a multiple of 5ᵍ, if any.
                 if &signif2 % 5_u64 == 0 {
                     rem_zero = is_multiple_of_pow5(&signif2, g as u32);
                 } else if accept_bounds {
@@ -167,8 +167,9 @@ impl DecNumRepr {
             let g = floor_log10_pow5(-exp2) - (exp2 != -1) as i32;
             exp10 = exp2 + g;
             let i = -exp2 - g;
-            // Instead of calculating signif * ⌊5⁻ᵉ⁻ᵍ / 2ʰ⌋ / 2ᵍ⁻ʰ we calculate
-            // signif * ⌊5⁻ᵉ⁻ᵍ / 2ʰ⁻²⌋ * 2⁵¹⁰⁻ᵍ⁺ʰ / 2⁵¹².
+            // Instead of calculating signif * ⌊5⁻ᵉ⁻ᵍ / 2ʰ⌋ / 2ᵍ⁻ʰ we
+            // calculate signif * ⌊5⁻ᵉ⁻ᵍ / 2ʰ⁻²⌋ * 2⁵¹⁰⁻ᵍ⁺ʰ /
+            // 2⁵¹².
             let h = ceil_log2_pow5(i) - H;
             let sh = (510 - g + h) as u32;
             let luv = lookup_pow5_div_pow2(i as usize);
@@ -193,7 +194,8 @@ impl DecNumRepr {
                     signif10.decr();
                 }
             } else if g <= 238 {
-                // signif2 has atmost 239 bits, i.e atmost 238 trailing zeroes.
+                // signif2 has atmost 239 bits, i.e atmost 238 trailing
+                // zeroes.
                 rem_zero = signif2.trailing_zeros() >= g as u32;
             }
         }
@@ -321,7 +323,8 @@ impl fmt::Display for DecNumRepr {
         let n_frac_digits = max(0, -self.exp10) as usize;
         // Integer part.
         if n_int_digits > n_digits {
-            // Add a part for all digits and a part for trailing integer zeroes.
+            // Add a part for all digits and a part for trailing integer
+            // zeroes.
             parts[n_parts] = MaybeUninit::new(Part::Digits(digits));
             n_parts += 1;
             parts[n_parts] =

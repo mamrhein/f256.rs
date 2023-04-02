@@ -13,13 +13,14 @@ use core::{
 };
 
 use crate::{
-    big_uint::u128_widening_mul, f256, u256, EMAX, EXP_BIAS, EXP_BITS, EXP_MAX,
-    HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS,
+    big_uint::u128_widening_mul, f256, u256, EMAX, EXP_BIAS, EXP_BITS,
+    EXP_MAX, HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS,
     HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS,
     TOTAL_BITS,
 };
 
-// Calculate (p, r) so that p = ⌊(x * y) / 2²⁵⁶⌋ and r = ⌈((x * y) - q) / 2¹⁹²⌉.
+// Calculate (p, r) so that p = ⌊(x * y) / 2²⁵⁶⌋ and r = ⌈((x * y) - q) /
+// 2¹⁹²⌉.
 #[inline]
 fn u256_short_mul(x: &u256, y: &u256) -> (u256, u64) {
     let mut t = u128_widening_mul(x.lo, y.lo);
@@ -88,8 +89,8 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
 
     let mut y_exp = y.biased_exponent() as i32;
     let mut y_signif = y.significand();
-    // Shifting y to msb = 255 causes the result to have its msb at position 236
-    // or 237. Normalizing it will atmost be a left-shift by 1.
+    // Shifting y to msb = 255 causes the result to have its msb at position
+    // 236 or 237. Normalizing it will atmost be a left-shift by 1.
     let y_shift = y_signif.leading_zeros();
     y_signif <<= y_shift;
     y_exp -= (y_shift - EXP_BITS) as i32 - (y_exp == 0) as i32;

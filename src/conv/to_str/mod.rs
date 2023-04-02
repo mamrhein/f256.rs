@@ -164,8 +164,8 @@ fn format_scientific_shortest(
 }
 
 impl fmt::LowerExp for f256 {
-    /// Formats the value using the given formatter in scientific notation with
-    /// a lower-case `e`.
+    /// Formats the value using the given formatter in scientific notation
+    /// with a lower-case `e`.
     ///
     /// Panics:
     /// -------
@@ -176,8 +176,8 @@ impl fmt::LowerExp for f256 {
 }
 
 impl fmt::UpperExp for f256 {
-    /// Formats the value using the given formatter in scientific notation with
-    /// a lower-case `E`.
+    /// Formats the value using the given formatter in scientific notation
+    /// with a lower-case `E`.
     ///
     /// Panics:
     /// -------
@@ -559,7 +559,10 @@ mod debug_tests {
 
     #[test]
     fn test_subnormal() {
-        assert_eq!(format!("{:?}", f256::MIN_GT_ZERO), "(0, -262142, (0, 1))");
+        assert_eq!(
+            format!("{:?}", f256::MIN_GT_ZERO),
+            "(0, -262142, (0, 1))"
+        );
     }
 }
 

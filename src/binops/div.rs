@@ -14,8 +14,8 @@ use core::{
 
 use crate::{
     f256, u256, EXP_BIAS, EXP_BITS, EXP_MAX, HI_ABS_MASK, HI_EXP_MASK,
-    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI,
-    MAX_HI, SIGNIFICAND_BITS,
+    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
+    INF_HI, MAX_HI, SIGNIFICAND_BITS,
 };
 
 // Calculate q = x' / y (rounded tie to even), where x' = x * 2²³⁷.

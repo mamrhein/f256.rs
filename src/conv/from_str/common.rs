@@ -34,10 +34,10 @@ pub fn chunk_contains_7_digits_and_a_dot_at(mut chunk: u64) -> Option<u32> {
     let z = y & (!x & 0x8080808080808080);
     // In x all original bytes = b'.' are = 0x00, while all others are not.
     // In y only original bytes = b'.' or > 0x80 have the high bit set.
-    // Bitwise negating x and clearing all but the high bit gives a value where
-    // only original bytes = b'.' or < 0x80 have the high bit set. Finally,
-    // by ANDing this with y, in z only original bytes = b'.' are = 0x80 while
-    // all others are zero.
+    // Bitwise negating x and clearing all but the high bit gives a value
+    // where only original bytes = b'.' or < 0x80 have the high bit set.
+    // Finally, by ANDing this with y, in z only original bytes = b'.' are
+    // = 0x80 while all others are zero.
     if z.count_ones() == 1 {
         // We have found just one b'.'.
         // Check whether the other bytes are digits.
@@ -183,8 +183,8 @@ impl<'a> AsciiNumLit<'a> {
         }
     }
 
-    // self <- self[x..] where x is the position of the first non-zero digit or
-    // the first non-digit character.
+    // self <- self[x..] where x is the position of the first non-zero digit
+    // or the first non-digit character.
     // If skip_radix_point is true, in case a radix point is detected its
     // position is recorded in the internal state and it is skipped also.
     #[allow(unsafe_code)]

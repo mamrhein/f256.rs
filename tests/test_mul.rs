@@ -71,8 +71,10 @@ mod mul_tests {
     #[test]
     fn test_five_pow_102() {
         let five = f256::from(5);
-        let five_pow_50 = f256::from(88817841970012523233890533447265625_u128);
-        let five_pow_51 = f256::from(444089209850062616169452667236328125_u128);
+        let five_pow_50 =
+            f256::from(88817841970012523233890533447265625_u128);
+        let five_pow_51 =
+            f256::from(444089209850062616169452667236328125_u128);
         let five_pow_101 = five_pow_50 * five_pow_51;
         assert_eq!(
             five_pow_101.as_sign_exp_signif(),

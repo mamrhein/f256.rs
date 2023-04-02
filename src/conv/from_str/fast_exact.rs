@@ -24,8 +24,8 @@ pub(super) fn fast_exact(
     mut signif10: u256,
     signif_truncated: bool,
 ) -> f256 {
-    // We have a number with a canonical decimal representation (-1)ˢ × w × 10ᵏ,
-    // where s ∈ {0, 1}, 0 < w < 2²⁵⁶ and |k| <= 78913.
+    // We have a number with a canonical decimal representation (-1)ˢ × w ×
+    // 10ᵏ, where s ∈ {0, 1}, 0 < w < 2²⁵⁶ and |k| <= 78913.
     // We need to transform it into (-1)ˢ × (1 + m × 2¹⁻ᵖ) × 2ᵉ,
     // where p = 237, Eₘᵢₙ <= e <= Eₘₐₓ and 0 < m < 2ᵖ⁻¹.
     debug_assert!(sign == 0 || sign == 1);
@@ -34,9 +34,9 @@ pub(super) fn fast_exact(
     // Under the conditions w < 2²³⁷ and |k| <= 102 we apply the following:
     // w < 2ᵖ => w is exactly representable as a f256 value x.
     // w × 10ᵏ = w × 5ᵏ × 2ᵏ.
-    // |k| <= 102 => 5ᵏ < 2²³⁷ => 5ᵏ is exactly representable as a f256 value y.
-    // Calculating w × 5ᵏ as x × y (if k >= 0) or as x / y (if k < 0) gives a
-    // correctly rounded result (1 + m × 2¹⁻ᵖ) × 2ᵗ.
+    // |k| <= 102 => 5ᵏ < 2²³⁷ => 5ᵏ is exactly representable as a f256 value
+    // y. Calculating w × 5ᵏ as x × y (if k >= 0) or as x / y (if k < 0)
+    // gives a correctly rounded result (1 + m × 2¹⁻ᵖ) × 2ᵗ.
     // Finally, setting e = t + k and setting the sign gives the required
     // result.
     let exp10_abs = exp10.unsigned_abs();
@@ -55,8 +55,8 @@ pub(super) fn fast_exact(
         };
         f.bits.hi |= (sign as u128) << HI_SIGN_SHIFT;
         if signif_truncated {
-            // The real significand w' has been truncated, so f may be less than
-            // the correctly rounded result f'. But
+            // The real significand w' has been truncated, so f may be less
+            // than the correctly rounded result f'. But
             // w < w' < w+1 => f <= f' <= f"
             // where f" is the transformation of (-1)ˢ × (w+1) × 10ᵏ.
             // If f = f" then f = f'.
@@ -65,8 +65,8 @@ pub(super) fn fast_exact(
             if f == fast_exact(lit, sign, exp10, signif10_incr, false) {
                 return f;
             }
-            // The approx algorithm will not give a different result here, so we
-            // fall back directly.
+            // The approx algorithm will not give a different result here, so
+            // we fall back directly.
             return f256_exact(lit);
         } else {
             return f;

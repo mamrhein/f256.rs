@@ -34,7 +34,8 @@ fn eliminate_byte_from_chunk(k: u64, p: u32) -> u64 {
 
 // Records the final parsing result in case of a valid number, i.e. the sign,
 // the exponent and the value of the (maybe partial) significand together with
-// an indicator that the limit of digits fitting into an u256 has been exceeded.
+// an indicator that the limit of digits fitting into an u256 has been
+// exceeded.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(super) struct DecNumRepr {
     pub(super) sign: u32,
@@ -132,7 +133,8 @@ impl FloatRepr {
                     unsafe {
                         lit.skip_n(8);
                     }
-                } else if let Some(p) = chunk_contains_7_digits_and_a_dot_at(k)
+                } else if let Some(p) =
+                    chunk_contains_7_digits_and_a_dot_at(k)
                 {
                     if let Some(_) = lit.state.pos_radix_point {
                         // Double radix point
@@ -141,8 +143,8 @@ impl FloatRepr {
                     }
                     // The index p points to the b'.' in chunk k in
                     // little-endian order while lit.len() is based on the
-                    // big-endian order of the byte array. Therefore we have to
-                    // subtract (7 -p) here.
+                    // big-endian order of the byte array. Therefore we have
+                    // to subtract (7 -p) here.
                     lit.state.pos_radix_point =
                         Some(lit.len() - (7 - p) as usize);
                     // SAFETY: safe because of call to lit.read_u64 above

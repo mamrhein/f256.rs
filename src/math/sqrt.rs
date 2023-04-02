@@ -43,7 +43,8 @@ impl f256 {
         let hidden_bit = (biased_exp != 0) as i32;
         let norm_shift = self.bits.leading_zeros().saturating_sub(EXP_BITS);
         // Calculate the exponent
-        let mut exp = biased_exp as i32 + EMIN - hidden_bit - norm_shift as i32;
+        let mut exp =
+            biased_exp as i32 + EMIN - hidden_bit - norm_shift as i32;
         let odd_exp = exp & 1;
         exp = (exp - odd_exp) / 2;
         // Calculate the significand, gain extra bit for final rounding

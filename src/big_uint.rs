@@ -822,7 +822,8 @@ impl u512 {
             let d = 10_u128.pow(n - n_chunks * CHUNK_SIZE);
             (q, r) = q.div_rem(d);
             let tie = d >> 1;
-            if r > tie || (r == tie && ((q.lo.lo & 1) == 1 || !all_chunks_zero))
+            if r > tie
+                || (r == tie && ((q.lo.lo & 1) == 1 || !all_chunks_zero))
             {
                 q.incr();
             }
@@ -1008,7 +1009,10 @@ mod u256_div_rem_tests {
         assert_eq!(
             v.div_rem(10_u128.pow(28)),
             (
-                u256::new(34028236692, 31934256858593286117999845820724523012),
+                u256::new(
+                    34028236692,
+                    31934256858593286117999845820724523012
+                ),
                 564039457584007913129639935
             )
         );

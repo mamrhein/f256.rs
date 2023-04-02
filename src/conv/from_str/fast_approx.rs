@@ -10,8 +10,8 @@
 use core::cmp::Ordering;
 
 /// Implementation of a fast decimal to float conversion algorithm as
-/// described in `Daniel Lemire: Number Parsing at a Gigabyte per Second`,
-/// available at [https://arxiv.org/abs/2101.11408.pdf], adopted for `f256`.
+/// described in `Daniel Lemire: Number Parsing at a Gigabyte per
+/// Second`, available at [https://arxiv.org/abs/2101.11408.pdf], adopted for `f256`.
 use super::powers_of_five::{get_power_of_five, MAX_ABS_EXP};
 use super::{fast_exact::fast_exact, slow_exact::f256_exact};
 use crate::{f256, u256, EMAX, EXP_BIAS, EXP_BITS, HI_FRACTION_BIAS};
@@ -29,10 +29,10 @@ pub(super) fn fast_approx(
     // where p = 237, Eₘᵢₙ <= e <= Eₘₐₓ and 0 < m < 2ᵖ⁻¹.
 
     // w × 10ᵏ = w × 5ᵏ × 2ᵏ.
-    // Under the conditions |k| <= 512 we approximate w × 5ᵏ by multiplying the
-    // normalized significand w' (= w * 2²⁵⁶⁻ⁿˡᶻ where nlz is the number of
-    // leading zeroes of w) and a pre-computed approximation of 5ᵏ from a table
-    // T[k].
+    // Under the conditions |k| <= 512 we approximate w × 5ᵏ by multiplying
+    // the normalized significand w' (= w * 2²⁵⁶⁻ⁿˡᶻ where nlz is the
+    // number of leading zeroes of w) and a pre-computed approximation of
+    // 5ᵏ from a table T[k].
     let exp10_abs = exp10.unsigned_abs();
     if exp10_abs <= MAX_ABS_EXP {
         // Adjust significand to be in range [2²⁵⁵..2²⁵⁶).
@@ -58,7 +58,8 @@ pub(super) fn fast_approx(
                 Some(true)
             }
             Ordering::Less => {
-                // Check edge case where truncated digits might cause overflow.
+                // Check edge case where truncated digits might cause
+                // overflow.
                 if fract == tie - 1 {
                     // Fall back to slow algorithm.
                     None
@@ -69,8 +70,8 @@ pub(super) fn fast_approx(
             }
             Ordering::Equal => {
                 // Check edge cases.
-                // If 5ᵏ ∈ [1..2²⁵⁶) we can be sure to have a tie, otherwise we
-                // have "a tie and a little bit more".
+                // If 5ᵏ ∈ [1..2²⁵⁶) we can be sure to have a tie, otherwise
+                // we have "a tie and a little bit more".
                 if exp10 >= 0 && exp10 <= 110 {
                     Some((signif2.lo & 1) == 1)
                 } else {
@@ -93,9 +94,9 @@ pub(super) fn fast_approx(
             }
             let f = f256::new(signif2, (exp2 + EXP_BIAS as i32) as u32, sign);
             if signif_truncated {
-                // The real significand w' has been truncated, so f may be less
-                // than the correctly rounded result f'. But
-                // w < w' < w+1 => f <= f' <= f"
+                // The real significand w' has been truncated, so f may be
+                // less than the correctly rounded result f'.
+                // But w < w' < w+1 => f <= f' <= f"
                 // where f" is the transformation of (-1)ˢ × (w+1) × 10ᵏ.
                 // If f = f" then f = f'.
                 let mut signif10_incr = signif10;

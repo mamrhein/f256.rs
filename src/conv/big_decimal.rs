@@ -7,8 +7,8 @@
 // $Source$
 // $Revision$
 
-/// Implementation of a high precision decimal number type supporting high
-/// precision non-rounding shifts as decribed in
+/// Implementation of a high precision decimal number type supporting
+/// high precision non-rounding shifts as decribed in
 /// `Nigel Tao: ParseNumberF64 by Simple Decimal Conversion`
 /// [https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html],
 /// adopted for `f256`.
@@ -19,7 +19,8 @@ use crate::{big_uint::DivRem, f256, u256};
 /// The maximum number of digits required to unambiguously round a `f256`,
 /// calculated by the formula:
 /// -Eₘᵢₙ + p + ⌊(Eₘᵢₙ + 1) × log₁₀(2)⌋, where p = number of significand bits
-/// (See J.-M. Muller et al., Handbook of Floating-Point Arithmetic, Chapter 2).
+/// (See J.-M. Muller et al., Handbook of Floating-Point Arithmetic, Chapter
+/// 2).
 pub(crate) const MAX_DIGITS: usize = 183467;
 
 /// Table for left shift: indexed by shift count giving number of new digits
@@ -183,8 +184,8 @@ pub(crate) struct Decimal {
     /// The number of digits in self.digits.
     pub(crate) n_digits: usize,
     /// The offset of the decimal point in self.digits.
-    /// If positive, it's the index of the first fractional digit (if equal to
-    /// n_digits => self represents an integer).
+    /// If positive, it's the index of the first fractional digit (if equal
+    /// to n_digits => self represents an integer).
     /// If negative, it's the number of zeroes to be added before the first
     /// digit.
     pub(crate) decimal_point: i32,
@@ -274,8 +275,8 @@ impl From<u256> for Decimal {
 
 impl Decimal {
     // We use an u64 as accumulator in the shifting functions and need 4 bits
-    // to shift a decimal digit [0..9] in and out. Thus, we shift atmost 60 bits
-    // in one go.
+    // to shift a decimal digit [0..9] in and out. Thus, we shift atmost 60
+    // bits in one go.
     /// Maximum number of bits for left / right shifts.
     pub(crate) const MAX_SHIFT: u32 = u64::BITS - 4;
 
@@ -322,14 +323,15 @@ impl Decimal {
         }
 
         // The non-rounding shift is done by "rolling a sliding window across
-        // the input and output digit streams". A 64-bit accumulator is used and
-        // in each step one digt is shifted in and one digit is shifted out.
+        // the input and output digit streams". A 64-bit accumulator is used
+        // and in each step one digt is shifted in and one digit is
+        // shifted out.
 
         // The digits are processed from right to left. In order to avoid
         // copying to / from a second buffer, first, the number of additional
         // digits needed for the left shift is calculated and then used as an
-        // offset for writing digits to the digit buffer. For details about the
-        // used table see the comment above that table.
+        // offset for writing digits to the digit buffer. For details about
+        // the used table see the comment above that table.
         let mut t = &LEFT_SHIFT_HELPER_TABLE[n as usize];
         let mut n_new_digits = t.0;
         let limit = &mut &t.1[..];
@@ -388,8 +390,9 @@ impl Decimal {
         let mut write_idx = 0;
 
         // The non-rounding shift is done by "rolling a sliding window across
-        // the input and output digit streams". A 64-bit accumulator is used and
-        // in each step one digt is shifted in and one digit is shifted out.
+        // the input and output digit streams". A 64-bit accumulator is used
+        // and in each step one digt is shifted in and one digit is
+        // shifted out.
 
         // Read enough digits to cover first shift.
         let mut acc = 0_u64;

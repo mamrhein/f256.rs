@@ -67,7 +67,10 @@ mod partial_ord_tests {
 
     #[test]
     fn test_zeroes() {
-        assert_eq!(f256::ZERO.partial_cmp(&f256::ZERO), Some(Ordering::Equal));
+        assert_eq!(
+            f256::ZERO.partial_cmp(&f256::ZERO),
+            Some(Ordering::Equal)
+        );
         assert_eq!(
             f256::ZERO.partial_cmp(&f256::NEG_ZERO),
             Some(Ordering::Equal)
