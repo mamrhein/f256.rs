@@ -120,7 +120,7 @@ pub(crate) const EPSILON_HI: u128 =
     ((EXP_BIAS - FRACTION_BITS) as u128) << HI_FRACTION_BITS;
 /// Value of hi u128 for MAX = 0x7fffefffffffffffffffffffffffffff
 pub(crate) const MAX_HI: u128 =
-    ((EMAX as u32 + EXP_BIAS) as u128) << HI_FRACTION_BITS | HI_FRACTION_MASK;
+    (1_u128 << (u128::BITS - 1)) - (1_u128 << HI_FRACTION_BITS) - 1;
 /// Binary exponent for integral values
 #[allow(clippy::cast_possible_wrap)]
 pub(crate) const INT_EXP: i32 = -(FRACTION_BITS as i32);
@@ -131,8 +131,8 @@ pub(crate) const MIN_NO_FRACT_HI: u128 =
 /// ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋.
 pub(crate) const MIN_GT_ZERO_10_EXP: i32 = -78984;
 
-/// A 256-bit floating point type (specifically, the “binary256” type defined in
-/// IEEE 754-2008).
+/// A 256-bit floating point type (specifically, the “binary256” type defined
+/// in IEEE 754-2008).
 ///
 /// For details see [above](index.html).
 #[allow(non_camel_case_types)]
@@ -248,12 +248,12 @@ impl f256 {
 
     /// Not a Number (NaN).
     ///
-    /// Note that IEEE-745 doesn't define just a single NaN value; a plethora of
-    /// bit patterns are considered to be NaN. Furthermore, the standard makes a
-    /// difference between a "signaling" and a "quiet" NaN, and allows
-    /// inspecting its "payload" (the unspecified bits in the bit pattern).
-    /// This implementation does not make such a difference and uses exactly one
-    /// bit pattern for NaN.
+    /// Note that IEEE-745 doesn't define just a single NaN value; a plethora
+    /// of bit patterns are considered to be NaN. Furthermore, the
+    /// standard makes a difference between a "signaling" and a "quiet"
+    /// NaN, and allows inspecting its "payload" (the unspecified bits in
+    /// the bit pattern). This implementation does not make such a
+    /// difference and uses exactly one bit pattern for NaN.
     pub const NAN: Self = NAN;
 
     /// Infinity (∞).
@@ -320,8 +320,8 @@ impl f256 {
             "Exponent limits exceeded: {t}"
         );
         debug_assert!(!c.is_zero());
-        // We have an integer based representation `(-1)ˢ × 2ᵗ × c` and need to
-        // transform it into a fraction based representation
+        // We have an integer based representation `(-1)ˢ × 2ᵗ × c` and need
+        // to transform it into a fraction based representation
         // `(-1)ˢ × 2ᵉ × (1 + m × 2¹⁻ᵖ)`,
         // where `Eₘᵢₙ <= e <= Eₘₐₓ` and `0 < m < 2ᵖ⁻¹`, or
         // `(-1)ˢ × 2ᵉ × m × 2¹⁻ᵖ`,
@@ -331,9 +331,10 @@ impl f256 {
         t += FRACTION_BITS as i32;
         // 2. Normalize significand
         let nlz = c.leading_zeros();
-        // The position of the most significant bit is `256 - nlz - 1`. We need
-        // to shift it to the position of the hidden bit, which is
-        // `256 - EXP_BITS - 1`. So we have to shift by |nlz - EXP_BITS|.
+        // The position of the most significant bit is `256 - nlz - 1`. We
+        // need to shift it to the position of the hidden bit, which
+        // is `256 - EXP_BITS - 1`. So we have to shift by |nlz -
+        // EXP_BITS|.
         match nlz.cmp(&EXP_BITS) {
             Ordering::Greater => {
                 // Shift left.
@@ -433,7 +434,7 @@ impl f256 {
         let fraction = self.fraction();
         match (biased_exp, fraction) {
             (0, u256::ZERO) => (sign, 0, u256::ZERO),
-            (0, _) => (sign, EMIN, fraction),
+            (0, _) => (sign, 1 - TOTAL_BIAS, fraction),
             (EXP_MAX, _) => (sign, biased_exp as i32, fraction),
             _ => (
                 sign,
@@ -463,8 +464,8 @@ impl f256 {
     pub(crate) fn decode(&self) -> (u32, i32, u256) {
         debug_assert!(
             self.is_finite(),
-            "Attempt to extract sign, exponent and significand from Infinity \
-             or NaN."
+            "Attempt to extract sign, exponent and significand from \
+             Infinity or NaN."
         );
         // We have a fraction based representation
         // `(-1)ˢ × 2ᵉ × (1 + m × 2¹⁻ᵖ)`, where `Eₘᵢₙ <= e <= Eₘₐₓ` and
@@ -501,8 +502,8 @@ impl f256 {
             > HI_EXP_MASK
     }
 
-    /// Returns `true` if this value is positive infinity or negative infinity,
-    /// and `false` otherwise.
+    /// Returns `true` if this value is positive infinity or negative
+    /// infinity, and `false` otherwise.
     #[must_use]
     #[inline]
     pub const fn is_infinite(self) -> bool {
@@ -531,9 +532,9 @@ impl f256 {
         self.biased_exponent().wrapping_sub(1) < EXP_MAX - 1
     }
 
-    /// Returns the floating point category of the number. If only one property
-    /// is going to be tested, it is generally faster to use the specific
-    /// predicate instead.
+    /// Returns the floating point category of the number. If only one
+    /// property is going to be tested, it is generally faster to use the
+    /// specific predicate instead.
     #[inline]
     #[must_use]
     pub const fn classify(&self) -> FpCategory {
@@ -567,8 +568,8 @@ impl f256 {
             >= MAX_HI
     }
 
-    /// Returns `true` if `self` has a positive sign, including `+0.0`, positive
-    /// infinity and NaN.
+    /// Returns `true` if `self` has a positive sign, including `+0.0`,
+    /// positive infinity and NaN.
     #[must_use]
     #[inline]
     pub const fn is_sign_positive(self) -> bool {
@@ -646,9 +647,9 @@ impl f256 {
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for maxNum, except for handling
-    /// of signaling NaNs; this function handles all NaNs the same way and
-    /// avoids maxNum's problems with associativity.
+    /// This follows the IEEE-754 2008 semantics for maxNum, except for
+    /// handling of signaling NaNs; this function handles all NaNs the
+    /// same way and avoids maxNum's problems with associativity.
     #[must_use]
     #[inline]
     pub fn max(self, other: Self) -> Self {
@@ -661,9 +662,9 @@ impl f256 {
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for minNum, except for handling
-    /// of signaling NaNs; this function handles all NaNs the same way and
-    /// avoids minNum's problems with associativity.
+    /// This follows the IEEE-754 2008 semantics for minNum, except for
+    /// handling of signaling NaNs; this function handles all NaNs the
+    /// same way and avoids minNum's problems with associativity.
     #[must_use]
     #[inline]
     pub fn min(self, other: Self) -> Self {
@@ -689,8 +690,8 @@ impl f256 {
         }
     }
 
-    /// Return the memory representation of this floating point number as a byte
-    /// array in big-endian (network) byte order.
+    /// Return the memory representation of this floating point number as a
+    /// byte array in big-endian (network) byte order.
     #[must_use]
     #[inline]
     #[allow(unsafe_code)]
@@ -700,8 +701,8 @@ impl f256 {
         unsafe { core::mem::transmute(bytes) }
     }
 
-    /// Return the memory representation of this floating point number as a byte
-    /// array in little-endian byte order.
+    /// Return the memory representation of this floating point number as a
+    /// byte array in little-endian byte order.
     #[must_use]
     #[inline]
     #[allow(unsafe_code)]
@@ -711,8 +712,8 @@ impl f256 {
         unsafe { core::mem::transmute(bytes) }
     }
 
-    /// Return the memory representation of this floating point number as a byte
-    /// array in native byte order.
+    /// Return the memory representation of this floating point number as a
+    /// byte array in native byte order.
     #[must_use]
     #[inline]
     #[allow(unsafe_code)]
@@ -722,8 +723,8 @@ impl f256 {
         unsafe { core::mem::transmute(bytes) }
     }
 
-    /// Create a floating point value from its representation as a byte array in
-    /// big endian.
+    /// Create a floating point value from its representation as a byte array
+    /// in big endian.
     #[must_use]
     #[inline]
     #[allow(unsafe_code)]
@@ -738,8 +739,8 @@ impl f256 {
         }
     }
 
-    /// Create a floating point value from its representation as a byte array in
-    /// little endian.
+    /// Create a floating point value from its representation as a byte array
+    /// in little endian.
     #[must_use]
     #[inline]
     #[allow(unsafe_code)]
@@ -754,8 +755,8 @@ impl f256 {
         }
     }
 
-    /// Create a floating point value from its representation as a byte array in
-    /// native endian.
+    /// Create a floating point value from its representation as a byte array
+    /// in native endian.
     #[must_use]
     #[inline]
     #[allow(unsafe_code)]
@@ -784,16 +785,17 @@ impl f256 {
     /// - positive infinity
     /// - positive NaN.
     ///
-    /// The ordering established by this function does not always agree with the
-    /// [`PartialOrd`] and [`PartialEq`] implementations of `f256`. For example,
-    /// they consider negative and positive zero equal, while `total_cmp`
-    /// doesn't.
+    /// The ordering established by this function does not always agree with
+    /// the [`PartialOrd`] and [`PartialEq`] implementations of `f256`.
+    /// For example, they consider negative and positive zero equal, while
+    /// `total_cmp` doesn't.
     #[must_use]
     #[inline]
     pub fn total_cmp(&self, other: &Self) -> Ordering {
         // The internal representation of `f256` values gives - besides their
-        // sign - a total ordering following the intended mathematical ordering.
-        // Thus, flipping the sign bit allows to compare the raw values.
+        // sign - a total ordering following the intended mathematical
+        // ordering. Thus, flipping the sign bit allows to compare the
+        // raw values.
         self.negated().bits.cmp(&(*other).negated().bits)
     }
 
@@ -869,7 +871,8 @@ impl f256 {
         }
         // self is finite and non-zero.
         let hi_sign = self.bits.hi & HI_SIGN_MASK;
-        let mut abs_bits = u256::new(self.bits.hi & HI_ABS_MASK, self.bits.lo);
+        let mut abs_bits =
+            u256::new(self.bits.hi & HI_ABS_MASK, self.bits.lo);
         if abs_bits.hi >= MIN_NO_FRACT_HI {
             // |self| >= 2²³⁶, i. e. self is integral.
             return *self;
@@ -884,7 +887,8 @@ impl f256 {
             };
         }
         // 1 < |self| < 2²³⁶
-        let n_fract_bits = FRACTION_BITS - (self.biased_exponent() - EXP_BIAS);
+        let n_fract_bits =
+            FRACTION_BITS - (self.biased_exponent() - EXP_BIAS);
         let mut abs_int_bits = &(&abs_bits >> n_fract_bits) << n_fract_bits;
         let c = adj(sign) as u32 * (abs_int_bits != abs_bits) as u32;
         abs_int_bits += &(&u256::new(0, c as u128) << n_fract_bits);
@@ -893,8 +897,8 @@ impl f256 {
         }
     }
 
-    /// Returns the integer part of `self`. This means that non-integer numbers
-    /// are always truncated towards zero.
+    /// Returns the integer part of `self`. This means that non-integer
+    /// numbers are always truncated towards zero.
     ///
     /// # Examples
     ///
@@ -1006,7 +1010,8 @@ impl f256 {
         }
         // self is finite and non-zero.
         let hi_sign = self.bits.hi & HI_SIGN_MASK;
-        let mut abs_bits = u256::new(self.bits.hi & HI_ABS_MASK, self.bits.lo);
+        let mut abs_bits =
+            u256::new(self.bits.hi & HI_ABS_MASK, self.bits.lo);
         if abs_bits.hi >= MIN_NO_FRACT_HI {
             // |self| >= 2²³⁶, i. e. self is integral.
             return *self;
@@ -1022,7 +1027,8 @@ impl f256 {
             };
         }
         // 1 < |self| < 2²³⁶
-        let n_fract_bits = FRACTION_BITS - (self.biased_exponent() - EXP_BIAS);
+        let n_fract_bits =
+            FRACTION_BITS - (self.biased_exponent() - EXP_BIAS);
         abs_bits.idiv_pow2(n_fract_bits);
         abs_bits <<= n_fract_bits;
         Self {
@@ -1058,6 +1064,62 @@ impl Neg for &f256 {
     fn neg(self) -> Self::Output {
         self.negated()
     }
+}
+
+// Some helper functions working on the binary encoded representation of an
+// f256 value
+
+/// Returns the high bits of f reduced to its sign bit.
+#[inline(always)]
+pub(crate) fn sign_bits_hi(f: &f256) -> u128 {
+    f.bits.hi & HI_SIGN_MASK
+}
+
+/// Returns the representation of f.abs().
+#[inline(always)]
+pub(crate) fn abs_bits(f: &f256) -> u256 {
+    u256 {
+        hi: f.bits.hi & HI_ABS_MASK,
+        lo: f.bits.lo,
+    }
+}
+
+// Returns the high bits `abs_bits` or'ed with 1 if the lower bits of
+// `abs_bits` != 0.
+#[inline(always)]
+pub(crate) fn abs_bits_sticky(abs_bits: &u256) -> u128 {
+    abs_bits.hi | (abs_bits.lo != 0) as u128
+}
+
+// Returns abs_bits_sticky(`abs_bits`) - 1.
+//
+// This can be used for testing whether `abs_bits` represents |Inf|, NaN or
+// |0|.
+#[inline(always)]
+pub(crate) fn abs_bits_sticky_minus_1(abs_bits: &u256) -> u128 {
+    abs_bits_sticky(abs_bits).wrapping_sub(1)
+}
+
+/// Returns 0 if `abs_bits` represents a subnormal f256 or ZERO, 1 otherwise.
+#[inline(always)]
+pub(crate) fn norm_bit(abs_bits: &u256) -> u32 {
+    (abs_bits.hi >= HI_FRACTION_BIAS) as u32
+}
+
+/// Returns the biased exponent from `abs_bits`.
+#[inline(always)]
+pub(crate) fn exp_bits(abs_bits: &u256) -> u32 {
+    (abs_bits.hi >> HI_FRACTION_BITS) as u32
+}
+
+/// Returns the significand from `abs_bits`.
+#[inline(always)]
+pub(crate) fn signif(abs_bits: &u256) -> u256 {
+    u256::new(
+        (((abs_bits.hi >= HI_FRACTION_BIAS) as u128) << HI_FRACTION_BITS)
+            | (abs_bits.hi & HI_FRACTION_MASK),
+        abs_bits.lo,
+    )
 }
 
 #[cfg(test)]
