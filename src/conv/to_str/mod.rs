@@ -561,7 +561,7 @@ mod debug_tests {
     fn test_subnormal() {
         assert_eq!(
             format!("{:?}", f256::MIN_GT_ZERO),
-            "(0, -262142, (0, 1))"
+            "(0, -262378, (0, 1))"
         );
     }
 }
