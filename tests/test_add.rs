@@ -29,7 +29,10 @@ mod add_tests {
         assert_eq!(f256::INFINITY + f256::INFINITY, f256::INFINITY);
         assert_eq!(f256::INFINITY + f256::ONE, f256::INFINITY);
         assert_eq!(f256::ONE + f256::INFINITY, f256::INFINITY);
-        assert_eq!(f256::NEG_INFINITY + f256::NEG_INFINITY, f256::NEG_INFINITY);
+        assert_eq!(
+            f256::NEG_INFINITY + f256::NEG_INFINITY,
+            f256::NEG_INFINITY
+        );
         assert_eq!(f256::NEG_INFINITY + f256::ONE, f256::NEG_INFINITY);
         assert_eq!(f256::ONE + f256::NEG_INFINITY, f256::NEG_INFINITY);
         assert!((f256::INFINITY + f256::NEG_INFINITY).is_nan());
@@ -65,6 +68,7 @@ mod add_tests {
     fn test_normal() {
         assert_eq!(f256::ONE + f256::ONE, f256::TWO);
         assert_eq!(f256::ONE + f256::NEG_ONE, f256::ZERO);
+        assert_eq!(f256::NEG_ONE + f256::ONE, f256::ZERO);
         assert_eq!(f256::TWO + f256::TWO, f256::from(4.0));
         assert_eq!(f256::from(3.5) + f256::from(3.5), f256::from(7.0));
         assert_eq!(f256::from(3.5) + f256::from(-3.5), f256::ZERO);
@@ -144,10 +148,10 @@ mod add_tests {
         assert!(y.is_subnormal());
         let z = f256::from_sign_exp_signif(
             0,
-            -262374,
+            -262373,
             (
-                162338504991727627729171554238463,
-                340282366920938463463374607431768205449,
+                81208866577120946033382549094399,
+                340282366920938463463374607431768208451,
             ),
         );
         assert!(z.is_normal());
@@ -197,7 +201,8 @@ mod add_tests {
                 96152208885684853406990782909030131951,
             ),
         );
-        assert_eq!(z, x + y);
+        assert_eq!(x + y, z);
+        assert_eq!(y + x, z);
     }
 
     #[test]
@@ -226,7 +231,8 @@ mod add_tests {
                 246654267303448694908083801057882454493,
             ),
         );
-        assert_eq!(z, x + y);
+        assert_eq!(x + y, z);
+        assert_eq!(y + x, z);
     }
 
     #[test]
@@ -236,38 +242,42 @@ mod add_tests {
             -262378,
             (7509505897047126, 339876022494367207146865378540378746392),
         );
-        let y = f256::from_sign_exp_signif(1, -262378, (0, 21747048302197486));
+        let y =
+            f256::from_sign_exp_signif(1, -262378, (0, 21747048302197486));
         let z = f256::from_sign_exp_signif(
             1,
             -262378,
             (7509505897047126, 339876022494367207146887125588680943878),
         );
-        assert_eq!(z, x + y);
+        assert_eq!(x + y, z);
+        assert_eq!(y + x, z);
     }
 
     #[test]
     fn test_subnormal_add_subnormal_giving_subnormal_3() {
         let x = f256::from_sign_exp_signif(
             0,
-            -262310,
+            -262377,
             (
                 152208704844451993242366249628516,
                 324487274017150707511562659760330794299,
             ),
         );
+        assert!(x.is_subnormal());
         let y =
             f256::from_sign_exp_signif(1, -262378, (0, 37915000772644918358));
+        assert!(y.is_subnormal());
         let z = f256::from_sign_exp_signif(
             0,
-            -262312,
+            -262378,
             (
-                608834819377807972969464998514067,
-                277101995305787439656126816746018542827,
+                304417409688903986484732499257033,
+                308692181113362951521835711316248458784,
             ),
         );
-        println!("{:?}", x.as_sign_exp_signif());
-        println!("{:?}", y.as_sign_exp_signif());
-        assert_eq!(z, x + y);
+        assert!(z.is_subnormal());
+        assert_eq!(x + y, z);
+        assert_eq!(y + x, z);
     }
 
     #[test]
@@ -296,7 +306,8 @@ mod add_tests {
                 54030660581543592863207906687607319317,
             ),
         );
-        assert_eq!(z, x + y);
+        assert_eq!(x + y, z);
+        assert_eq!(y + x, z);
     }
 
     #[test]
@@ -325,6 +336,7 @@ mod add_tests {
                 180308491546017468893449176119625662780,
             ),
         );
-        assert_eq!(z, x + y);
+        assert_eq!(x + y, z);
+        assert_eq!(y + x, z);
     }
 }
