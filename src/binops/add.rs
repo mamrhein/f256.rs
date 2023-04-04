@@ -9,34 +9,44 @@
 
 use core::{
     cmp::{max, min, Ordering},
+    mem::swap,
     ops::{Add, AddAssign, Sub, SubAssign},
 };
 
 use crate::{
-    f256, u256, EXP_MAX, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK,
-    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI,
-    MAX_HI, SIGNIFICAND_BITS,
+    abs_bits, abs_bits_sticky, abs_bits_sticky_minus_1, exp_bits, f256,
+    norm_bit, sign_bits_hi, signif, u256, EXP_MAX, FRACTION_BITS,
+    HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS,
+    HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS,
 };
 
-pub(crate) fn add(x: f256, y: f256) -> f256 {
+pub(crate) fn add<'a>(x: f256, y: f256) -> f256 {
+    let mut abs_bits_x = abs_bits(&x);
+    let mut abs_bits_y = abs_bits(&y);
+    let mut sign_bits_hi_x = sign_bits_hi(&x);
+    let mut sign_bits_hi_y = sign_bits_hi(&y);
     // Check whether one or both operands are NaN, infinite or zero.
     // We mask off the sign bit and mark subnormals having a significand less
     // than 2¹²⁸ in least bit of the representations high u128. This allows to
     // use only that part for the handling of special cases.
-    let x_abs_hi = (x.bits.hi & HI_ABS_MASK) | (x.bits.lo != 0) as u128;
-    let y_abs_hi = (y.bits.hi & HI_ABS_MASK) | (y.bits.lo != 0) as u128;
-    if max(x_abs_hi.wrapping_sub(1), y_abs_hi.wrapping_sub(1)) >= MAX_HI {
-        let x_sign = x.bits.hi & HI_SIGN_MASK;
-        let y_sign = y.bits.hi & HI_SIGN_MASK;
-        let max_abs_hi = max(x_abs_hi, y_abs_hi);
-        if max_abs_hi == 0 {
+    let abs_bits_sticky_x = abs_bits_sticky(&abs_bits_x);
+    let abs_bits_sticky_y = abs_bits_sticky(&abs_bits_y);
+    if max(
+        abs_bits_sticky_x.wrapping_sub(1),
+        abs_bits_sticky_y.wrapping_sub(1),
+    ) >= MAX_HI
+    {
+        let max_abs_bits_sticky = max(abs_bits_sticky_x, abs_bits_sticky_y);
+        if max_abs_bits_sticky == 0 {
             // Both operands are zero.
             return f256 {
-                bits: u256::new(x_sign & y_sign, 0),
+                bits: u256::new(sign_bits_hi_x & sign_bits_hi_y, 0),
             };
         }
-        if max_abs_hi > HI_EXP_MASK
-            || (x_abs_hi == INF_HI && y_abs_hi == INF_HI && x_sign != y_sign)
+        if max_abs_bits_sticky > HI_EXP_MASK
+            || (abs_bits_sticky_x == INF_HI
+                && abs_bits_sticky_y == INF_HI
+                && sign_bits_hi_x != sign_bits_hi_y)
         {
             // Atleast one operand is NAN, or both operands are infinite and
             // their signs differ.
@@ -44,172 +54,193 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
         }
         // For all other special cases return the operand with the greater
         // absolute value.
-        return if x_abs_hi > y_abs_hi { x } else { y };
+        return if abs_bits_sticky_x > abs_bits_sticky_y {
+            x
+        } else {
+            y
+        };
     }
 
     // Both operands are finite and non-zero.
+
+    // In case |x| = |y| and the sign(x) != sign(y), the result is +0.
+    if abs_bits_x == abs_bits_y && sign_bits_hi_x != sign_bits_hi_y {
+        return f256::ZERO;
+    }
+
     // Compare the absolute values of the operands and swap them in case
     // |x| < |y|.
-    let mut a: f256 = x.abs();
-    let mut b: f256 = y.abs();
-    if a >= b {
-        a = x;
-        b = y;
-    } else {
-        a = y;
-        b = x;
+    if abs_bits_x < abs_bits_y {
+        swap(&mut abs_bits_x, &mut abs_bits_y);
+        swap(&mut sign_bits_hi_x, &mut sign_bits_hi_y);
     }
+
+    // Extract biased exponents and significands.
+    let mut exp_bits_x = exp_bits(&abs_bits_x);
+    let exp_bits_y = exp_bits(&abs_bits_y);
+    let norm_bit_x = norm_bit(&abs_bits_x);
+    let norm_bit_y = norm_bit(&abs_bits_y);
+    let mut signif_x = signif(&abs_bits_x);
+    let mut signif_y = signif(&abs_bits_y);
+
+    // Calculate |x + y|
+
+    // Determine the actual op to be performed: if the sign of the operands
+    // are equal, it's an addition, otherwise a subtraction.
+    let op = if sign_bits_hi_x == sign_bits_hi_y {
+        <&u256 as Add>::add
+    } else {
+        <&u256 as Sub>::sub
+    };
+    let mut abs_bits_z = if norm_bit_x == 0 {
+        // x subnormal and |x| >= |y| => y subnormal.
+        add_or_sub_subnormals(&signif_x, &signif_y, op)
+    } else if exp_bits_x == exp_bits_y {
+        // Exponents are equal, so there's no need for shifting and rounding.
+        add_or_sub_normals_exact(exp_bits_x, &mut signif_x, &signif_y, op)
+    } else {
+        // Exponents and significands have to be adjusted and the result has
+        // to be rounded.
+        add_or_sub_rounded(
+            exp_bits_x,
+            exp_bits_y,
+            &mut signif_x,
+            &mut signif_y,
+            op,
+        )
+    };
 
     // The sign of the result is the sign of the operand with the greater
     // absolute value.
-    let hi_sign = a.bits.hi & HI_SIGN_MASK;
-
-    // Extract biased exponents and significands.
-    let mut a_exp = a.biased_exponent();
-    let b_exp = b.biased_exponent();
-    let mut a_signif = a.significand();
-    let mut b_signif = b.significand();
-
-    // Calculate |x + y|
-    let mut bits = if a_exp == b_exp {
-        // Exponents are equal, so there's no need for shifting and rounding.
-        add_or_sub_exact(
-            ((x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK) == 0,
-            a_exp,
-            &mut a_signif,
-            &b_signif,
-        )
-    } else {
-        // Exponents and significands have to be adjusted and the result has to
-        // be rounded.
-        add_or_sub_rounded(
-            ((x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK) == 0,
-            a_exp,
-            b_exp,
-            &mut a_signif,
-            &mut b_signif,
-        )
-    };
-    bits.hi |= hi_sign;
-    f256 { bits }
+    abs_bits_z.hi |= sign_bits_hi_x;
+    f256 { bits: abs_bits_z }
 }
 
 #[inline]
-fn add_or_sub_exact(
-    signs_equal: bool,
-    mut exp: u32,
-    a_signif: &mut u256,
-    b_signif: &u256,
+fn add_or_sub_subnormals<'a>(
+    signif_x: &'a u256,
+    signif_y: &'a u256,
+    op: fn(&'a u256, &'a u256) -> u256,
 ) -> u256 {
-    // Determine the actual op to be performed: if the sign of the operands
-    // are equal, it's an addition, otherwise a subtraction.
-    if signs_equal {
-        *a_signif += &*b_signif;
-        // If addition carried over, adjust the significand and increment
-        // the exponent:
-        // In case of two normal operands, check overflow against the number of
-        // significant bits and in case of overflow shift back the significand
-        // by 1 and increase the exponent by 1.
-        // In case of two subnormal operands, check overflow against the number
-        // of fraction bits and in case of overflow just increase the exponent
-        // by 1.
-        let hidden_bit = (exp != 0) as u32;
-        if (a_signif.hi >> (HI_FRACTION_BITS + hidden_bit)) != 0 {
-            *a_signif >>= hidden_bit;
-            exp += 1;
-            // If the result overflows the range of values representable as
-            // `f256`, return +Inf.
-            if exp >= EXP_MAX {
-                return u256::new(INF_HI, 0);
-            }
+    // In case of two subnormals we don't have to care about overflow
+    // because the overflow bit goes into the biased exponent, which is ok
+    // because the result then is normal with an exponent equal to Eₘᵢₙ which
+    // has the biased encoding = 1.
+    op(signif_x, signif_y)
+}
+
+#[inline]
+fn add_or_sub_normals_exact<'a>(
+    mut exp_bits_z: u32,
+    signif_x: &'a u256,
+    signif_y: &'a u256,
+    op: fn(&'a u256, &'a u256) -> u256,
+) -> u256 {
+    debug_assert!(exp_bits_z > 0);
+    debug_assert!(signif_x >= signif_y);
+    let mut abs_bits_z = op(signif_x, signif_y);
+    // If addition carried over, adjust the significand and increment
+    // the exponent.
+    if abs_bits_z.msb() > FRACTION_BITS {
+        exp_bits_z += 1;
+        // If the result overflows the range of values representable as
+        // `f256`, return +Inf.
+        if exp_bits_z >= EXP_MAX {
+            return u256::new(INF_HI, 0);
         }
-    } else {
-        *a_signif -= &*b_signif;
-        if a_signif.is_zero() {
-            return u256::ZERO;
-        }
-        // If subtraction cancelled the hidden bit, left-shift the significand
-        // and decrement the exponent, unless exp is already zero.
-        if a_signif.hi < HI_FRACTION_BIAS && exp != 0 {
-            let adj = min(FRACTION_BITS - a_signif.msb(), exp);
-            exp -= adj;
-            // exp == 0 => result is subnormal => no hidden bit
-            *a_signif <<= (adj - (exp == 0) as u32);
-        }
+        let l2bits = (abs_bits_z.lo & 3) as u32;
+        abs_bits_z >>= 1;
+        abs_bits_z += (l2bits == 3) as u128;
     }
-
+    // If subtraction cancelled the hidden bit, left-shift the significand
+    // and decrement the exponent, unless exp is already zero.
+    if abs_bits_z.hi < HI_FRACTION_BIAS {
+        let adj = min(FRACTION_BITS - abs_bits_z.msb(), exp_bits_z);
+        exp_bits_z -= adj;
+        // exp == 0 => result is subnormal => no hidden bit
+        abs_bits_z <<= (adj - (exp_bits_z == 0) as u32);
+    }
     // Erase hidden bit and set exponent.
-    a_signif.hi &= HI_FRACTION_MASK;
-    a_signif.hi |= (exp as u128) << HI_FRACTION_BITS;
-    *a_signif
+    abs_bits_z.hi &= HI_FRACTION_MASK;
+    abs_bits_z.hi |= (exp_bits_z as u128) << HI_FRACTION_BITS;
+    abs_bits_z
 }
 
 #[inline]
-fn add_or_sub_rounded(
-    signs_equal: bool,
-    mut a_exp: u32,
-    b_exp: u32,
-    a_signif: &mut u256,
-    b_signif: &mut u256,
+fn add_or_sub_rounded<'a>(
+    exp_bits_x: u32,
+    exp_bits_y: u32,
+    signif_x: &'a mut u256,
+    signif_y: &'a mut u256,
+    op: fn(&'a u256, &'a u256) -> u256,
 ) -> u256 {
-    // Shift significands by 3 bits to give room for a round, guard and sticky
-    // bit. These shifts are safe because the significands use at most 237 bits
-    // in an u256.
-    *a_signif <<= 3;
-    *b_signif <<= 3;
-    // Here a >= b => a_exp >= b_exp => a_exp - b_exp >= 0.
-    // We adjust the significand of b by right-shifting it.
-    // We limit the adjustment by an upper limit of SIGNIFICAND_BITS + 2. Thus,
-    // the silent bit of b's significant is atmost to the position of the sticky
-    // bit. Any further shift would have no effect on the result.
-    let adj = min(a_exp - b_exp, SIGNIFICAND_BITS + 2);
-    let sticky_bit =
-        !(adj == 0 || (&*b_signif << (u256::BITS - adj)).is_zero());
-    *b_signif >>= adj;
-    b_signif.lo |= sticky_bit as u128;
+    debug_assert!(exp_bits_x > 0); // x is normal!
+    debug_assert!(
+        exp_bits_x > exp_bits_y
+            || (exp_bits_x == exp_bits_y && signif_x > signif_y)
+    ); // |x| > |y|
 
-    // Determine the actual op to be performed: if the sign of the operands
-    // are equal, it's an addition, otherwise a subtraction.
-    if signs_equal {
-        *a_signif += &*b_signif;
-        // If addition carried over, right-shift the significand and increment
-        // the exponent.
-        if (a_signif.hi >> (HI_FRACTION_BITS + 4)) != 0 {
-            *a_signif >>= 1;
-            a_signif.lo |= sticky_bit as u128;
-            a_exp += 1;
-            // If the result overflows the range of values representable as
-            // `f256`, return +Inf.
-            if a_exp >= EXP_MAX {
-                return u256::new(INF_HI, 0);
-            }
-        }
+    // Shift significands by 3 bits to give room for a round, guard and sticky
+    // bit. These shifts are safe because the significands use at most 237
+    // bits in an u256.
+    *signif_x <<= 3;
+    *signif_y <<= 3;
+    // |x| > |y| => exp_bits_x >= exp_bits_y => exp_bits_x - exp_bits_y >= 0.
+    // We adjust the significand of y by right-shifting it.
+    // We limit the adjustment by an upper limit of SIGNIFICAND_BITS + 2.
+    // Thus, the silent bit of y's significand is atmost to the position
+    // of the sticky bit. Any further shift would have no effect on the
+    // result.
+    let adj = min(
+        exp_bits_x - exp_bits_y - (exp_bits_y == 0) as u32,
+        SIGNIFICAND_BITS + 2,
+    );
+    let mut sticky_bit = if adj <= 3 {
+        0_u128
+    } else if adj >= SIGNIFICAND_BITS + 3 {
+        1_u128
     } else {
-        *a_signif -= &*b_signif;
-        if a_signif.is_zero() {
-            return u256::ZERO;
+        !(&*signif_y << (u256::BITS - adj)).is_zero() as u128
+    };
+    *signif_y >>= adj;
+    signif_y.lo |= sticky_bit;
+
+    // Add / subract the adjusted operands.
+    let mut exp_bits_z = exp_bits_x;
+    let mut abs_bits_z = op(signif_x, signif_y);
+    // If addition carried over, right-shift the significand and increment
+    // the exponent.
+    if (abs_bits_z.hi >> (HI_FRACTION_BITS + 4)) != 0 {
+        exp_bits_z += 1;
+        // If the result overflows the range of values representable as
+        // `f256`, return +Inf.
+        if exp_bits_z >= EXP_MAX {
+            return u256::new(INF_HI, 0);
         }
-        // If subtraction cancelled the hidden bit, left-shift the significand
-        // and decrement the exponent.
-        if a_signif.hi < HI_FRACTION_BIAS << 3 {
-            let adj = min(FRACTION_BITS + 3 - a_signif.msb(), a_exp);
-            a_exp -= adj;
-            // a_exp == 0 => result is subnormal => no hidden bit
-            *a_signif <<= (adj - (a_exp == 0) as u32);
-        }
+        sticky_bit |= abs_bits_z.lo & 1;
+        abs_bits_z >>= 1;
+        abs_bits_z.lo |= sticky_bit;
+    }
+    // If subtraction cancelled the hidden bit, left-shift the significand
+    // and decrement the exponent.
+    if abs_bits_z.hi < HI_FRACTION_BIAS << 3 {
+        let adj = min(FRACTION_BITS + 3 - abs_bits_z.msb(), exp_bits_z);
+        exp_bits_z -= adj;
+        // exp_bits_x == 0 => result is subnormal => no hidden bit
+        abs_bits_z <<= (adj - (exp_bits_z == 0) as u32);
     }
 
     // Get round, guard and sticky bit.
-    let l3bits = (a_signif.lo & 0x7_u128) as u32;
+    let l3bits = (abs_bits_z.lo & 0x7_u128) as u32;
     // Shift significand back, erase hidden bit and set exponent.
-    let mut bits = &*a_signif >> 3;
-    bits.hi &= HI_FRACTION_MASK;
-    bits.hi |= (a_exp as u128) << HI_FRACTION_BITS;
+    abs_bits_z >>= 3;
+    abs_bits_z.hi &= HI_FRACTION_MASK;
+    abs_bits_z.hi |= (exp_bits_z as u128) << HI_FRACTION_BITS;
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
-    if l3bits > 0x4 || l3bits == 0x4 && (bits.lo & 1) == 1 {
-        bits.incr();
+    if l3bits > 0x4 || l3bits == 0x4 && (abs_bits_z.lo & 1) == 1 {
+        abs_bits_z.incr();
     }
-    bits
+    abs_bits_z
 }
 
 impl Add for f256 {
