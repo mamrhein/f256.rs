@@ -72,7 +72,7 @@ mod from_random_str_tests {
     }
 
     #[test]
-    fn test_normal() {
+    fn slowtest_normal() {
         run_tests("test_from_str_normal.txt");
     }
 
