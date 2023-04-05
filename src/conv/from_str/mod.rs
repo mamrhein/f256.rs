@@ -70,13 +70,15 @@ impl FromStr for f256 {
                 // (-1)ˢ × w × 10ᵏ, where s ∈ {0, 1}, |k| < 2³¹, w >= 0 and
                 // w < 2²⁵⁶ only if it has not been truncated, i.e. if
                 // repr.digit_limit_exceeded is false.
-                // We need to transform f(s, w, k) it into one of
-                //  • f'(s, m, e) so that f' = (-1)ˢ × (1 + m × 2¹⁻ᵖ) × 2ᵉ and
-                //    f' ≈ f, where p = 237, Eₘᵢₙ <= e <= Eₘₐₓ and 0 < m <
-                // 2ᵖ⁻¹,  • f'(s, m, e) so that f' = (-1)ˢ ×
-                // (m × 2¹⁻ᵖ) × 2⁻²⁶²¹⁴³    where p = 237, e <
-                // Eₘᵢₙ and 0 < m < 2ᵖ⁻¹,  • ±0 if w = 0 or e
-                // < Eₘᵢₙ + 1 - p,  • ±Infinity if e > Eₘₐₓ.
+                // We need to transform f(s, w, k) into one of
+                //  • f'(s, m, e) so that
+                //    f' = (-1)ˢ × (1 + m × 2¹⁻ᵖ) × 2ᵉ and f' ≈ f,
+                //    where p = 237, Eₘᵢₙ <= e <= Eₘₐₓ and 0 < m < 2ᵖ⁻¹,
+                //  • f'(s, m, e) so that
+                //    f' = (-1)ˢ × (m × 2¹⁻ᵖ) × 2⁻²⁶²¹⁴³,
+                //    where p = 237, e < Eₘᵢₙ and 0 < m < 2ᵖ⁻¹,
+                //  • ±0 if w = 0 or e < Eₘᵢₙ + 1 - p,
+                //  • ±Infinity if e > Eₘₐₓ.
 
                 // k < ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉
                 // => e < Eₘᵢₙ + 1 - p
