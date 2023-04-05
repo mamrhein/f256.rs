@@ -19,7 +19,7 @@ use std::cmp::min;
 use dec_repr::DecNumRepr;
 use to_fixed_prec::{bin_2_dec_fixed_point, bin_2_dec_scientific};
 
-use crate::{f256, u256, EXP_MAX};
+use crate::{f256, split_f256_enc, u256, EXP_MAX};
 
 const MAX_PREC: usize = 75;
 
@@ -90,7 +90,7 @@ impl fmt::Display for f256 {
 
 impl fmt::Debug for f256 {
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        let (sign, exp, signif) = self.split_raw();
+        let (sign, exp, signif) = split_f256_enc(self);
         if exp == EXP_MAX as i32 {
             fmt::Debug::fmt(&self.to_string(), form)
         } else {

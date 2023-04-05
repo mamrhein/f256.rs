@@ -426,29 +426,7 @@ impl f256 {
         }
     }
 
-    /// Extract sign, exponent and significand from self
-    pub(crate) fn split_raw(&self) -> (u32, i32, u256) {
-        const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
-        let sign = self.sign();
-        let biased_exp = self.biased_exponent();
-        let fraction = self.fraction();
-        match (biased_exp, fraction) {
-            (0, u256::ZERO) => (sign, 0, u256::ZERO),
-            (0, _) => (sign, 1 - TOTAL_BIAS, fraction),
-            (EXP_MAX, _) => (sign, biased_exp as i32, fraction),
-            _ => (
-                sign,
-                biased_exp as i32 - TOTAL_BIAS,
-                u256 {
-                    hi: fraction.hi | HI_FRACTION_BIAS,
-                    lo: fraction.lo,
-                },
-            ),
-        }
-    }
-
-    /// Extract sign s, exponent t and significand c from a finite, non-zero
-    /// `f256` f,
+    /// Extract sign s, exponent t and significand c from a finite `f256` f,
     ///
     /// where
     ///
@@ -475,15 +453,13 @@ impl f256 {
         // `0 < m < 2ᵖ⁻¹`
         // and need to transform it into an integer based representation
         // `(-1)ˢ × 2ᵗ × c`.
-        if self.is_zero() {
-            return (self.sign(), 0, u256::default());
+        let (s, mut t, mut c) = split_f256_enc(self);
+        if !c.is_zero() {
+            let ntz = c.trailing_zeros();
+            c >>= ntz;
+            t += ntz as i32;
         }
-        let mut c = self.significand();
-        let mut t = self.exponent();
-        let ntz = c.trailing_zeros();
-        c >>= ntz;
-        t += ntz as i32;
-        (self.sign(), t, c)
+        (s, t, c)
     }
 
     /// Only public for testing!!!
@@ -866,13 +842,12 @@ impl f256 {
     // given function.
     #[must_use]
     fn nearest_integral(&self, adj: fn(u32) -> bool) -> Self {
-        if self.is_special() {
+        let mut abs_bits = abs_bits(self);
+        if abs_bits_sticky_minus_1(&abs_bits) >= MAX_HI {
+            // self is special
             return *self;
         }
         // self is finite and non-zero.
-        let hi_sign = self.bits.hi & HI_SIGN_MASK;
-        let mut abs_bits =
-            u256::new(self.bits.hi & HI_ABS_MASK, self.bits.lo);
         if abs_bits.hi >= MIN_NO_FRACT_HI {
             // |self| >= 2²³⁶, i. e. self is integral.
             return *self;
@@ -887,13 +862,15 @@ impl f256 {
             };
         }
         // 1 < |self| < 2²³⁶
-        let n_fract_bits =
-            FRACTION_BITS - (self.biased_exponent() - EXP_BIAS);
+        let n_fract_bits = FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
         let mut abs_int_bits = &(&abs_bits >> n_fract_bits) << n_fract_bits;
         let c = adj(sign) as u32 * (abs_int_bits != abs_bits) as u32;
         abs_int_bits += &(&u256::new(0, c as u128) << n_fract_bits);
         Self {
-            bits: u256::new(abs_int_bits.hi | hi_sign, abs_int_bits.lo),
+            bits: u256::new(
+                abs_int_bits.hi | sign_bits_hi(self),
+                abs_int_bits.lo,
+            ),
         }
     }
 
@@ -1005,13 +982,12 @@ impl f256 {
     //// ```
     #[must_use]
     pub fn round(&self) -> Self {
-        if self.is_special() {
+        let mut abs_bits = abs_bits(self);
+        if abs_bits_sticky_minus_1(&abs_bits) >= MAX_HI {
+            // self is special
             return *self;
         }
         // self is finite and non-zero.
-        let hi_sign = self.bits.hi & HI_SIGN_MASK;
-        let mut abs_bits =
-            u256::new(self.bits.hi & HI_ABS_MASK, self.bits.lo);
         if abs_bits.hi >= MIN_NO_FRACT_HI {
             // |self| >= 2²³⁶, i. e. self is integral.
             return *self;
@@ -1023,16 +999,15 @@ impl f256 {
         if abs_bits.hi <= ONE.bits.hi {
             // ½ < |self| <= 1
             return Self {
-                bits: u256::new(ONE.bits.hi | hi_sign, 0),
+                bits: u256::new(ONE.bits.hi | sign_bits_hi(self), 0),
             };
         }
         // 1 < |self| < 2²³⁶
-        let n_fract_bits =
-            FRACTION_BITS - (self.biased_exponent() - EXP_BIAS);
+        let n_fract_bits = FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
         abs_bits.idiv_pow2(n_fract_bits);
         abs_bits <<= n_fract_bits;
         Self {
-            bits: u256::new(abs_bits.hi | hi_sign, abs_bits.lo),
+            bits: u256::new(abs_bits.hi | sign_bits_hi(self), abs_bits.lo),
         }
     }
 
@@ -1071,13 +1046,13 @@ impl Neg for &f256 {
 
 /// Returns the high bits of f reduced to its sign bit.
 #[inline(always)]
-pub(crate) fn sign_bits_hi(f: &f256) -> u128 {
+pub(crate) const fn sign_bits_hi(f: &f256) -> u128 {
     f.bits.hi & HI_SIGN_MASK
 }
 
 /// Returns the representation of f.abs().
 #[inline(always)]
-pub(crate) fn abs_bits(f: &f256) -> u256 {
+pub(crate) const fn abs_bits(f: &f256) -> u256 {
     u256 {
         hi: f.bits.hi & HI_ABS_MASK,
         lo: f.bits.lo,
@@ -1112,6 +1087,12 @@ pub(crate) fn exp_bits(abs_bits: &u256) -> u32 {
     (abs_bits.hi >> HI_FRACTION_BITS) as u32
 }
 
+/// Returns the fraction from `abs_bits`.
+#[inline(always)]
+pub(crate) fn fraction(abs_bits: &u256) -> u256 {
+    u256::new(abs_bits.hi & HI_FRACTION_MASK, abs_bits.lo)
+}
+
 /// Returns the significand from `abs_bits`.
 #[inline(always)]
 pub(crate) fn signif(abs_bits: &u256) -> u256 {
@@ -1120,6 +1101,28 @@ pub(crate) fn signif(abs_bits: &u256) -> u256 {
             | (abs_bits.hi & HI_FRACTION_MASK),
         abs_bits.lo,
     )
+}
+
+/// Extract sign, exponent and significand from f
+pub(crate) fn split_f256_enc(f: &f256) -> (u32, i32, u256) {
+    const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
+    let sign = f.sign();
+    let abs_bits = abs_bits(f);
+    let exp_bits = exp_bits(&abs_bits);
+    let fraction = fraction(&abs_bits);
+    match (exp_bits, fraction) {
+        (0, u256::ZERO) => (sign, 0, u256::ZERO),
+        (0, _) => (sign, 1 - TOTAL_BIAS, fraction),
+        (EXP_MAX, _) => (sign, exp_bits as i32, fraction),
+        _ => (
+            sign,
+            exp_bits as i32 - TOTAL_BIAS,
+            u256 {
+                hi: fraction.hi | HI_FRACTION_BIAS,
+                lo: fraction.lo,
+            },
+        ),
+    }
 }
 
 #[cfg(test)]
