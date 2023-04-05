@@ -314,11 +314,6 @@ impl f256 {
     #[allow(clippy::cast_sign_loss)]
     pub(crate) fn encode(s: u32, mut t: i32, mut c: u256) -> Self {
         debug_assert!(s == 0 || s == 1);
-        debug_assert!(
-            t >= EMIN - FRACTION_BITS as i32
-                && t <= EMAX - FRACTION_BITS as i32,
-            "Exponent limits exceeded: {t}"
-        );
         debug_assert!(!c.is_zero());
         // We have an integer based representation `(-1)ˢ × 2ᵗ × c` and need
         // to transform it into a fraction based representation
@@ -361,9 +356,12 @@ impl f256 {
             }
             _ => {}
         }
+        debug_assert!(
+            t >= EMIN - 1 && t <= EMAX,
+            "Exponent limits exceeded: {t}"
+        );
         // 3. Offset exponent
         t += EXP_BIAS as i32;
-        debug_assert!(t >= 0);
         // 4. Assemble struct f256
         Self::new(c, t as u32, s)
     }
@@ -372,7 +370,15 @@ impl f256 {
     #[doc(hidden)]
     #[must_use]
     pub fn from_sign_exp_signif(s: u32, t: i32, c: (u128, u128)) -> Self {
-        Self::encode(s, t, u256::new(c.0, c.1))
+        debug_assert!(s == 0 || s == 1);
+        let c = u256::new(c.0, c.1);
+        if c.is_zero() {
+            return [f256::NEG_ZERO, f256::ZERO][s as usize];
+        }
+        if t > EMAX + c.msb() as i32 - EXP_BITS as i32 {
+            return [f256::NEG_INFINITY, f256::INFINITY][s as usize];
+        }
+        Self::encode(s, t, c)
     }
 
     /// Returns the sign bit of `self`: 0 = positive, 1 = negative.
