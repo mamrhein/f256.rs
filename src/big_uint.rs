@@ -674,7 +674,7 @@ impl Shr<u32> for &u256 {
     fn shr(self, rhs: u32) -> Self::Output {
         assert!(
             rhs <= (Self::Output::BITS - 1),
-            "Attempt to shift right with overflow."
+            "Attempt to shift right with underflow."
         );
         match rhs {
             1..=127 => Self::Output {
@@ -696,7 +696,7 @@ impl ShrAssign<u32> for u256 {
     fn shr_assign(&mut self, rhs: u32) {
         assert!(
             rhs <= (Self::BITS - 1),
-            "Attempt to shift right with overflow."
+            "Attempt to shift right with underflow."
         );
         match rhs {
             1..=127 => {
@@ -914,7 +914,7 @@ impl ShrAssign<u32> for u512 {
     fn shr_assign(&mut self, rhs: u32) {
         assert!(
             rhs <= (Self::BITS - 1),
-            "Attempt to shift left with overflow."
+            "Attempt to shift right with underflow."
         );
         let mut k = rhs;
         match k {
