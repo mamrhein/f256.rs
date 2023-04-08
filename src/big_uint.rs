@@ -128,7 +128,7 @@ impl u256 {
 
     /// Returns the index of the most significant bit of `self`.
     /// Pre-condition: `self` must not be zero!
-    pub(crate) fn msb(&self) -> u32 {
+    pub(crate) const fn msb(&self) -> u32 {
         debug_assert!(!self.is_zero());
         Self::BITS - self.leading_zeros() - 1
     }
@@ -775,6 +775,20 @@ impl u512 {
     #[inline]
     pub(crate) const fn is_zero(&self) -> bool {
         self.hi.is_zero() && self.lo.is_zero()
+    }
+
+    /// Returns the number of leading zeros in the binary representation of
+    /// `self`.
+    pub(crate) const fn leading_zeros(&self) -> u32 {
+        self.hi.leading_zeros()
+            + (self.hi.is_zero()) as u32 * self.lo.leading_zeros()
+    }
+
+    /// Returns the index of the most significant bit of `self`.
+    /// Pre-condition: `self` must not be zero!
+    pub(crate) const fn msb(&self) -> u32 {
+        debug_assert!(!self.is_zero());
+        Self::BITS - self.leading_zeros() - 1
     }
 
     /// Add 1 to `self` inplace.
