@@ -1109,6 +1109,15 @@ pub(crate) fn signif(abs_bits: &u256) -> u256 {
     )
 }
 
+/// Returns the normalized significand and the corresponding shift from
+/// `abs_bits`.
+#[inline(always)]
+pub(crate) fn norm_signif(abs_bits: &u256) -> (u256, u32) {
+    let shift = max(abs_bits.leading_zeros(), EXP_BITS);
+    let mut signif = abs_bits << shift;
+    signif.hi |= HI_SIGN_MASK;
+    (signif, shift)
+}
 /// Extract sign, exponent and significand from f
 pub(crate) fn split_f256_enc(f: &f256) -> (u32, i32, u256) {
     const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
