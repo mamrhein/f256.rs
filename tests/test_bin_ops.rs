@@ -58,7 +58,7 @@ mod random_bin_op_tests {
                         rec.z.1,
                         (rec.z.2, rec.z.3),
                     );
-                    assert_eq!(z, op(&x, &y), "Failed: {rec:?}");
+                    assert_eq!(z, op(&x, &y), "\nFailed: {rec:?}");
                 }
                 Err(e) => panic!("{}", e),
             }
@@ -72,5 +72,14 @@ mod random_bin_op_tests {
     #[test]
     fn test_add_sub() {
         run_tests(add, "test_add_sub.txt");
+    }
+
+    fn mul<'a>(x: &'a f256, y: &'a f256) -> f256 {
+        x * y
+    }
+
+    #[test]
+    fn test_mul() {
+        run_tests(mul, "test_mul.txt");
     }
 }
