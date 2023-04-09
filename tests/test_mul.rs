@@ -102,6 +102,66 @@ mod mul_tests {
     }
 
     #[test]
+    fn test_large_normal_mul_small_normal_giving_normal() {
+        let x = f256::from_sign_exp_signif(
+            1,
+            261915,
+            (
+                845684206914502126538536715942,
+                81084859842263496862333301674277444131,
+            ),
+        );
+        assert!(x.is_normal());
+        let y = f256::from_sign_exp_signif(
+            1,
+            -175754,
+            (
+                505332899556744216600177583903992,
+                62397031467267626677069734712334238095,
+            ),
+        );
+        assert!(y.is_normal());
+        let z = f256::from_sign_exp_signif(
+            0,
+            86389,
+            (
+                337121326895999573814655353540591,
+                323102188811983265002694960323372519659,
+            ),
+        );
+        assert!(z.is_normal());
+        assert_eq!(x * y, z);
+        assert_eq!(y * x, z);
+    }
+
+    #[test]
+    fn test_normal_mul_normal_giving_subnormal() {
+        let x = f256::from_sign_exp_signif(
+            1,
+            -445,
+            (
+                374150763363658591941101478494614,
+                151038319336310153363304993786276910237,
+            ),
+        );
+        assert!(x.is_normal());
+        let y = f256::from_sign_exp_signif(
+            1,
+            -262172,
+            (0, 1531268656373308684794032379677),
+        );
+        assert!(y.is_normal());
+        let z = f256::from_sign_exp_signif(
+            0,
+            -262378,
+            (0, 220682812368546447277193959492),
+        );
+        assert!(z.is_subnormal());
+        assert_eq!(x * y, z);
+        assert_eq!(y * x, z);
+    }
+
+    #[test]
     fn test_subnormal() {
         let x = f256::MIN_GT_ZERO;
         assert_eq!(x * x, f256::ZERO);
