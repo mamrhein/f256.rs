@@ -1113,6 +1113,7 @@ pub(crate) fn signif(abs_bits: &u256) -> u256 {
 /// `abs_bits`.
 #[inline(always)]
 pub(crate) fn norm_signif(abs_bits: &u256) -> (u256, u32) {
+    debug_assert!(!abs_bits.is_zero());
     let shift = max(abs_bits.leading_zeros(), EXP_BITS);
     let mut signif = abs_bits << shift;
     signif.hi |= HI_SIGN_MASK;
