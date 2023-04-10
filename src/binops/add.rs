@@ -141,7 +141,7 @@ fn add_or_sub_normals_exact<'a>(
     let mut abs_bits_z = op(signif_x, signif_y);
     // If addition carried over, adjust the significand and increment
     // the exponent.
-    if abs_bits_z.msb() > FRACTION_BITS {
+    if abs_bits_z.hi >= HI_FRACTION_BIAS << 1 {
         exp_bits_z += 1;
         // If the result overflows the range of values representable as
         // `f256`, return +Inf.
@@ -154,7 +154,7 @@ fn add_or_sub_normals_exact<'a>(
     }
     // If subtraction cancelled the hidden bit, left-shift the significand
     // and decrement the exponent, unless exp is already zero.
-    if abs_bits_z.hi < HI_FRACTION_BIAS {
+    else if abs_bits_z.hi < HI_FRACTION_BIAS {
         let adj = min(FRACTION_BITS - abs_bits_z.msb(), exp_bits_z);
         exp_bits_z -= adj;
         // exp == 0 => result is subnormal => no hidden bit
@@ -210,7 +210,7 @@ fn add_or_sub_rounded<'a>(
     let mut abs_bits_z = op(signif_x, signif_y);
     // If addition carried over, right-shift the significand and increment
     // the exponent.
-    if (abs_bits_z.hi >> (HI_FRACTION_BITS + 4)) != 0 {
+    if abs_bits_z.hi >= HI_FRACTION_BIAS << 4 {
         exp_bits_z += 1;
         // If the result overflows the range of values representable as
         // `f256`, return +Inf.
@@ -223,7 +223,7 @@ fn add_or_sub_rounded<'a>(
     }
     // If subtraction cancelled the hidden bit, left-shift the significand
     // and decrement the exponent.
-    if abs_bits_z.hi < HI_FRACTION_BIAS << 3 {
+    else if abs_bits_z.hi < HI_FRACTION_BIAS << 3 {
         let adj = min(FRACTION_BITS + 3 - abs_bits_z.msb(), exp_bits_z);
         exp_bits_z -= adj;
         // exp_bits_x == 0 => result is subnormal => no hidden bit
