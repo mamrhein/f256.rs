@@ -22,7 +22,7 @@ use crate::{
 };
 
 #[inline]
-fn short_mul(x: &u256, y: &u256) -> (u256, u32, u32) {
+fn mul_signifs(x: &u256, y: &u256) -> (u256, u32, u32) {
     debug_assert!(x.hi >= HI_SIGN_MASK);
     debug_assert!(y.hi >= HI_SIGN_MASK);
     let mut t = x.widening_mul(y);
@@ -93,7 +93,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
 
     // Calculate |x| * |y|.
     let (mut signif_z, carry, mut rnd_bits) =
-        short_mul(&norm_signif_x, &norm_signif_y);
+        mul_signifs(&norm_signif_x, &norm_signif_y);
     const EMIN_EXTRA_SHIFT_BIAS: i32 = EMIN + 2 * EXP_BITS as i32;
     let mut exp_bits_z_minus_1 = (exp_bits_x - norm_bit_x)
         + (exp_bits_y - norm_bit_y)
