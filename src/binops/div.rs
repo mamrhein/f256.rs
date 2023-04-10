@@ -13,34 +13,38 @@ use core::{
 };
 
 use crate::{
-    f256, u256, EXP_BIAS, EXP_BITS, EXP_MAX, HI_ABS_MASK, HI_EXP_MASK,
+    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, norm_signif, u256,
+    EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, HI_ABS_MASK, HI_EXP_MASK,
     HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
     INF_HI, MAX_HI, SIGNIFICAND_BITS,
 };
 
-// Calculate q = x' / y (rounded tie to even), where x' = x * 2²³⁷.
 #[inline]
-fn u256_div(x: &u256, y: &u256) -> u256 {
-    debug_assert!(!y.is_zero());
-    debug_assert!(x >= y);
-    let mut r = *x;
+fn div_signifs(x: &u256, y: &u256) -> (u256, u32) {
+    debug_assert!(x.hi >= HI_SIGN_MASK);
+    debug_assert!(y.hi >= HI_SIGN_MASK);
+    let d = y >> EXP_BITS;
+    let mut r = x >> (EXP_BITS - (x < y) as u32);
+    r -= &d;
     let mut q = u256::new(0, 1);
-    r -= y;
     for i in 1..=SIGNIFICAND_BITS {
+        if r.is_zero() {
+            q <<= SIGNIFICAND_BITS - i;
+            return (q, 0);
+        }
         let mut t = &r << 1;
-        t -= y;
+        t -= &d;
         q <<= 1;
         r = t;
-        if t > *y {
-            r += y;
+        if t > d {
+            r += &d;
         } else {
             q.incr();
         }
     }
-    let c = q.lo & 1;
+    let c = ((q.lo & 1) as u32) << 1 | (!r.is_zero() as u32);
     q >>= 1;
-    q += c;
-    q
+    (q, c)
 }
 
 // Compute z = x / y, rounded tie to even.
@@ -48,85 +52,117 @@ fn u256_div(x: &u256, y: &u256) -> u256 {
 #[allow(clippy::cast_sign_loss)]
 #[inline]
 pub(crate) fn div(x: f256, y: f256) -> f256 {
-    // The products sign is the XOR of the signs of the operands.
-    let hi_sign = (x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK;
-
+    // The quotients sign is the XOR of the signs of the operands.
+    let sign_bits_hi_z = (x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK;
+    let mut abs_bits_x = abs_bits(&x);
+    let mut abs_bits_y = abs_bits(&y);
     // Check whether one or both operands are NaN, infinite or zero.
     // We mask off the sign bit and mark subnormals having a significand less
     // than 2¹²⁸ in least bit of the representations high u128. This allows to
     // use only that part for the handling of special cases.
-    let x_abs_hi = (x.bits.hi & HI_ABS_MASK) | (x.bits.lo != 0) as u128;
-    let y_abs_hi = (y.bits.hi & HI_ABS_MASK) | (y.bits.lo != 0) as u128;
-    if max(x_abs_hi.wrapping_sub(1), y_abs_hi.wrapping_sub(1)) >= MAX_HI {
-        let max_abs_hi = max(x_abs_hi, y_abs_hi);
-        if max_abs_hi > HI_EXP_MASK || x_abs_hi == y_abs_hi {
+    let abs_bits_sticky_x = abs_bits_sticky(&abs_bits_x);
+    let abs_bits_sticky_y = abs_bits_sticky(&abs_bits_y);
+    if max(
+        abs_bits_sticky_x.wrapping_sub(1),
+        abs_bits_sticky_y.wrapping_sub(1),
+    ) >= MAX_HI
+    {
+        let max_abs_bits_sticky = max(abs_bits_sticky_x, abs_bits_sticky_y);
+        if max_abs_bits_sticky > HI_EXP_MASK
+            || abs_bits_sticky_x == abs_bits_sticky_y
+        {
             // Atleast one operand is NAN or we have ±0 / ±0 or ±Inf / ±Inf.
             return f256::NAN;
         }
-        if x_abs_hi < y_abs_hi {
+        if abs_bits_sticky_x < abs_bits_sticky_y {
             // ±0 / ±Inf or ±0 / ±finite or ±finite / ±Inf.
             return f256 {
-                bits: u256::new(hi_sign, 0),
+                bits: u256::new(sign_bits_hi_z, 0),
             };
         }
         // ±Inf / ±0 or ±finite / ±0 or ±Inf / ±finite.
         return f256 {
-            bits: u256::new(hi_sign | INF_HI, 0),
+            bits: u256::new(sign_bits_hi_z | INF_HI, 0),
         };
     }
 
     // Both operands are finite and non-zero.
-    let mut x_exp = x.biased_exponent() as i32;
-    let mut x_signif = x.significand();
-    let x_shift = x_signif.leading_zeros() - EXP_BITS;
-    x_signif <<= x_shift;
-    x_exp -= x_shift as i32 - (x_exp == 0) as i32;
 
-    let mut y_exp = y.biased_exponent() as i32;
-    let mut y_signif = y.significand();
-    let y_shift = y_signif.leading_zeros() - EXP_BITS;
-    y_signif <<= y_shift;
-    y_exp -= y_shift as i32 - (y_exp == 0) as i32;
+    // Extract biased exponents and normalized significands.
+    let mut exp_bits_x = exp_bits(&abs_bits_x) as i32;
+    let mut exp_bits_y = exp_bits(&abs_bits_y) as i32;
+    let norm_bit_x = norm_bit(&abs_bits_x) as i32;
+    let norm_bit_y = norm_bit(&abs_bits_y) as i32;
+    let (mut norm_signif_x, norm_shift_x) = norm_signif(&abs_bits_x);
+    let (mut norm_signif_y, norm_shift_y) = norm_signif(&abs_bits_y);
 
-    // Assure x_signif >= y_signif.
-    let c = (x_signif < y_signif) as u32;
-    x_signif <<= c;
-
-    // Calculate the results significand and exponent.
-    let mut bits = u256_div(&x_signif, &y_signif);
-    let mut exp = x_exp - y_exp + (EXP_BIAS - c) as i32;
-
+    // Calculate |x| / |y|.
+    let mut exp_bits_z_minus_1 = (exp_bits_x - norm_bit_x)
+        - (exp_bits_y - norm_bit_y)
+        - (norm_shift_x as i32 - norm_shift_y as i32)
+        + (-EMIN - 1)
+        + (norm_signif_x >= norm_signif_y) as i32;
     // If the result overflows the range of values representable as `f256`,
     // return +/- Infinity.
-    if exp >= EXP_MAX as i32 {
+    if exp_bits_z_minus_1 >= EXP_MAX as i32 {
         return f256 {
-            bits: u256::new(hi_sign | INF_HI, 0),
+            bits: u256::new(sign_bits_hi_z | INF_HI, 0),
         };
+    }
+    let (mut signif_z, mut rnd_bits) =
+        div_signifs(&norm_signif_x, &norm_signif_y);
+
+    // If the calculated biased exponent <= 0, the result may be subnormal or
+    // underflow to ZERO.
+    if exp_bits_z_minus_1 < 0 {
+        let shift = exp_bits_z_minus_1.unsigned_abs();
+        if shift > SIGNIFICAND_BITS + 1 {
+            // Result underflows to zero.
+            return f256 {
+                bits: u256::new(sign_bits_hi_z, 0),
+            };
+        }
+        if shift > 0 {
+            // Adjust the rounding bits for correct final rounding.
+            match shift {
+                1 => {
+                    rnd_bits = (((signif_z.lo & 1) as u32) << 1)
+                        | (rnd_bits != 0) as u32;
+                }
+                2 => {
+                    rnd_bits =
+                        ((signif_z.lo & 3) as u32) | (rnd_bits != 0) as u32;
+                }
+                3..=127 => {
+                    let rem = signif_z.rem_pow2(shift).lo;
+                    rnd_bits = (&rem >> (shift - 2)) as u32
+                        | (rem > (1_u128 << (shift - 1))) as u32
+                        | (rnd_bits != 0) as u32;
+                }
+                _ => {
+                    let rem = signif_z.rem_pow2(shift);
+                    rnd_bits = (&rem >> (shift - 2)).lo as u32
+                        | (rem > (&u256::ONE << (shift - 1))) as u32
+                        | (rnd_bits != 0) as u32;
+                }
+            }
+            signif_z >>= shift;
+        }
+        exp_bits_z_minus_1 = 0;
     }
 
     // Assemble the result.
-    if exp <= 0 {
-        let shift = (1 - exp) as u32;
-        if shift > bits.msb() {
-            // Result underflows to zero.
-            return f256 {
-                bits: u256::new(hi_sign, 0),
-            };
-        }
-        // Adjust the remainder for correct final rounding.
-        let rem = ((&bits << (u256::BITS - shift)).hi >> 64) as u64;
-        bits >>= shift;
-        const TIE: u64 = 1_u64 << 63;
-        if rem > TIE || (rem == TIE && ((bits.lo & 1) == 1)) {
-            bits.incr();
-        }
-    } else {
-        // Erase hidden bit and set exponent.
-        bits.hi &= HI_FRACTION_MASK;
-        bits.hi |= (exp as u128) << HI_FRACTION_BITS as u128;
+    let mut bits_z = u256::new(
+        signif_z.hi + ((exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS),
+        signif_z.lo,
+    );
+    bits_z.hi |= sign_bits_hi_z;
+
+    // Final rounding. Possibly overflowing into the exponent, but that is ok.
+    if rnd_bits > 0b10 || (rnd_bits == 0b10 && ((bits_z.lo & 1) == 1)) {
+        bits_z.incr();
     }
-    bits.hi |= hi_sign;
-    f256 { bits }
+    f256 { bits: bits_z }
 }
 
 impl Div for f256 {
