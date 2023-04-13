@@ -104,7 +104,7 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
         + (norm_signif_x >= norm_signif_y) as i32;
     // If the result overflows the range of values representable as `f256`,
     // return +/- Infinity.
-    if exp_bits_z_minus_1 >= EXP_MAX as i32 {
+    if exp_bits_z_minus_1 >= EXP_MAX as i32 - 1 {
         return f256 {
             bits: u256::new(sign_bits_hi_z | INF_HI, 0),
         };
