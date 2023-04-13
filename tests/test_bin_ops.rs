@@ -82,4 +82,13 @@ mod random_bin_op_tests {
     fn test_mul() {
         run_tests(mul, "test_mul.txt");
     }
+
+    fn div<'a>(x: &'a f256, y: &'a f256) -> f256 {
+        x / y
+    }
+
+    #[test]
+    fn test_div() {
+        run_tests(div, "test_div.txt");
+    }
 }
