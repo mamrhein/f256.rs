@@ -77,8 +77,30 @@ mod div_tests {
     }
 
     #[test]
-    fn test_overflow() {
+    fn test_overflow_1() {
         assert_eq!(f256::MAX / f256::MIN_GT_ZERO, f256::INFINITY);
         assert_eq!(f256::MIN / f256::MIN_GT_ZERO, f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_overflow_2() {
+        let x = f256::from_sign_exp_signif(
+            1,
+            247449,
+            (
+                222581619208314555639692392399675,
+                294685291944275559831296488670417115667,
+            ),
+        );
+        let y = f256::from_sign_exp_signif(
+            0,
+            -14694,
+            (
+                85152708844161637247465184931530,
+                24205953785655276835031997231039835903,
+            ),
+        );
+        let z = f256::from_sign_exp_signif(1, 262144, (0, 0));
+        assert_eq!(x / y, z)
     }
 }
