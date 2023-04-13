@@ -373,10 +373,12 @@ impl f256 {
         debug_assert!(s == 0 || s == 1);
         let c = u256::new(c.0, c.1);
         if c.is_zero() {
-            return [f256::NEG_ZERO, f256::ZERO][s as usize];
-        }
-        if t > EMAX + c.msb() as i32 - EXP_BITS as i32 {
-            return [f256::NEG_INFINITY, f256::INFINITY][s as usize];
+            if t == 0 {
+                return [f256::ZERO, f256::NEG_ZERO][s as usize];
+            }
+            if t == EMAX + 1 {
+                return [f256::INFINITY, f256::NEG_INFINITY][s as usize];
+            }
         }
         Self::encode(s, t, c)
     }
