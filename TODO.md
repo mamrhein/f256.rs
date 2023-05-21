@@ -26,5 +26,5 @@
 
 ### Tests on random data generated via rug (GNU MFPR)
 
-* For add, sub, mul, div, rem
+* For ~~add, sub, mul, div~~, rem
 * For elementary functions
