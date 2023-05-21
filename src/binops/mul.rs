@@ -15,10 +15,10 @@ use core::{
 use crate::{
     abs_bits, abs_bits_sticky,
     big_uint::{u128_widening_mul, u512},
-    exp_bits, f256, norm_bit, norm_signif, signif, u256, EMAX, EMIN,
+    exp_bits, f256, left_adj_signif, norm_bit, signif, u256, EMAX, EMIN,
     EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK,
-    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
-    INF_HI, MAX_HI, SIGNIFICAND_BITS, TOTAL_BITS,
+    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI,
+    MAX_HI, SIGNIFICAND_BITS, TOTAL_BITS,
 };
 
 #[inline]
@@ -88,8 +88,8 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
     let mut exp_bits_y = exp_bits(&abs_bits_y) as i32;
     let norm_bit_x = norm_bit(&abs_bits_x) as i32;
     let norm_bit_y = norm_bit(&abs_bits_y) as i32;
-    let (mut norm_signif_x, norm_shift_x) = norm_signif(&abs_bits_x);
-    let (mut norm_signif_y, norm_shift_y) = norm_signif(&abs_bits_y);
+    let (mut norm_signif_x, norm_shift_x) = left_adj_signif(&abs_bits_x);
+    let (mut norm_signif_y, norm_shift_y) = left_adj_signif(&abs_bits_y);
 
     // Calculate |x| * |y|.
     let (mut signif_z, carry, mut rnd_bits) =
