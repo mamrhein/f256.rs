@@ -450,8 +450,8 @@ impl f256 {
     pub(crate) fn decode(&self) -> (u32, i32, u256) {
         debug_assert!(
             self.is_finite(),
-            "Attempt to extract sign, exponent and significand from \
-             Infinity or NaN."
+            "Attempt to extract sign, exponent and significand from Infinity \
+             or NaN."
         );
         // We have a fraction based representation
         // `(-1)ˢ × 2ᵉ × (1 + m × 2¹⁻ᵖ)`, where `Eₘᵢₙ <= e <= Eₘₐₓ` and
@@ -1121,6 +1121,7 @@ pub(crate) fn norm_signif(abs_bits: &u256) -> (u256, u32) {
     signif.hi |= HI_SIGN_MASK;
     (signif, shift)
 }
+
 /// Extract sign, exponent and significand from f
 pub(crate) fn split_f256_enc(f: &f256) -> (u32, i32, u256) {
     const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
