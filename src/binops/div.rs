@@ -13,7 +13,7 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky, exp_bits, f256, left_adj_signif, norm_bit, u256,
+    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, norm_signif, u256,
     EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, HI_ABS_MASK, HI_EXP_MASK,
     HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI,
     MAX_HI, SIGNIFICAND_BITS,
@@ -21,11 +21,10 @@ use crate::{
 
 #[inline]
 fn div_signifs(x: &u256, y: &u256) -> (u256, u32) {
-    debug_assert!(x.hi >= HI_SIGN_MASK);
-    debug_assert!(y.hi >= HI_SIGN_MASK);
-    let d = y >> EXP_BITS;
-    let mut r = x >> (EXP_BITS - (x < y) as u32);
-    r -= &d;
+    debug_assert_eq!(x.hi.leading_zeros(), EXP_BITS);
+    debug_assert_eq!(y.hi.leading_zeros(), EXP_BITS);
+    let mut r = x << (x < y) as u32;
+    r -= y;
     let mut q = u256::new(0, 1);
     for i in 1..=SIGNIFICAND_BITS {
         if r.is_zero() {
@@ -33,11 +32,11 @@ fn div_signifs(x: &u256, y: &u256) -> (u256, u32) {
             return (q, 0);
         }
         let mut t = &r << 1;
-        t -= &d;
+        t -= y;
         q <<= 1;
         r = t;
-        if t > d {
-            r += &d;
+        if t > *y {
+            r += y;
         } else {
             q.incr();
         }
@@ -93,8 +92,8 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
     let mut exp_bits_y = exp_bits(&abs_bits_y) as i32;
     let norm_bit_x = norm_bit(&abs_bits_x) as i32;
     let norm_bit_y = norm_bit(&abs_bits_y) as i32;
-    let (mut norm_signif_x, norm_shift_x) = left_adj_signif(&abs_bits_x);
-    let (mut norm_signif_y, norm_shift_y) = left_adj_signif(&abs_bits_y);
+    let (mut norm_signif_x, norm_shift_x) = norm_signif(&abs_bits_x);
+    let (mut norm_signif_y, norm_shift_y) = norm_signif(&abs_bits_y);
 
     // Calculate |x| / |y|.
     let mut exp_bits_z_minus_1 = (exp_bits_x - norm_bit_x)
