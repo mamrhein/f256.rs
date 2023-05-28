@@ -48,17 +48,19 @@ mod random_bin_op_tests {
                         rec.x.1,
                         (rec.x.2, rec.x.3),
                     );
+                    assert!(x.is_finite(), "\nx not finite: {rec:?}");
                     let y = f256::from_sign_exp_signif(
                         rec.y.0,
                         rec.y.1,
                         (rec.y.2, rec.y.3),
                     );
+                    assert!(y.is_finite(), "\ny not finite: {rec:?}");
                     let z = f256::from_sign_exp_signif(
                         rec.z.0,
                         rec.z.1,
                         (rec.z.2, rec.z.3),
                     );
-                    assert_eq!(z, op(&x, &y), "\nFailed: {rec:?}");
+                    assert_eq!(op(&x, &y), z, "\nFailed: {rec:?}");
                 }
                 Err(e) => panic!("{}", e),
             }
@@ -90,5 +92,14 @@ mod random_bin_op_tests {
     #[test]
     fn test_div() {
         run_tests(div, "test_div.txt");
+    }
+
+    fn rem<'a>(x: &'a f256, y: &'a f256) -> f256 {
+        x % y
+    }
+
+    #[test]
+    fn test_rem() {
+        run_tests(rem, "test_rem.txt");
     }
 }
