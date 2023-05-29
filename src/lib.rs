@@ -450,8 +450,8 @@ impl f256 {
     pub(crate) fn decode(&self) -> (u32, i32, u256) {
         debug_assert!(
             self.is_finite(),
-            "Attempt to extract sign, exponent and significand from Infinity \
-             or NaN."
+            "Attempt to extract sign, exponent and significand from \
+             Infinity or NaN."
         );
         // We have a fraction based representation
         // `(-1)ˢ × 2ᵉ × (1 + m × 2¹⁻ᵖ)`, where `Eₘᵢₙ <= e <= Eₘₐₓ` and

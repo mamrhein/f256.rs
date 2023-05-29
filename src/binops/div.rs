@@ -15,8 +15,8 @@ use core::{
 use crate::{
     abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, norm_signif, u256,
     EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, HI_ABS_MASK, HI_EXP_MASK,
-    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI,
-    MAX_HI, SIGNIFICAND_BITS,
+    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
+    INF_HI, MAX_HI, SIGNIFICAND_BITS,
 };
 
 #[inline]
