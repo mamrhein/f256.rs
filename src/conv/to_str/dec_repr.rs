@@ -116,7 +116,7 @@ impl DecNumRepr {
         // floating point values.
         let is_non_integer = exp2 < -(signif2.trailing_zeros() as i32);
         let lower_signif2 = &signif2 - (1 + is_non_integer as u32);
-        let upper_signif2 = &signif2 + 2;
+        let upper_signif2 = &signif2 + 2_u32;
 
         // Step 3: Convert the interval to a decimal power base.
         let mut exp10: i32;
