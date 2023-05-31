@@ -1068,7 +1068,28 @@ mod u256_div_rem_tests {
     }
 
     #[test]
-    fn test_div_rem10() {
+    fn test_div_rem_3() {
+        let num = u256::new(
+            339760931524468374439553466833932000838,
+            287120322474436508255079181112596091133,
+        );
+        let den = u256::new(
+            26182927318054888310188849038323206,
+            34028236692093846346337460743176821145,
+        );
+        let (quot, rem) = num.div_rem(&den);
+        assert_eq!(quot, u256::new(0, 12976));
+        assert_eq!(
+            rem,
+            u256::new(
+                11266645388143726542961712650078485,
+                82950902321873430177054416653535172045
+            )
+        );
+    }
+
+    #[test]
+    fn test_div_rem_by_10() {
         let v = u256::ZERO;
         assert_eq!(v.div_rem(10_u64), (u256::ZERO, 0));
         let v = u256::new(0, 7);
@@ -1087,7 +1108,7 @@ mod u256_div_rem_tests {
     }
 
     #[test]
-    fn test_div_rem_pow10() {
+    fn test_div_rem_by_pow10() {
         let v = u256::ZERO;
         assert_eq!(v.div_rem(10_u64.pow(10)), (u256::ZERO, 0));
         let v = u256::new(0, 700003);
@@ -1373,7 +1394,7 @@ mod u512_div_rem_tests {
     }
 
     #[test]
-    fn test_div_rem10() {
+    fn test_div_rem_by_10() {
         let v = u512::ZERO;
         assert_eq!(v.div_rem(10_u128), (u512::ZERO, 0_u128));
         let v = u512::new(u256::ZERO, u256::new(0, 7));
@@ -1398,7 +1419,7 @@ mod u512_div_rem_tests {
     }
 
     #[test]
-    fn test_div_rem_pow10() {
+    fn test_div_rem_by_pow10() {
         let v = u512::ZERO;
         assert_eq!(v.div_rem(10_u128.pow(10)), (u512::ZERO, 0));
         let v = u512::new(u256::ZERO, u256::new(2730, 490003));
