@@ -604,9 +604,8 @@ impl Rem<u128> for &u256 {
 
     #[inline]
     fn rem(self, rhs: u128) -> Self::Output {
-        let mut rem = self.hi % rhs;
-        rem = ((rem << 64) + u128_hi(self.lo)) % rhs;
-        rem = ((rem << 64) + u128_lo(self.lo)) % rhs;
+        let t = u256::new(self.hi % rhs, self.lo);
+        let (_, rem) = t.div_rem_u128_special(rhs);
         rem
     }
 }
@@ -1006,7 +1005,7 @@ mod u256_div_rem_tests {
     use super::*;
 
     #[test]
-    fn test_div_rem() {
+    fn test_div_rem_1() {
         let v = u256::new(0, u128::MAX - 1);
         assert_eq!(v.div_rem(u128::MAX), (u256::ZERO, v.lo));
         let v = u256::MAX;
@@ -1035,6 +1034,19 @@ mod u256_div_rem_tests {
             v.div_rem(10_u128.pow(27) + 3),
             (u256::new(0, 23921510112175146), 468697630784693143145201978)
         )
+    }
+
+    #[test]
+    fn test_div_rem_2() {
+        let num = u256::new(
+            396091524468374439553466833932038,
+            287120322474436508255079181112596091133,
+        );
+        let den = 261829273180548883101888490383232063939_u128;
+        let (quot, rem) = num.div_rem(den);
+        assert_eq!(quot, u256::new(0, 514774226067836787805468557499791));
+        assert_eq!(rem, 170749921628011334804182094129221981712_u128);
+        assert_eq!(rem, &num % den);
     }
 
     #[test]
