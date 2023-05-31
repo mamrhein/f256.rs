@@ -414,11 +414,20 @@ impl Add for &u256 {
 impl Add<u32> for &u256 {
     type Output = u256;
 
+    #[inline(always)]
     fn add(self, rhs: u32) -> Self::Output {
+        self + rhs as u128
+    }
+}
+
+impl Add<u128> for &u256 {
+    type Output = u256;
+
+    fn add(self, rhs: u128) -> Self::Output {
         // TODO: change when [feature(bigint_helper_methods)] got stable
         // let (lo, carry) = self.lo.carrying_add(rhs, false);
         // let hi = self.hi.wrapping_add(carry);
-        let lo = self.lo.wrapping_add(rhs as u128);
+        let lo = self.lo.wrapping_add(rhs);
         let hi = self.hi.wrapping_add((lo < self.lo) as u128);
         Self::Output { hi, lo }
     }
@@ -464,11 +473,20 @@ impl Sub for &u256 {
 impl Sub<u32> for &u256 {
     type Output = u256;
 
+    #[inline(always)]
     fn sub(self, rhs: u32) -> Self::Output {
+        self - rhs as u128
+    }
+}
+
+impl Sub<u128> for &u256 {
+    type Output = u256;
+
+    fn sub(self, rhs: u128) -> Self::Output {
         // TODO: change when [feature(bigint_helper_methods)] got stable
         // let (lo, borrow) = self.lo.borrowing_add(rhs, false);
         // let hi = self.hi.wrapping_add(borrow);
-        let lo = self.lo.wrapping_sub(rhs as u128);
+        let lo = self.lo.wrapping_sub(rhs);
         let hi = self.hi.wrapping_sub((lo > self.lo) as u128);
         Self::Output { hi, lo }
     }
