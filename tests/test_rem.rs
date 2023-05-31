@@ -181,9 +181,6 @@ mod rem_tests {
         let xx = f256::from(x);
         let yy = f256::from(y);
         let zz = f256::from(z);
-        println!("{x:e} % {y:e} = {z:e}");
-        println!("{:e}", x / y);
-        println!("{xx:e} % {yy:e} = {zz:e}");
         assert_eq!(xx % yy, zz);
     }
 }
