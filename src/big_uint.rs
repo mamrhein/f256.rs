@@ -628,6 +628,16 @@ impl Rem<u128> for &u256 {
     }
 }
 
+impl Rem<&u256> for &u256 {
+    type Output = u256;
+
+    #[inline]
+    fn rem(self, rhs: &u256) -> Self::Output {
+        let (_, rem) = self.div_rem(rhs);
+        rem
+    }
+}
+
 impl BitOrAssign for u256 {
     fn bitor_assign(&mut self, rhs: Self) {
         self.hi |= rhs.hi;
@@ -1086,6 +1096,7 @@ mod u256_div_rem_tests {
                 82950902321873430177054416653535172045
             )
         );
+        assert_eq!(rem, &num % &den);
     }
 
     #[test]
