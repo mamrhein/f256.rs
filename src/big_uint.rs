@@ -16,6 +16,7 @@ use core::{
         ShrAssign, Sub, SubAssign,
     },
 };
+use std::ops::Mul;
 
 const CHUNK_SIZE: u32 = 19;
 const CHUNK_BASE: u64 = 10_u64.pow(CHUNK_SIZE);
@@ -393,6 +394,17 @@ impl u256 {
         r += c;
         r
     }
+
+    // Calculate ⌊(x * y) % 2²⁵⁶⌋.
+    pub(crate) fn wrapping_mul(&self, rhs: &u256) -> u256 {
+        let mut lo = u128_widening_mul(self.lo, rhs.lo);
+        let mut t1 = u128_widening_mul(self.lo, rhs.hi);
+        let mut t2 = u128_widening_mul(self.hi, rhs.lo);
+        t1 += &t2;
+        t2 = u256::new(t1.lo, 0);
+        lo += &t2;
+        lo
+    }
 }
 
 impl Add for &u256 {
@@ -512,6 +524,25 @@ impl SubAssign<u128> for u256 {
         let t = self.lo.wrapping_sub(rhs);
         self.hi = self.hi.wrapping_sub((t > self.lo) as u128);
         self.lo = t;
+    }
+}
+
+impl Mul<&u256> for &u256 {
+    type Output = u256;
+
+    fn mul(self, rhs: &u256) -> Self::Output {
+        assert!(
+            self.hi == 0 || rhs.hi == 0,
+            "Attempt to multiply with overflow."
+        );
+        let mut res = u128_widening_mul(self.lo, rhs.lo);
+        let mut t = u128_widening_mul(self.lo, rhs.hi);
+        assert_eq!(t.hi, 0, "Attempt to multiply with overflow.");
+        res.hi += t.lo;
+        t = u128_widening_mul(self.hi, rhs.lo);
+        assert_eq!(t.hi, 0, "Attempt to multiply with overflow.");
+        res.hi += t.lo;
+        res
     }
 }
 
@@ -823,8 +854,86 @@ impl u512 {
     pub(crate) fn incr(&mut self) {
         self.lo.incr();
         if self.lo.is_zero() {
-            self.incr();
+            self.hi.incr();
         }
+    }
+
+    /// Subtract 1 from `self` inplace.
+    #[inline]
+    pub(crate) fn decr(&mut self) {
+        if self.lo.is_zero() {
+            self.hi.decr();
+        }
+        self.lo.decr();
+    }
+
+    // Specialized version adapted from
+    // Henry S. Warren, Hacker’s Delight,
+    // originally found at http://www.hackersdelight.org/HDcode/divlu.c.txt.
+    // That code is in turn based on Algorithm D from
+    // D. E. Knuth, The Art of Computer Programming, Vol. 2, Ch. 4.3.1,
+    // adapted to the special case m = 4 and n = 2 and HI(x) < y (!).
+    // The link given above does not exist anymore, but the code can still be
+    // found at https://github.com/hcs0/Hackers-Delight/blob/master/divlu.c.txt.
+    /// Returns `self` / rhs, `self` % rhs
+    fn div_rem_u256_special(&self, rhs: &u256) -> (Self, u256) {
+        debug_assert!(self.hi < *rhs);
+        const B: u256 = u256::new(1, 0);
+        // Normalize dividend and divisor, so that the divisor has its highest
+        // bit set, and get their 128-bit parts.
+        let shift = rhs.leading_zeros();
+        let mut x = *self;
+        x <<= shift;
+        let x32 = x.hi;
+        let x1 = x.lo.hi;
+        let x0 = x.lo.lo;
+        let y = rhs << shift;
+        let y1 = u256::new(0, y.hi);
+        let y0 = u256::new(0, y.lo);
+
+        let (mut q1, mut rhat) = x32.div_rem(&y1);
+        // Now we have
+        // q1 * y1 + rhat = x32
+        // so that
+        // q1 * y1 * 2¹²⁸ + rhat * 2¹²⁸ + x1 = x32 * 2¹²⁸ + x1
+        while q1 >= B || &q1 * &y0 > &(&rhat * &B) + x1 {
+            q1.decr();
+            rhat += &y1;
+            if rhat >= B {
+                break;
+            }
+        }
+        // The loop did not change the equation given above. It was terminated
+        // if either q1 < 2¹²⁸ or rhat >= 2¹²⁸ or q1 * yn0 > rhat * 2¹²⁸ + x1.
+        // In these cases follows:
+        // q1 * y0 <= rhat * 2¹²⁸ + x1, therefor
+        // q1 * y1 * 2¹²⁸ + q1 * y0 <= x32 * 2¹²⁸ + x1, and
+        // q1 * y <= x32 * 2¹²⁸ + x1, and
+        // x32 * 2¹²⁸ + x1 - q1 * y >= 0.
+        // That means that the add-back step in Knuth's algorithm D is not
+        // required.
+
+        // Since the final quotient is < 2²⁵⁶, this must also be true for
+        // x32 * 2¹²⁸ + x1 - q1 * y. Thus, in the following we can safely
+        // ignore any possible overflow in x32 * 2¹²⁸ or q1 * y.
+        let mut t = u256::new(x32.lo, x1);
+        t -= &q1.wrapping_mul(&y);
+        let (mut q0, mut rhat) = t.div_rem(&y1);
+        while q0 >= B || &q0 * &y0 > &(&rhat * &B) + x0 {
+            q0.decr();
+            rhat += &y1;
+            if rhat >= B {
+                break;
+            }
+        }
+        // q = q1 * B + q0
+        let mut q = u256::new(q1.lo, 0);
+        q += &q0;
+        // Denormalize remainder
+        let mut r = u256::new(t.lo, x0);
+        r -= &q0.wrapping_mul(&y);
+        r >>= shift;
+        (u512::new(u256::ZERO, q), r)
     }
 
     /// Divide `self` inplace by 2ⁿ and round (tie to even).
@@ -890,6 +999,30 @@ impl DivRem<u128> for &u512 {
     }
 }
 
+impl DivRem<&u256> for &u512 {
+    type Output = (u512, u256);
+
+    /// Returns `self` / rhs, `self` % rhs
+    fn div_rem(self, rhs: &u256) -> Self::Output {
+        if self.hi.is_zero() {
+            let (quot, rem) = self.lo.div_rem(rhs);
+            (u512::new(u256::ZERO, quot), rem)
+        } else if rhs.hi == 0 {
+            let (quot, rem) = self.div_rem(rhs.lo);
+            (quot, u256::new(0, rem))
+        } else if self.hi < *rhs {
+            self.div_rem_u256_special(rhs)
+        } else {
+            let mut quot = *self;
+            let mut rem = u256::ZERO;
+            quot.hi = &quot.hi % rhs;
+            (quot, rem) = quot.div_rem_u256_special(rhs);
+            (quot.hi, _) = self.hi.div_rem(rhs);
+            (quot, rem)
+        }
+    }
+}
+
 impl Rem<u64> for &u512 {
     type Output = u64;
 
@@ -907,6 +1040,17 @@ impl Rem<u128> for &u512 {
         let mut rem = &self.hi % rhs;
         rem = &u256::new(rem, self.lo.hi) % rhs;
         rem = &u256::new(rem, self.lo.lo) % rhs;
+        rem
+    }
+}
+
+impl Rem<&u256> for &u512 {
+    type Output = u256;
+
+    #[inline]
+    fn rem(self, rhs: &u256) -> Self::Output {
+        let t = u512::new(&self.hi % rhs, self.lo);
+        let (_, rem) = t.div_rem_u256_special(rhs);
         rem
     }
 }
