@@ -15,20 +15,20 @@ use core::{
 use crate::{
     abs_bits, abs_bits_sticky,
     big_uint::{u256, u512, DivRem},
-    exp_bits, f256, norm_bit, norm_signif, sign_bits_hi, signif, EXP_BITS,
+    exp_bits, f256, norm_bit, norm_signif, sign_bits_hi, signif,
     FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS, MAX_HI, SIGNIFICAND_BITS,
 };
 
 /// Compute (a * 2ⁿ) % b.
 #[inline]
 fn lshift_rem(a: &u256, b: &u256, n: u32) -> u256 {
-    // debug_assert!(a > b);
-    debug_assert!(a.leading_zeros() >= EXP_BITS);
-    debug_assert!(b.leading_zeros() >= EXP_BITS);
-    let sh = n % EXP_BITS;
-    let mut r = &(a << sh) % b;
-    for _ in 0..n / EXP_BITS {
-        r = &(&r << EXP_BITS) % b;
+    let sh = n % u256::BITS;
+    let mut t = u512::new(u256::ZERO, *a);
+    t <<= sh;
+    let mut r = &t % b;
+    for _ in 0..n / u256::BITS {
+        t = u512::new(r, u256::ZERO);
+        r = &t % b;
         if r.is_zero() {
             break;
         }
@@ -89,13 +89,6 @@ pub(crate) fn rem(x: f256, y: f256) -> f256 {
         return f256::ZERO;
     }
 
-    // |x| = mx * 2 ^ ex, with 1 <= mx < 2
-    // |y| = my * 2 ^ ey, with 1 <= my < 2
-    // q = ⌊|x| / |y|⌋ = ⌊mx / my * 2 ^ (ex - ey)⌋
-    // if signif_x < signif_y {
-    //     signif_x <<= 1;
-    //     exp_bits_x -= 1;
-    // }
     let n_bits = exp_bits_x + norm_bit_y - exp_bits_y - norm_bit_x;
     let mut abs_bits_z = lshift_rem(&signif_x, &signif_y, n_bits);
     if abs_bits_z.is_zero() {
