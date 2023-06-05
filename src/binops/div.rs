@@ -13,37 +13,25 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, norm_signif, u256,
-    EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, HI_ABS_MASK, HI_EXP_MASK,
-    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
-    INF_HI, MAX_HI, SIGNIFICAND_BITS,
+    abs_bits, abs_bits_sticky,
+    big_uint::{u512, DivRem},
+    exp_bits, f256, norm_bit, norm_signif, u256, EMIN, EXP_BIAS, EXP_BITS,
+    EXP_MAX, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS,
+    HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI, MAX_HI,
+    SIGNIFICAND_BITS,
 };
 
 #[inline]
 fn div_signifs(x: &u256, y: &u256) -> (u256, u32) {
     debug_assert_eq!(x.hi.leading_zeros(), EXP_BITS);
     debug_assert_eq!(y.hi.leading_zeros(), EXP_BITS);
-    let mut r = x << (x < y) as u32;
-    r -= y;
-    let mut q = u256::new(0, 1);
-    for i in 1..=SIGNIFICAND_BITS {
-        if r.is_zero() {
-            q <<= SIGNIFICAND_BITS - i;
-            return (q, 0);
-        }
-        let mut t = &r << 1;
-        t -= y;
-        q <<= 1;
-        r = t;
-        if t > *y {
-            r += y;
-        } else {
-            q.incr();
-        }
-    }
-    let c = ((q.lo & 1) as u32) << 1 | (!r.is_zero() as u32);
+    let mut t = u512::new(u256::ZERO, *x);
+    t <<= SIGNIFICAND_BITS + (x < y) as u32;
+    let (mut q, r) = t.div_rem(y);
+    let c = ((q.lo.lo & 1) as u32) << 1 | (!r.is_zero() as u32);
     q >>= 1;
-    (q, c)
+    debug_assert!(q.hi.is_zero());
+    (q.lo, c)
 }
 
 // Compute z = x / y, rounded tie to even.
