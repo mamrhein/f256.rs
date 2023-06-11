@@ -53,7 +53,7 @@ impl f256 {
         let mut q = u256::new(HI_FRACTION_BIAS << 1, 0);
         let mut r = &(&signif << (1 + odd_exp as u32)) - &q;
         let mut s = q;
-        for i in 1..SIGNIFICAND_BITS {
+        for i in 1..=SIGNIFICAND_BITS {
             s >>= 1;
             let t = &r << 1;
             let u = &(&q << 1) + &s;
@@ -129,7 +129,67 @@ mod sqrt_tests {
     }
 
     #[test]
-    fn test_subnormal() {
+    fn test_normal_1() {
+        let f = f256::from(7_f64);
+        let r = f256::from_sign_exp_signif(
+            0,
+            -235,
+            (
+                429297694403283601796750956887579,
+                277843259545175179498338411277842904177,
+            ),
+        );
+        assert_ne!(f, r * r);
+        assert_eq!(f.sqrt(), r);
+    }
+
+    #[test]
+    fn test_normal_2() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -262021,
+            (0, 73913349228891354865085158512847),
+        );
+        assert!(f.is_normal());
+        let r = f256::from_sign_exp_signif(
+            0,
+            -131194,
+            (
+                438052537377059491661973478527305,
+                282106124646787902904225457342964901703,
+            ),
+        );
+        assert!(r.is_normal());
+        assert_eq!(r * r, f);
+        assert_eq!(f.sqrt(), r);
+    }
+
+    #[test]
+    fn test_normal_3() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            157426,
+            (
+                6224727460272857694717553232696,
+                192855907509048186086344977196907424065,
+            ),
+        );
+        assert!(f.is_normal());
+        let r = f256::from_sign_exp_signif(
+            0,
+            78594,
+            (
+                89889700240364350456294468037203,
+                107344220596675717575864825763718692041,
+            ),
+        );
+        assert!(r.is_normal());
+        assert_eq!(r * r, f);
+        assert_eq!(f.sqrt(), r);
+    }
+
+    #[test]
+    fn test_subnormal_1() {
         let f = f256 {
             bits: u256 {
                 hi: 161381583805889998189973969922,
@@ -140,11 +200,11 @@ mod sqrt_tests {
         let r = f256 {
             bits: u256 {
                 hi: 42533487390635923064310396803489994282,
-                lo: 251643572745990121674876797336685460939,
+                lo: 251643572745990121674876797336685460940,
             },
         };
         assert!(r.is_normal());
-        assert_eq!(f.sqrt(), r);
         assert_eq!(r * r, f);
+        assert_eq!(f.sqrt(), r);
     }
 }
