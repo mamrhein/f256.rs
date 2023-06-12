@@ -29,7 +29,8 @@ pub(self) const MIN_10_EXP_CUTOFF: i32 = -79056;
 
 // The internals of ParseFloatError are not public. The following hack is used
 // to return the same errors as f64.
-fn err(empty: bool) -> ParseFloatError {
+#[inline]
+fn parse_float_error(empty: bool) -> ParseFloatError {
     if empty {
         f64::from_str("").unwrap_err()
     } else {
@@ -56,8 +57,8 @@ impl FromStr for f256 {
 
     fn from_str(lit: &str) -> Result<Self, Self::Err> {
         match FloatRepr::from_str(lit) {
-            FloatRepr::EMPTY => Err(err(true)),
-            FloatRepr::INVALID => Err(err(false)),
+            FloatRepr::EMPTY => Err(parse_float_error(true)),
+            FloatRepr::INVALID => Err(parse_float_error(false)),
             FloatRepr::NAN => Ok(Self::NAN),
             FloatRepr::INF(sign) => {
                 Ok([Self::INFINITY, Self::NEG_INFINITY][sign as usize])

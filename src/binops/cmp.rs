@@ -18,7 +18,7 @@ impl PartialEq for f256 {
             return false;
         }
         // ±0 == ±0
-        if self.is_zero() && other.is_zero() {
+        if self.eq_zero() && other.eq_zero() {
             return true;
         }
         // All other values are equal if their bit representations are equal.
@@ -33,7 +33,7 @@ impl PartialOrd for f256 {
             return None;
         }
         // ±0 == ±0
-        if self.is_zero() && other.is_zero() {
+        if self.eq_zero() && other.eq_zero() {
             return Some(Ordering::Equal);
         }
         Some(self.total_cmp(other))

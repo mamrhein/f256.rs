@@ -38,7 +38,7 @@ fn format_nan(form: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 
 fn format_special(f: &f256, form: &mut fmt::Formatter<'_>) -> fmt::Result {
-    if f.is_zero() {
+    if f.eq_zero() {
         let prec = min(form.precision().unwrap_or(0), MAX_PREC);
         let s = format!("{:.*}", prec, 0.);
         form.pad_integral(f.is_sign_positive(), "", s.as_str())
@@ -65,7 +65,7 @@ fn format_exact(
 
 #[inline]
 fn format_shortest(f: &f256, form: &mut fmt::Formatter<'_>) -> fmt::Result {
-    debug_assert!(f.is_finite() && !f.is_zero());
+    debug_assert!(f.is_finite() && !f.eq_zero());
     let d = DecNumRepr::shortest_from_f256(f);
     d.fmt(form)
 }
@@ -104,7 +104,7 @@ fn format_scientific_special(
     exp_mark: char,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    if f.is_zero() {
+    if f.eq_zero() {
         let prec = min(form.precision().unwrap_or(0), MAX_PREC);
         let s = match exp_mark {
             'e' => format!("{:.*e}", prec, 0.),
@@ -158,7 +158,7 @@ fn format_scientific_shortest(
     exp_mark: char,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    debug_assert!(f.is_finite() && !f.is_zero());
+    debug_assert!(f.is_finite() && !f.eq_zero());
     let d = DecNumRepr::shortest_from_f256(f);
     d.fmt_scientific(exp_mark, form)
 }

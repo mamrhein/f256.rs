@@ -406,7 +406,7 @@ impl f256 {
         const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
         let mut exp = self.biased_exponent() as i32;
         exp += (exp == 0) as i32; // Adjust exp for subnormals.
-        (!self.is_zero() as i32) * (exp - TOTAL_BIAS)
+        (!self.eq_zero() as i32) * (exp - TOTAL_BIAS)
     }
 
     /// Returns the fraction of `self`.
@@ -505,7 +505,7 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_subnormal(self) -> bool {
-        (self.bits.hi & HI_EXP_MASK) == 0 && !self.is_zero()
+        (self.bits.hi & HI_EXP_MASK) == 0 && !self.eq_zero()
     }
 
     /// Returns `true` if the number is neither zero, infinite, subnormal, or
@@ -538,7 +538,7 @@ impl f256 {
     /// Returns `true` if `self` is equal to `+0.0` or `-0.0`.
     #[must_use]
     #[inline]
-    pub const fn is_zero(self) -> bool {
+    pub const fn eq_zero(self) -> bool {
         (self.bits.hi << 1) == 0 && self.bits.lo == 0
     }
 

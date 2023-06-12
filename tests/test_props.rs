@@ -50,21 +50,21 @@ mod property_tests {
 
     #[test]
     fn test_zero() {
-        assert!(f256::ZERO.is_zero());
+        assert!(f256::ZERO.eq_zero());
         assert_eq!(f256::ZERO.classify(), FpCategory::Zero);
-        assert!(f256::NEG_ZERO.is_zero());
+        assert!(f256::NEG_ZERO.eq_zero());
         assert_eq!(f256::NEG_ZERO.classify(), FpCategory::Zero);
-        assert!(!f256::ONE.is_zero());
-        assert!(!f256::NEG_ONE.is_zero());
-        assert!(!f256::NAN.is_zero());
-        assert!(!(-f256::NAN).is_zero());
-        assert!(!f256::INFINITY.is_zero());
-        assert!(!f256::NEG_INFINITY.is_zero());
-        assert!(f256::from(0.0_f32).is_zero());
-        assert!(f256::from(-0.0_f64).is_zero());
-        assert!(!f256::from(0.001_f64).is_zero());
-        assert!(!f256::MIN_GT_ZERO.is_zero());
-        assert!(!(-f256::MIN_GT_ZERO).is_zero());
+        assert!(!f256::ONE.eq_zero());
+        assert!(!f256::NEG_ONE.eq_zero());
+        assert!(!f256::NAN.eq_zero());
+        assert!(!(-f256::NAN).eq_zero());
+        assert!(!f256::INFINITY.eq_zero());
+        assert!(!f256::NEG_INFINITY.eq_zero());
+        assert!(f256::from(0.0_f32).eq_zero());
+        assert!(f256::from(-0.0_f64).eq_zero());
+        assert!(!f256::from(0.001_f64).eq_zero());
+        assert!(!f256::MIN_GT_ZERO.eq_zero());
+        assert!(!(-f256::MIN_GT_ZERO).eq_zero());
     }
 
     #[test]

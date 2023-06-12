@@ -75,7 +75,7 @@ impl DecNumRepr {
     /// Converts a finite, non-zero `f256` value into its shortest, correctly
     /// rounded decimal representation.
     pub(crate) fn shortest_from_f256(f: &f256) -> Self {
-        debug_assert!(f.is_finite() && !f.is_zero());
+        debug_assert!(f.is_finite() && !f.eq_zero());
 
         // Step 1: Decode the binary floating-point number.
         let sign = f.sign();
