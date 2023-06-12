@@ -70,6 +70,8 @@ mod binops;
 pub mod consts;
 mod conv;
 mod math;
+#[cfg(feature = "num-traits")]
+mod num_traits;
 
 use crate::big_uint::{u256, u512};
 
