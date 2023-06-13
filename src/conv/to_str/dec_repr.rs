@@ -10,8 +10,8 @@
 use alloc::string::ToString;
 use core::{cmp::max, fmt, mem::MaybeUninit};
 
-use f256_pow2_div_pow5_lut;
-use f256_pow5_div_pow2_lut;
+
+
 
 use super::{
     common::floor_log10_pow2,
@@ -349,7 +349,7 @@ impl fmt::Display for DecNumRepr {
                 parts[n_parts] =
                     MaybeUninit::new(Part::Zeroes(n_frac_digits - n_digits));
                 n_parts += 1;
-                parts[n_parts] = MaybeUninit::new(Part::Digits(&digits));
+                parts[n_parts] = MaybeUninit::new(Part::Digits(digits));
                 n_parts += 1;
             } else {
                 parts[n_parts] =

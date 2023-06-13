@@ -212,7 +212,7 @@ impl<'a> AsciiNumLit<'a> {
             };
         }
         if self.first_eq(b'.') {
-            if let Some(_) = self.state.pos_radix_point {
+            if self.state.pos_radix_point.is_some() {
                 // Double radix point
                 self.state.invalid = true;
                 return;

@@ -151,7 +151,7 @@ impl u256 {
     pub(crate) fn imul10_add(&mut self, d: u8) {
         debug_assert!(
             *self
-                <= u256::new(
+                <= Self::new(
                     0x19999999999999999999999999999999_u128,
                     0x99999999999999999999999999999999_u128
                 )
@@ -245,7 +245,7 @@ impl u256 {
         // Denormalize remainder
         let r = ((t.wrapping_shl(64) + x0).wrapping_sub(q0.wrapping_mul(y)))
             >> shift;
-        (u256::new(0_u128, q), r)
+        (Self::new(0_u128, q), r)
     }
 
     /// Returns `self` / `rhs`, rounded tie to even.
@@ -290,25 +290,25 @@ impl u256 {
     /// Returns `self` % 2ⁿ, i.e. the n left-most bits of self.
     pub(crate) fn rem_pow2(&self, n: u32) -> Self {
         match n {
-            0 => u256::ZERO,
-            1..=127 => u256::new(0, self.lo & ((1 << n) - 1)),
-            128..=255 => u256::new(self.hi & ((1 << (n - 128)) - 1), self.lo),
+            0 => Self::ZERO,
+            1..=127 => Self::new(0, self.lo & ((1 << n) - 1)),
+            128..=255 => Self::new(self.hi & ((1 << (n - 128)) - 1), self.lo),
             _ => *self,
         }
     }
 
     // TODO: remove this function and replaced calls to it by op <<
     // when trait fns can be declared const.
-    pub(crate) const fn shift_left(&self, rhs: u32) -> u256 {
+    pub(crate) const fn shift_left(&self, rhs: u32) -> Self {
         const LIMIT: u32 = u256::BITS - 1;
         assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
         match rhs {
-            1..=127 => u256 {
+            1..=127 => Self {
                 hi: self.hi << rhs | self.lo >> (128 - rhs),
                 lo: self.lo << rhs,
             },
-            128 => u256 { hi: self.lo, lo: 0 },
-            129..=255 => u256 {
+            128 => Self { hi: self.lo, lo: 0 },
+            129..=255 => Self {
                 hi: self.lo << (rhs - 128),
                 lo: 0,
             },
@@ -364,7 +364,7 @@ impl u256 {
     }
 
     // Calculate z = x * y.
-    pub(crate) fn widening_mul(&self, rhs: &u256) -> u512 {
+    pub(crate) fn widening_mul(&self, rhs: &Self) -> u512 {
         let mut lo = u128_widening_mul(self.lo, rhs.lo);
         let mut t1 = u128_widening_mul(self.lo, rhs.hi);
         let mut t2 = u128_widening_mul(self.hi, rhs.lo);
@@ -372,14 +372,14 @@ impl u256 {
         t1 += &t2;
         hi += t1.hi;
         hi.hi += (t1 < t2) as u128;
-        t2 = u256::new(t1.lo, 0);
+        t2 = Self::new(t1.lo, 0);
         lo += &t2;
         hi += (lo < t2) as u128;
         u512 { hi, lo }
     }
 
     // Calculate ⌊(x * y) / 2²⁵⁶⌋.
-    pub(crate) fn truncating_mul(&self, rhs: &u256) -> u256 {
+    pub(crate) fn truncating_mul(&self, rhs: &Self) -> Self {
         let mut r = u128_widening_mul(self.hi, rhs.hi);
         let t1 = u128_widening_mul(self.hi, rhs.lo);
         r += t1.hi;
@@ -395,12 +395,12 @@ impl u256 {
     }
 
     // Calculate ⌊(x * y) % 2²⁵⁶⌋.
-    pub(crate) fn wrapping_mul(&self, rhs: &u256) -> u256 {
+    pub(crate) fn wrapping_mul(&self, rhs: &Self) -> Self {
         let mut lo = u128_widening_mul(self.lo, rhs.lo);
         let mut t1 = u128_widening_mul(self.lo, rhs.hi);
         let mut t2 = u128_widening_mul(self.hi, rhs.lo);
         t1 += &t2;
-        t2 = u256::new(t1.lo, 0);
+        t2 = Self::new(t1.lo, 0);
         lo += &t2;
         lo
     }
@@ -693,7 +693,7 @@ impl Shl<u32> for &u256 {
                 hi: self.lo << (rhs - 128),
                 lo: 0,
             },
-            0 => self.clone(),
+            0 => *self,
             _ => unreachable!(),
         }
     }
@@ -743,7 +743,7 @@ impl Shr<u32> for &u256 {
                 hi: 0,
                 lo: self.hi >> (rhs - 128),
             },
-            0 => self.clone(),
+            0 => *self,
             _ => unreachable!(),
         }
     }
@@ -932,7 +932,7 @@ impl u512 {
         let mut r = u256::new(t.lo, x0);
         r -= &q0.wrapping_mul(&y);
         r >>= shift;
-        (u512::new(u256::ZERO, q), r)
+        (Self::new(u256::ZERO, q), r)
     }
 
     /// Divide `self` inplace by 2ⁿ and round (tie to even).

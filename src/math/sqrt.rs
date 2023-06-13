@@ -29,9 +29,9 @@ impl f256 {
     #[must_use]
     pub fn sqrt(self) -> Self {
         // Check whether `self` is negative or ∈ {-0, +0, +∞, NAN}.
-        if self.bits > f256::NEG_ZERO.bits {
+        if self.bits > Self::NEG_ZERO.bits {
             // `self` < 0
-            return f256::NAN;
+            return Self::NAN;
         }
         if self.is_special() {
             // `self` either not a number, infinite or equal to zero.

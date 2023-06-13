@@ -360,7 +360,7 @@ impl f256 {
             _ => {}
         }
         debug_assert!(
-            t >= EMIN - 1 && t <= EMAX,
+            (EMIN - 1..=EMAX).contains(&t),
             "Exponent limits exceeded: {t}"
         );
         // 3. Offset exponent
@@ -377,10 +377,10 @@ impl f256 {
         let c = u256::new(c.0, c.1);
         if c.is_zero() {
             if t == 0 {
-                return [f256::ZERO, f256::NEG_ZERO][s as usize];
+                return [Self::ZERO, Self::NEG_ZERO][s as usize];
             }
             if t == EMAX + 1 {
-                return [f256::INFINITY, f256::NEG_INFINITY][s as usize];
+                return [Self::INFINITY, Self::NEG_INFINITY][s as usize];
             }
         }
         Self::encode(s, t, c)

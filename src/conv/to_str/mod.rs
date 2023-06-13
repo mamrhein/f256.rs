@@ -61,9 +61,7 @@ fn format_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    if prec > MAX_PREC {
-        panic!("Maximum precision exceeded: {prec} > {MAX_PREC}.")
-    }
+    assert!(!(prec > MAX_PREC), "Maximum precision exceeded: {prec} > {MAX_PREC}.");
     let s = bin_2_dec_fixed_point(f.abs(), prec);
     let start = s.starts_with('0') as usize;
     form.pad_integral(f.is_sign_positive(), "", &s[start..])
@@ -148,12 +146,10 @@ fn format_scientific_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    if prec > MAX_PREC {
-        panic!(
+    assert!(!(prec > MAX_PREC), 
             "Maximum precision for scientific format exceeded: {prec} > \
              {MAX_PREC}."
-        )
-    }
+        );
     let s = bin_2_dec_scientific(f.abs(), exp_mark, prec);
     form.pad_integral(f.is_sign_positive(), "", &s)
 }

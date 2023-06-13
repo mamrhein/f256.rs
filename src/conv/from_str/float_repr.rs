@@ -136,7 +136,7 @@ impl FloatRepr {
                 } else if let Some(p) =
                     chunk_contains_7_digits_and_a_dot_at(k)
                 {
-                    if let Some(_) = lit.state.pos_radix_point {
+                    if lit.state.pos_radix_point.is_some() {
                         // Double radix point
                         lit.state.invalid = true;
                         return partial_signif;
@@ -191,7 +191,7 @@ impl FloatRepr {
                     partial_signif.n_rem_digits += 1;
                     n_digits += 1;
                 } else if *c == b'.' {
-                    if let Some(_) = lit.state.pos_radix_point {
+                    if lit.state.pos_radix_point.is_some() {
                         // Double radix point
                         lit.state.invalid = true;
                         return partial_signif;
@@ -215,7 +215,7 @@ impl FloatRepr {
             if *c >= b'1' && *c <= b'9' {
                 n_non_zero_digits += 1;
             } else if *c == b'.' {
-                if let Some(_) = lit.state.pos_radix_point {
+                if lit.state.pos_radix_point.is_some() {
                     // Double radix point
                     lit.state.invalid = true;
                     return partial_signif;
@@ -270,7 +270,7 @@ impl FloatRepr {
         }
 
         // Parse significant digits.
-        let mut partial_signif = FloatRepr::read_significand(&mut lit);
+        let mut partial_signif = Self::read_significand(&mut lit);
 
         // Check state.
         if lit.state.invalid {
@@ -279,7 +279,7 @@ impl FloatRepr {
 
         // If there are no digits, check for special values.
         if start_pos == lit.len() {
-            return FloatRepr::parse_special(&mut lit, sign);
+            return Self::parse_special(&mut lit, sign);
         }
 
         // Set implicit radix point if no one was detected.

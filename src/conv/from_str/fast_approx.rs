@@ -72,7 +72,7 @@ pub(super) fn fast_approx(
                 // Check edge cases.
                 // If 5ᵏ ∈ [1..2²⁵⁶) we can be sure to have a tie, otherwise
                 // we have "a tie and a little bit more".
-                if exp10 >= 0 && exp10 <= 110 {
+                if (0..=110).contains(&exp10) {
                     Some((signif2.lo & 1) == 1)
                 } else {
                     Some(true)
