@@ -20,7 +20,7 @@ use crate::{
     HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS,
 };
 
-pub(crate) fn add<'a>(x: f256, y: f256) -> f256 {
+pub(crate) fn add(x: f256, y: f256) -> f256 {
     let mut abs_bits_x = abs_bits(&x);
     let mut abs_bits_y = abs_bits(&y);
     let mut sign_bits_hi_x = sign_bits_hi(&x);
@@ -97,7 +97,7 @@ pub(crate) fn add<'a>(x: f256, y: f256) -> f256 {
         add_or_sub_subnormals(&signif_x, &signif_y, op)
     } else if exp_bits_x == exp_bits_y {
         // Exponents are equal, so there's no need for shifting and rounding.
-        add_or_sub_normals_exact(exp_bits_x, &mut signif_x, &signif_y, op)
+        add_or_sub_normals_exact(exp_bits_x, &signif_x, &signif_y, op)
     } else {
         // Exponents and significands have to be adjusted and the result has
         // to be rounded.

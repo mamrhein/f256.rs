@@ -14,6 +14,7 @@ mod powers_of_five;
 mod to_fixed_prec;
 
 use alloc::{
+    borrow::ToOwned,
     format,
     string::{String, ToString},
 };
@@ -30,7 +31,7 @@ use crate::{f256, split_f256_enc, u256, EXP_MAX};
 const MAX_PREC: usize = 75;
 
 fn format_nan(form: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let nan = "NaN".to_string();
+    let nan = "NaN".to_owned();
     let s = if let Some(width) = form.width() {
         match form.align() {
             Some(fmt::Alignment::Center) => format!("{:^width$}", nan),
@@ -61,9 +62,10 @@ fn format_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    if prec > MAX_PREC {
-        panic!("Maximum precision exceeded: {prec} > {MAX_PREC}.")
-    }
+    assert!(
+        prec <= MAX_PREC,
+        "Maximum precision exceeded: {prec} > {MAX_PREC}."
+    );
     let s = bin_2_dec_fixed_point(f.abs(), prec);
     let start = s.starts_with('0') as usize;
     form.pad_integral(f.is_sign_positive(), "", &s[start..])
@@ -95,6 +97,7 @@ impl fmt::Display for f256 {
 }
 
 impl fmt::Debug for f256 {
+    #[allow(clippy::cast_possible_wrap)]
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (sign, exp, signif) = split_f256_enc(self);
         if exp == EXP_MAX as i32 {
@@ -148,12 +151,11 @@ fn format_scientific_exact(
     prec: usize,
     form: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    if prec > MAX_PREC {
-        panic!(
-            "Maximum precision for scientific format exceeded: {prec} > \
-             {MAX_PREC}."
-        )
-    }
+    assert!(
+        prec <= MAX_PREC,
+        "Maximum precision for scientific format exceeded: {prec} > \
+         {MAX_PREC}."
+    );
     let s = bin_2_dec_scientific(f.abs(), exp_mark, prec);
     form.pad_integral(f.is_sign_positive(), "", &s)
 }
@@ -522,7 +524,7 @@ mod display_tests {
         assert_eq!(
             s,
             "131287264811883885796002000348253624778443062443856017.28632"
-                .to_string()
+                .to_owned()
         );
     }
 }

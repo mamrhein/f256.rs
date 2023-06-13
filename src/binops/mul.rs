@@ -22,6 +22,7 @@ use crate::{
 };
 
 #[inline]
+#[allow(clippy::cast_possible_truncation)]
 fn mul_signifs(x: &u256, y: &u256) -> (u256, u32, u32) {
     debug_assert!(x.hi >= HI_SIGN_MASK);
     debug_assert!(y.hi >= HI_SIGN_MASK);
@@ -37,6 +38,7 @@ fn mul_signifs(x: &u256, y: &u256) -> (u256, u32, u32) {
 }
 
 /// Compute z = x * y, rounded tie to even.
+#[allow(clippy::cast_possible_truncation)]
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
 #[inline]
@@ -132,7 +134,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
                 }
                 3..=127 => {
                     let rem = signif_z.rem_pow2(shift).lo;
-                    rnd_bits = (&rem >> (shift - 2)) as u32
+                    rnd_bits = (rem >> (shift - 2)) as u32
                         | (rem > (1_u128 << (shift - 1))) as u32
                         | (rnd_bits != 0) as u32;
                 }

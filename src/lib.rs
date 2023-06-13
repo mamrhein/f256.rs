@@ -39,7 +39,6 @@
 #![warn(clippy::missing_errors_doc)]
 #![warn(clippy::missing_panics_doc)]
 #![warn(clippy::multiple_crate_versions)]
-#![warn(clippy::multiple_inherent_impl)]
 #![warn(clippy::must_use_candidate)]
 #![warn(clippy::needless_pass_by_value)]
 #![warn(clippy::print_stderr)]
@@ -360,7 +359,7 @@ impl f256 {
             _ => {}
         }
         debug_assert!(
-            t >= EMIN - 1 && t <= EMAX,
+            (EMIN - 1..=EMAX).contains(&t),
             "Exponent limits exceeded: {t}"
         );
         // 3. Offset exponent
@@ -377,10 +376,10 @@ impl f256 {
         let c = u256::new(c.0, c.1);
         if c.is_zero() {
             if t == 0 {
-                return [f256::ZERO, f256::NEG_ZERO][s as usize];
+                return [Self::ZERO, Self::NEG_ZERO][s as usize];
             }
             if t == EMAX + 1 {
-                return [f256::INFINITY, f256::NEG_INFINITY][s as usize];
+                return [Self::INFINITY, Self::NEG_INFINITY][s as usize];
             }
         }
         Self::encode(s, t, c)
@@ -596,6 +595,7 @@ impl f256 {
     /// Returns self * (180 / π)
     #[must_use]
     #[inline]
+    #[allow(clippy::cast_possible_wrap)]
     pub fn to_degrees(self) -> Self {
         // 1 rad = 180 / π ≅ M / 2²⁵⁰
         const M: u256 = u256::new(
@@ -616,6 +616,7 @@ impl f256 {
     /// Returns self * (π / 180)
     #[must_use]
     #[inline]
+    #[allow(clippy::cast_possible_wrap)]
     pub fn to_radians(self) -> Self {
         // π / 180 ≅ M / 2²⁶¹
         const M: u256 = u256::new(
@@ -1073,7 +1074,7 @@ pub(crate) const fn abs_bits(f: &f256) -> u256 {
 // Returns the high bits `abs_bits` or'ed with 1 if the lower bits of
 // `abs_bits` != 0.
 #[inline(always)]
-pub(crate) fn abs_bits_sticky(abs_bits: &u256) -> u128 {
+pub(crate) const fn abs_bits_sticky(abs_bits: &u256) -> u128 {
     abs_bits.hi | (abs_bits.lo != 0) as u128
 }
 
@@ -1082,31 +1083,31 @@ pub(crate) fn abs_bits_sticky(abs_bits: &u256) -> u128 {
 // This can be used for testing whether `abs_bits` represents |Inf|, NaN or
 // |0|.
 #[inline(always)]
-pub(crate) fn abs_bits_sticky_minus_1(abs_bits: &u256) -> u128 {
+pub(crate) const fn abs_bits_sticky_minus_1(abs_bits: &u256) -> u128 {
     abs_bits_sticky(abs_bits).wrapping_sub(1)
 }
 
 /// Returns 0 if `abs_bits` represents a subnormal f256 or ZERO, 1 otherwise.
 #[inline(always)]
-pub(crate) fn norm_bit(abs_bits: &u256) -> u32 {
+pub(crate) const fn norm_bit(abs_bits: &u256) -> u32 {
     (abs_bits.hi >= HI_FRACTION_BIAS) as u32
 }
 
 /// Returns the biased exponent from `abs_bits`.
 #[inline(always)]
-pub(crate) fn exp_bits(abs_bits: &u256) -> u32 {
+pub(crate) const fn exp_bits(abs_bits: &u256) -> u32 {
     (abs_bits.hi >> HI_FRACTION_BITS) as u32
 }
 
 /// Returns the fraction from `abs_bits`.
 #[inline(always)]
-pub(crate) fn fraction(abs_bits: &u256) -> u256 {
+pub(crate) const fn fraction(abs_bits: &u256) -> u256 {
     u256::new(abs_bits.hi & HI_FRACTION_MASK, abs_bits.lo)
 }
 
 /// Returns the significand from `abs_bits`.
 #[inline(always)]
-pub(crate) fn signif(abs_bits: &u256) -> u256 {
+pub(crate) const fn signif(abs_bits: &u256) -> u256 {
     u256::new(
         (((abs_bits.hi >= HI_FRACTION_BIAS) as u128) << HI_FRACTION_BITS)
             | (abs_bits.hi & HI_FRACTION_MASK),
@@ -1137,7 +1138,8 @@ pub(crate) fn left_adj_signif(abs_bits: &u256) -> (u256, u32) {
 }
 
 /// Extract sign, exponent and significand from f
-pub(crate) fn split_f256_enc(f: &f256) -> (u32, i32, u256) {
+#[allow(clippy::cast_possible_wrap)]
+pub(crate) const fn split_f256_enc(f: &f256) -> (u32, i32, u256) {
     const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
     let sign = f.sign();
     let abs_bits = abs_bits(f);

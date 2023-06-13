@@ -10,9 +10,6 @@
 use alloc::string::ToString;
 use core::{cmp::max, fmt, mem::MaybeUninit};
 
-use f256_pow2_div_pow5_lut;
-use f256_pow5_div_pow2_lut;
-
 use super::{
     common::floor_log10_pow2,
     formatted::{Formatted, Part},
@@ -25,6 +22,8 @@ use crate::{
 
 /// Returns ⌊log₁₀(5ⁱ)⌋ for 0 <= i <= 262380.
 #[inline(always)]
+#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cast_possible_truncation)]
 fn floor_log10_pow5(i: i32) -> i32 {
     debug_assert!(i >= 0);
     debug_assert!(i <= 262380);
@@ -33,6 +32,7 @@ fn floor_log10_pow5(i: i32) -> i32 {
 
 /// Returns ⌊log₂(5ⁱ)⌋ for 0 <= i <= 225798.
 #[inline(always)]
+#[allow(clippy::cast_sign_loss)]
 fn floor_log2_pow5(i: i32) -> i32 {
     debug_assert!(i >= 0);
     debug_assert!(i <= 225798);
@@ -95,6 +95,9 @@ impl DecNumRepr {
 
     /// Converts a finite, non-zero `f256` value into its shortest, correctly
     /// rounded decimal representation.
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cognitive_complexity)]
     pub(crate) fn shortest_from_bin_repr(
         mut signif2: u256,
         mut exp2: i32,
@@ -231,7 +234,7 @@ impl DecNumRepr {
             }
             if round_digit > 5  // need to round up
                 || (round_digit == 5    // need to round to even
-                && (!rem_zero || (rem_zero && (signif10.lo & 1) == 1)))
+                && (!rem_zero || (signif10.lo & 1) == 1))
             {
                 signif10.incr();
             }
@@ -273,12 +276,16 @@ impl DecNumRepr {
     }
 
     #[allow(unsafe_code, trivial_casts)]
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) fn fmt_scientific(
         self,
         exp_mark: char,
         form: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         let mut parts: [MaybeUninit<Part<'_>>; 5] =
+            // SAFETY: only parts initialized by MaybeUninit::new are used
+            // later.
             unsafe { MaybeUninit::uninit().assume_init() };
         let mut n_parts = 0_usize;
         let zero_padding: &mut Part;
@@ -312,8 +319,13 @@ impl DecNumRepr {
 
 impl fmt::Display for DecNumRepr {
     #[allow(unsafe_code, trivial_casts)]
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_wrap)]
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut parts: [MaybeUninit<Part<'_>>; 4] =
+            // SAFETY: only parts initialized by MaybeUninit::new are used
+            // later.
             unsafe { MaybeUninit::uninit().assume_init() };
         let mut n_parts = 0_usize;
         let zero_padding: &mut Part;
@@ -349,7 +361,7 @@ impl fmt::Display for DecNumRepr {
                 parts[n_parts] =
                     MaybeUninit::new(Part::Zeroes(n_frac_digits - n_digits));
                 n_parts += 1;
-                parts[n_parts] = MaybeUninit::new(Part::Digits(&digits));
+                parts[n_parts] = MaybeUninit::new(Part::Digits(digits));
                 n_parts += 1;
             } else {
                 parts[n_parts] =
@@ -369,7 +381,9 @@ impl fmt::Display for DecNumRepr {
 }
 
 #[cfg(test)]
+#[allow(clippy::decimal_literal_representation)]
 mod tests {
+    use alloc::borrow::ToOwned;
     use core::str::FromStr;
 
     use super::*;
@@ -385,7 +399,7 @@ mod tests {
                 exp10: 0,
                 signif10: u256::new(0, 1)
             }
-        )
+        );
     }
 
     #[test]
@@ -399,7 +413,7 @@ mod tests {
                 exp10: 73,
                 signif10: u256::new(0, 1)
             }
-        )
+        );
     }
 
     #[test]
@@ -417,7 +431,7 @@ mod tests {
                     192627042266604845397347097774975349141
                 )
             }
-        )
+        );
     }
 
     #[test]
@@ -431,7 +445,7 @@ mod tests {
                 exp10: 28,
                 signif10: u256::new(0, 7)
             }
-        )
+        );
     }
 
     #[test]
@@ -445,7 +459,7 @@ mod tests {
                 exp10: -1,
                 signif10: u256::new(0, 5)
             }
-        )
+        );
     }
 
     #[test]
@@ -459,7 +473,7 @@ mod tests {
                 exp10: -4,
                 signif10: u256::new(0, 625)
             }
-        )
+        );
     }
 
     #[test]
@@ -477,7 +491,7 @@ mod tests {
                 exp10: 0,
                 signif10: i,
             }
-        )
+        );
     }
 
     #[test]
@@ -494,6 +508,6 @@ mod tests {
                     168794288209602616731974382256735511567
                 )
             }
-        )
+        );
     }
 }

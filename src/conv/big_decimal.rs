@@ -250,7 +250,9 @@ impl PartialOrd<&[u8]> for Decimal {
 }
 
 impl From<u256> for Decimal {
-    // Create new Decimal from an u256 value.
+    /// Create new Decimal from an u256 value.
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_possible_truncation)]
     fn from(mut value: u256) -> Self {
         const SEGMENT_BASE: u64 = 1_000_000_000_000_000_000;
         let mut res = Self::default();
@@ -268,6 +270,7 @@ impl From<u256> for Decimal {
             idx -= 1;
             res.add_digits(segments[idx], true);
         }
+        // n_digits <= MAX_DIGITS < i32::MAX, so cast to i32 is safe.
         res.decimal_point = res.n_digits as i32;
         res
     }
@@ -316,6 +319,8 @@ impl Decimal {
     }
 
     /// High precision non-rounding left shift. Computes self × 2ⁿ.
+    #[allow(clippy::integer_division)]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) fn left_shift(&mut self, n: u32) {
         debug_assert!(n <= Self::MAX_SHIFT);
         if self.n_digits == 0 {
@@ -372,6 +377,7 @@ impl Decimal {
         }
 
         self.n_digits += n_new_digits as usize;
+        // n_new_digits <= 19, so can't wrap around.
         self.decimal_point += n_new_digits as i32;
 
         // Normalize self.
@@ -384,6 +390,8 @@ impl Decimal {
     }
 
     /// High precision non-rounding right shift. Computes self / 2ⁿ.
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) fn right_shift(&mut self, n: u32) {
         debug_assert!(n <= Self::MAX_SHIFT);
         let mut read_idx = 0;
@@ -411,7 +419,8 @@ impl Decimal {
             }
         }
 
-        //Adjust decimal point.
+        // Adjust decimal point.
+        // read_idx <= MAX_DIGITS < i32::MAX, so cast to i32 is safe.
         self.decimal_point -= read_idx as i32 - 1;
 
         // TODO: check if following is an otimization
@@ -455,6 +464,8 @@ impl Decimal {
     }
 
     // Round to nearest integer (half-to-even).
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_sign_loss)]
     pub(crate) fn round(&mut self) -> u256 {
         if self.n_digits == 0 || self.decimal_point < 0 {
             return u256::ZERO;
@@ -464,7 +475,7 @@ impl Decimal {
         let dp = self.decimal_point as usize;
         let mut n = u256::ZERO;
         for i in 0..dp {
-            n.imul10_add(self.digits[i])
+            n.imul10_add(self.digits[i]);
         }
         if self.digits[dp] > 5
             || self.digits[dp] == 5
@@ -501,6 +512,8 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_wrap)]
     fn test_from_u256() {
         let val = u256::new(
             401609310945955079118279405485910,

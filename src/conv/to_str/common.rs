@@ -13,12 +13,15 @@ use crate::big_uint::u256;
 
 /// Returns ⌊log₁₀(2ⁱ)⌋.
 #[inline(always)]
-pub(crate) fn floor_log10_pow2(i: i32) -> i32 {
+#[allow(clippy::cast_possible_truncation)]
+pub(crate) const fn floor_log10_pow2(i: i32) -> i32 {
     ((i as i128 * 169464822037455) >> 49) as i32
 }
 
 /// Returns ⌊log₁₀(m × 2ⁱ)⌋.
 #[inline(always)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_precision_loss)]
 pub(crate) fn floor_log10f(m: u256, i: i32) -> i32 {
     (((m.hi as f64).log2() + 128_f64 + (i as f64)) * LOG10_2).trunc() as i32
 }
@@ -49,7 +52,8 @@ const fn less_than_5(val: u32) -> u32 {
 
 /// Returns ⌊log₁₀(n)⌋.
 #[inline]
-pub(crate) fn floor_log10(mut n: u64) -> u32 {
+#[allow(clippy::cast_possible_truncation)]
+pub(crate) const fn floor_log10(mut n: u64) -> u32 {
     let mut log = 0;
     if n >= 10_000_000_000 {
         n /= 10_000_000_000;

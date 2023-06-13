@@ -24,12 +24,11 @@ pub(crate) enum Part<'a> {
 
 impl<'a> Part<'a> {
     /// Returns the byte length of given part.
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         match *self {
             Self::Char(_) => 1,
             Self::Digits(s) => s.len(),
-            Self::Zeroes(n) => n,
-            Self::Padding(n, _) => n,
+            Self::Zeroes(n) | Self::Padding(n, _) => n,
         }
     }
 
@@ -79,6 +78,7 @@ impl<'a> Formatted<'a> {
 
     /// Writes the formatted parts to the formatter after applying the
     /// padding.
+    #[allow(clippy::integer_division)]
     pub fn pad_parts(
         &self,
         is_sign_negative: bool,

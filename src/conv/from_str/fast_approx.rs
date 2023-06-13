@@ -16,6 +16,8 @@ use super::powers_of_five::{get_power_of_five, MAX_ABS_EXP};
 use super::{fast_exact::fast_exact, slow_exact::f256_exact};
 use crate::{f256, u256, EMAX, EXP_BIAS, EXP_BITS, HI_FRACTION_BIAS};
 
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 pub(super) fn fast_approx(
     lit: &str,
     sign: u32,
@@ -72,7 +74,7 @@ pub(super) fn fast_approx(
                 // Check edge cases.
                 // If 5ᵏ ∈ [1..2²⁵⁶) we can be sure to have a tie, otherwise
                 // we have "a tie and a little bit more".
-                if exp10 >= 0 && exp10 <= 110 {
+                if (0..=110).contains(&exp10) {
                     Some((signif2.lo & 1) == 1)
                 } else {
                     Some(true)

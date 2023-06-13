@@ -21,11 +21,14 @@ use crate::{
 
 // Parse a valid non-zero decimal number.
 #[allow(unsafe_code)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_wrap)]
 fn parse_decimal(s: &str) -> Decimal {
     let mut lit = AsciiNumLit::new(s.as_ref());
-    let mut res = Decimal::default();
-
-    res.sign = lit.get_sign();
+    let mut res = Decimal {
+        sign: lit.get_sign(),
+        ..Decimal::default()
+    };
 
     lit.skip_leading_zeroes(true);
 
@@ -84,6 +87,9 @@ fn parse_decimal(s: &str) -> Decimal {
 }
 
 /// Create a correctly rounded `f256` from a valid decimal number literal.
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 pub(super) fn f256_exact(s: &str) -> f256 {
     // ⌊log₁₀(2⁶⁴-1)⌋
     const MAX_DEC_SHIFT: u8 = 19;
@@ -187,7 +193,7 @@ pub(super) fn f256_exact(s: &str) -> f256 {
 
 #[cfg(test)]
 mod tests {
-    use alloc::string::ToString;
+    use alloc::{borrow::ToOwned, string::ToString};
 
     use super::*;
 
@@ -239,8 +245,8 @@ mod tests {
 
     #[test]
     fn parse_max_digits_with_trailing_zeroes() {
-        let mut s = "1.".to_string();
-        s.push_str(&*"0".repeat(MAX_DIGITS - 2));
+        let mut s = "1.".to_owned();
+        s.push_str(&"0".repeat(MAX_DIGITS - 2));
         s.push('9');
         s.push('0');
         s.push('0');
@@ -255,8 +261,8 @@ mod tests {
 
     #[test]
     fn parse_max_digits_exceeded() {
-        let mut s = "1.".to_string();
-        s.push_str(&*"0".repeat(MAX_DIGITS - 1));
+        let mut s = "1.".to_owned();
+        s.push_str(&"0".repeat(MAX_DIGITS - 1));
         s.push('9');
         let s = s.as_str();
         let mut dec = parse_decimal(s);

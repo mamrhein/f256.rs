@@ -31,6 +31,7 @@ const fn u128_lo(u: u128) -> u128 {
 }
 
 #[inline(always)]
+#[allow(clippy::integer_division)]
 const fn u128_divrem(x: u128, y: u128) -> (u128, u128) {
     (x / y, x % y)
 }
@@ -151,7 +152,7 @@ impl u256 {
     pub(crate) fn imul10_add(&mut self, d: u8) {
         debug_assert!(
             *self
-                <= u256::new(
+                <= Self::new(
                     0x19999999999999999999999999999999_u128,
                     0x99999999999999999999999999999999_u128
                 )
@@ -245,7 +246,7 @@ impl u256 {
         // Denormalize remainder
         let r = ((t.wrapping_shl(64) + x0).wrapping_sub(q0.wrapping_mul(y)))
             >> shift;
-        (u256::new(0_u128, q), r)
+        (Self::new(0_u128, q), r)
     }
 
     /// Returns `self` / `rhs`, rounded tie to even.
@@ -259,6 +260,7 @@ impl u256 {
     }
 
     /// Returns `self` / 10ⁿ, rounded tie to even.
+    #[allow(clippy::integer_division)]
     pub(crate) fn div_pow10_rounded(&self, n: u32) -> Self {
         let mut q = *self;
         let mut r = 0_u64;
@@ -288,27 +290,27 @@ impl u256 {
     }
 
     /// Returns `self` % 2ⁿ, i.e. the n left-most bits of self.
-    pub(crate) fn rem_pow2(&self, n: u32) -> Self {
+    pub(crate) const fn rem_pow2(&self, n: u32) -> Self {
         match n {
-            0 => u256::ZERO,
-            1..=127 => u256::new(0, self.lo & ((1 << n) - 1)),
-            128..=255 => u256::new(self.hi & ((1 << (n - 128)) - 1), self.lo),
+            0 => Self::ZERO,
+            1..=127 => Self::new(0, self.lo & ((1 << n) - 1)),
+            128..=255 => Self::new(self.hi & ((1 << (n - 128)) - 1), self.lo),
             _ => *self,
         }
     }
 
     // TODO: remove this function and replaced calls to it by op <<
     // when trait fns can be declared const.
-    pub(crate) const fn shift_left(&self, rhs: u32) -> u256 {
+    pub(crate) const fn shift_left(&self, rhs: u32) -> Self {
         const LIMIT: u32 = u256::BITS - 1;
         assert!(rhs <= LIMIT, "Attempt to shift left with overflow.");
         match rhs {
-            1..=127 => u256 {
+            1..=127 => Self {
                 hi: self.hi << rhs | self.lo >> (128 - rhs),
                 lo: self.lo << rhs,
             },
-            128 => u256 { hi: self.lo, lo: 0 },
-            129..=255 => u256 {
+            128 => Self { hi: self.lo, lo: 0 },
+            129..=255 => Self {
                 hi: self.lo << (rhs - 128),
                 lo: 0,
             },
@@ -321,7 +323,7 @@ impl u256 {
     #[allow(clippy::cast_possible_truncation)]
     #[inline]
     /// Raw transmutation to `[u64; 4]` (in native endian order).
-    pub(crate) const fn to_bits(&self) -> [u64; 4] {
+    pub(crate) const fn to_bits(self) -> [u64; 4] {
         [
             u128_hi(self.hi) as u64,
             u128_lo(self.hi) as u64,
@@ -334,7 +336,7 @@ impl u256 {
     #[allow(clippy::cast_possible_truncation)]
     #[inline]
     /// Raw transmutation to `[u64; 4]` (in native endian order).
-    pub(crate) const fn to_bits(&self) -> [u64; 4] {
+    pub(crate) const fn to_bits(self) -> [u64; 4] {
         [
             u128_lo(self.lo) as u64,
             u128_hi(self.lo) as u64,
@@ -364,7 +366,7 @@ impl u256 {
     }
 
     // Calculate z = x * y.
-    pub(crate) fn widening_mul(&self, rhs: &u256) -> u512 {
+    pub(crate) fn widening_mul(&self, rhs: &Self) -> u512 {
         let mut lo = u128_widening_mul(self.lo, rhs.lo);
         let mut t1 = u128_widening_mul(self.lo, rhs.hi);
         let mut t2 = u128_widening_mul(self.hi, rhs.lo);
@@ -372,14 +374,14 @@ impl u256 {
         t1 += &t2;
         hi += t1.hi;
         hi.hi += (t1 < t2) as u128;
-        t2 = u256::new(t1.lo, 0);
+        t2 = Self::new(t1.lo, 0);
         lo += &t2;
         hi += (lo < t2) as u128;
         u512 { hi, lo }
     }
 
     // Calculate ⌊(x * y) / 2²⁵⁶⌋.
-    pub(crate) fn truncating_mul(&self, rhs: &u256) -> u256 {
+    pub(crate) fn truncating_mul(&self, rhs: &Self) -> Self {
         let mut r = u128_widening_mul(self.hi, rhs.hi);
         let t1 = u128_widening_mul(self.hi, rhs.lo);
         r += t1.hi;
@@ -395,12 +397,12 @@ impl u256 {
     }
 
     // Calculate ⌊(x * y) % 2²⁵⁶⌋.
-    pub(crate) fn wrapping_mul(&self, rhs: &u256) -> u256 {
+    pub(crate) fn wrapping_mul(&self, rhs: &Self) -> Self {
         let mut lo = u128_widening_mul(self.lo, rhs.lo);
         let mut t1 = u128_widening_mul(self.lo, rhs.hi);
         let mut t2 = u128_widening_mul(self.hi, rhs.lo);
         t1 += &t2;
-        t2 = u256::new(t1.lo, 0);
+        t2 = Self::new(t1.lo, 0);
         lo += &t2;
         lo
     }
@@ -558,6 +560,7 @@ impl DivRem<u64> for &u256 {
     type Output = (u256, u64);
 
     /// Returns `self` / rhs, `self` % rhs
+    #[allow(clippy::cast_possible_truncation)]
     fn div_rem(self, rhs: u64) -> Self::Output {
         let (quot_hi, r) = u128_divrem(self.hi, rhs as u128);
         let (mut quot_lo, r) =
@@ -573,6 +576,8 @@ impl DivRem<u128> for &u256 {
     type Output = (u256, u128);
 
     /// Returns `self` / rhs, `self` % rhs
+    #[allow(clippy::integer_division)]
+    #[allow(clippy::cast_possible_truncation)]
     fn div_rem(self, rhs: u128) -> Self::Output {
         if self.hi == 0 {
             (u256::new(0_u128, self.lo / rhs), self.lo % rhs)
@@ -596,6 +601,7 @@ impl DivRem<&u256> for &u256 {
     type Output = (u256, u256);
 
     /// Returns `self` / rhs, `self` % rhs
+    #[allow(clippy::integer_division)]
     fn div_rem(self, rhs: &u256) -> Self::Output {
         debug_assert!(!rhs.is_zero());
         if rhs.hi == 0 {
@@ -642,6 +648,7 @@ impl Rem<u64> for &u256 {
     type Output = u64;
 
     #[inline]
+    #[allow(clippy::cast_possible_truncation)]
     fn rem(self, rhs: u64) -> Self::Output {
         (self % rhs as u128) as u64
     }
@@ -693,7 +700,7 @@ impl Shl<u32> for &u256 {
                 hi: self.lo << (rhs - 128),
                 lo: 0,
             },
-            0 => self.clone(),
+            0 => *self,
             _ => unreachable!(),
         }
     }
@@ -743,7 +750,7 @@ impl Shr<u32> for &u256 {
                 hi: 0,
                 lo: self.hi >> (rhs - 128),
             },
-            0 => self.clone(),
+            0 => *self,
             _ => unreachable!(),
         }
     }
@@ -875,6 +882,7 @@ impl u512 {
     // The link given above does not exist anymore, but the code can still be
     // found at https://github.com/hcs0/Hackers-Delight/blob/master/divlu.c.txt.
     /// Returns `self` / rhs, `self` % rhs
+    //noinspection DuplicatedCode
     fn div_rem_u256_special(&self, rhs: &u256) -> (Self, u256) {
         debug_assert!(self.hi < *rhs);
         const B: u256 = u256::new(1, 0);
@@ -932,7 +940,7 @@ impl u512 {
         let mut r = u256::new(t.lo, x0);
         r -= &q0.wrapping_mul(&y);
         r >>= shift;
-        (u512::new(u256::ZERO, q), r)
+        (Self::new(u256::ZERO, q), r)
     }
 
     /// Divide `self` inplace by 2ⁿ and round (tie to even).
@@ -948,6 +956,7 @@ impl u512 {
     }
 
     /// Returns `self` / 10ⁿ, rounded tie to even.
+    #[allow(clippy::integer_division)]
     pub(crate) fn div_pow10_rounded(&self, n: u32) -> Self {
         const CHUNK_SIZE: u32 = 38;
         const CHUNK_BASE: u128 = 10_u128.pow(CHUNK_SIZE);
@@ -1026,6 +1035,7 @@ impl Rem<u64> for &u512 {
     type Output = u64;
 
     #[inline(always)]
+    #[allow(clippy::cast_possible_truncation)]
     fn rem(self, rhs: u64) -> Self::Output {
         (self % rhs as u128) as u64
     }
@@ -1146,6 +1156,7 @@ impl ShrAssign<u32> for u512 {
 }
 
 impl fmt::Display for u512 {
+    #[allow(clippy::cast_possible_truncation)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         const SEGMENT_SIZE: usize = 38;
         const SEGMENT_BASE: u128 = 10_u128.pow(SEGMENT_SIZE as u32);
@@ -1204,7 +1215,7 @@ mod u256_div_rem_tests {
         assert_eq!(
             v.div_rem(10_u128.pow(27) + 3),
             (u256::new(0, 23921510112175146), 468697630784693143145201978)
-        )
+        );
     }
 
     #[test]
@@ -1262,6 +1273,8 @@ mod u256_div_rem_tests {
     }
 
     #[test]
+    #[allow(clippy::integer_division)]
+    #[allow(clippy::cast_possible_truncation)]
     fn test_div_rem_by_pow10() {
         let v = u256::ZERO;
         assert_eq!(v.div_rem(10_u64.pow(10)), (u256::ZERO, 0));
@@ -1298,7 +1311,7 @@ mod u256_to_str_tests {
     #[test]
     fn test_zero() {
         let v = u256::ZERO;
-        assert_eq!(v.to_string(), "0")
+        assert_eq!(v.to_string(), "0");
     }
 
     #[test]
@@ -1308,7 +1321,7 @@ mod u256_to_str_tests {
             v.to_string(),
             "115792089237316195423570985008687907853269984665640564039457584007\
              913129639935"
-        )
+        );
     }
 }
 

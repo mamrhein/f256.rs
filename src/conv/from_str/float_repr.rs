@@ -19,7 +19,7 @@ use super::common::{
 use crate::u256;
 
 // Remove the byte at position p by shifting the bytes left from it right.
-fn eliminate_byte_from_chunk(k: u64, p: u32) -> u64 {
+const fn eliminate_byte_from_chunk(k: u64, p: u32) -> u64 {
     match p {
         0 => (k << 8) >> 8,
         1..=6 => {
@@ -47,11 +47,11 @@ pub(super) struct DecNumRepr {
 // Records the final parsing result.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum FloatRepr {
-    EMPTY,
-    INVALID,
-    NAN,
-    INF(u32),
-    NUMBER(DecNumRepr),
+    Empty,
+    Invalid,
+    Nan,
+    Inf(u32),
+    Number(DecNumRepr),
 }
 
 // Records the first (atmost MAX_N_DIGITS) significant digits:
@@ -68,7 +68,7 @@ struct PartialSignif {
 impl PartialSignif {
     const MAX_N_DIGITS: usize = 77;
 
-    fn max_add_digits(&self) -> usize {
+    const fn max_add_digits(&self) -> usize {
         Self::MAX_N_DIGITS - self.n_chunks * 8 - self.n_rem_digits
     }
 
@@ -77,7 +77,7 @@ impl PartialSignif {
         self.n_chunks += 1;
     }
 
-    fn n_digits(&self) -> usize {
+    const fn n_digits(&self) -> usize {
         self.n_chunks * 8 + self.n_rem_digits
     }
 
@@ -101,6 +101,7 @@ impl PartialSignif {
         n_trailing_zeroes
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn significand(&self) -> u256 {
         let mut signif = u256::default();
         for i in 0..self.n_chunks {
@@ -117,6 +118,7 @@ impl FloatRepr {
     /// Convert the leading sequence of decimal digits in `lit` (if any) into
     /// an int and accumulate it into `partial_signif`.
     #[allow(unsafe_code)]
+    #[allow(clippy::cognitive_complexity)]
     fn read_significand(lit: &mut AsciiNumLit) -> PartialSignif {
         let mut partial_signif = PartialSignif::default();
         lit.state.start_pos_signif = lit.len();
@@ -136,7 +138,7 @@ impl FloatRepr {
                 } else if let Some(p) =
                     chunk_contains_7_digits_and_a_dot_at(k)
                 {
-                    if let Some(_) = lit.state.pos_radix_point {
+                    if lit.state.pos_radix_point.is_some() {
                         // Double radix point
                         lit.state.invalid = true;
                         return partial_signif;
@@ -191,7 +193,7 @@ impl FloatRepr {
                     partial_signif.n_rem_digits += 1;
                     n_digits += 1;
                 } else if *c == b'.' {
-                    if let Some(_) = lit.state.pos_radix_point {
+                    if lit.state.pos_radix_point.is_some() {
                         // Double radix point
                         lit.state.invalid = true;
                         return partial_signif;
@@ -215,7 +217,7 @@ impl FloatRepr {
             if *c >= b'1' && *c <= b'9' {
                 n_non_zero_digits += 1;
             } else if *c == b'.' {
-                if let Some(_) = lit.state.pos_radix_point {
+                if lit.state.pos_radix_point.is_some() {
                     // Double radix point
                     lit.state.invalid = true;
                     return partial_signif;
@@ -238,48 +240,50 @@ impl FloatRepr {
     #[allow(unsafe_code)]
     fn parse_special(lit: &mut AsciiNumLit, sign: u32) -> Self {
         if lit.eq_ignore_ascii_case(b"nan") {
-            Self::NAN
+            Self::Nan
         } else if lit.eq_ignore_ascii_case(b"inf")
             || lit.eq_ignore_ascii_case(b"infinity")
         {
-            Self::INF(sign)
+            Self::Inf(sign)
         } else {
-            Self::INVALID
+            Self::Invalid
         }
     }
 
     #[allow(unsafe_code)]
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) fn from_str(s: &str) -> Self {
         let mut lit = AsciiNumLit::new(s.as_ref());
 
         if lit.is_empty() {
-            return Self::EMPTY;
+            return Self::Empty;
         }
 
         let sign = lit.get_sign();
 
         if lit.is_empty() {
-            return Self::INVALID;
+            return Self::Invalid;
         }
         let start_pos = lit.len();
 
         lit.skip_leading_zeroes(true);
         if lit.is_empty() {
             // There must have been atleast one zero.
-            return Self::NUMBER(DecNumRepr::default());
+            return Self::Number(DecNumRepr::default());
         }
 
         // Parse significant digits.
-        let mut partial_signif = FloatRepr::read_significand(&mut lit);
+        let mut partial_signif = Self::read_significand(&mut lit);
 
         // Check state.
         if lit.state.invalid {
-            return Self::INVALID;
+            return Self::Invalid;
         }
 
         // If there are no digits, check for special values.
         if start_pos == lit.len() {
-            return FloatRepr::parse_special(&mut lit, sign);
+            return Self::parse_special(&mut lit, sign);
         }
 
         // Set implicit radix point if no one was detected.
@@ -291,13 +295,13 @@ impl FloatRepr {
         let mut exponent = match lit.parse_exponent() {
             Some(exp) => exp,
             None => {
-                return Self::INVALID;
+                return Self::Invalid;
             }
         };
 
         // Check bounds.
         if !lit.is_empty() {
-            return Self::INVALID;
+            return Self::Invalid;
         }
 
         // Adjust exponent by truncated integer digits and fractional digits.
@@ -317,7 +321,7 @@ impl FloatRepr {
         let n_trailing_zeroes = partial_signif.normalize();
         exponent += n_trailing_zeroes as i32;
         let significand = partial_signif.significand();
-        Self::NUMBER(DecNumRepr {
+        Self::Number(DecNumRepr {
             sign,
             exponent,
             significand,
@@ -334,7 +338,7 @@ mod tests {
     fn parse_zero_digits_with_dot() {
         let s = "000.0000000000000000";
         let r = FloatRepr::from_str(s);
-        assert_eq!(r, FloatRepr::NUMBER(DecNumRepr::default()));
+        assert_eq!(r, FloatRepr::Number(DecNumRepr::default()));
     }
 
     #[test]
@@ -344,7 +348,7 @@ mod tests {
         let r = FloatRepr::from_str(s);
         assert_eq!(
             r,
-            FloatRepr::NUMBER(DecNumRepr {
+            FloatRepr::Number(DecNumRepr {
                 sign: 0,
                 exponent: 4,
                 significand: u256::new(0, 18),
@@ -360,7 +364,7 @@ mod tests {
         let r = FloatRepr::from_str(s);
         assert_eq!(
             r,
-            FloatRepr::NUMBER(DecNumRepr {
+            FloatRepr::Number(DecNumRepr {
                 sign: 1,
                 exponent: -17,
                 significand: u256::new(0, 1),
@@ -377,7 +381,7 @@ mod tests {
         let r = FloatRepr::from_str(s);
         assert_eq!(
             r,
-            FloatRepr::NUMBER(DecNumRepr {
+            FloatRepr::Number(DecNumRepr {
                 sign: 1,
                 significand: u256::new(0, 762939453125),
                 exponent: -17,
@@ -393,7 +397,7 @@ mod tests {
         let r = FloatRepr::from_str(s);
         assert_eq!(
             r,
-            FloatRepr::NUMBER(DecNumRepr {
+            FloatRepr::Number(DecNumRepr {
                 sign: 1,
                 significand: u256::new(0, 1),
                 exponent: 108,
@@ -409,7 +413,7 @@ mod tests {
         let r = FloatRepr::from_str(s);
         assert_eq!(
             r,
-            FloatRepr::NUMBER(DecNumRepr {
+            FloatRepr::Number(DecNumRepr {
                 sign: 1,
                 significand: u256::new(
                     1296714295663492914563767,

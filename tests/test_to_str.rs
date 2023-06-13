@@ -135,7 +135,7 @@ mod random_f256_to_shortest_exp_tests {
         if n < rec.lit.len() {
             let v: Vec<&str> = s.split('e').collect();
             assert!(v.len() == 2);
-            n = *&v[0].len();
+            n = v[0].len();
             assert!(
                 rec.lit.starts_with(&v[0][..n - 1]),
                 "\nlit: {}\nstr: {}\n",

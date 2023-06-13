@@ -26,7 +26,7 @@ fn lshift_rem(a: &u256, b: &u256, n: u32) -> u256 {
     let mut t = u512::new(u256::ZERO, *a);
     t <<= sh;
     let mut r = &t % b;
-    for _ in 0..n / u256::BITS {
+    for _ in 0..n >> 8 {
         t = u512::new(r, u256::ZERO);
         r = &t % b;
         if r.is_zero() {

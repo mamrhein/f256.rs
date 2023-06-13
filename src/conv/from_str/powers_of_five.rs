@@ -10,6 +10,8 @@
 pub(super) const MAX_ABS_EXP: u32 = 1024;
 
 #[inline(always)]
+#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cast_possible_wrap)]
 pub(super) fn get_power_of_five(n: i32) -> (u128, u128, i32) {
     debug_assert!(n.unsigned_abs() <= MAX_ABS_EXP);
     POWERS_OF_FIVE[(n + MAX_ABS_EXP as i32) as usize]

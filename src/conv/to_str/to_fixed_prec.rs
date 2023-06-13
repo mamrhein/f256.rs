@@ -70,6 +70,10 @@ fn pow10_div_pow2(segment_idx: usize, chunk_idx: usize) -> u512 {
     u512::new(u256::new(0, t.0), u256::new(t.1, t.2))
 }
 
+#[allow(clippy::integer_division)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 fn bin_fract_2_dec_str(
     signif2: u256,
     exp2: i32,
@@ -112,6 +116,7 @@ fn bin_fract_2_dec_str(
             let rem = chunk % d;
             chunk /= d;
             let tie = d >> 1;
+            #[allow(clippy::comparison_chain)]
             if rem > tie {
                 round = Round::Up;
             } else if rem == tie {
@@ -143,6 +148,7 @@ fn bin_fract_2_dec_str(
 #[inline]
 fn round_up_fixed_point_inplace(num: &mut str) {
     let mut idx = num.len() - 1;
+    // SAFETY: see comment at str::as_bytes_mut.
     unsafe {
         let bytes = num.as_bytes_mut();
         loop {
@@ -163,6 +169,8 @@ fn round_up_fixed_point_inplace(num: &mut str) {
 /// decimal number dₘ⋯d₀.d₋₁⋯d₋ₚ where d ∈ [0..9] and p is the given number of
 /// fractional digits.
 /// The result may have an additional leading zero!
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 pub(crate) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
     debug_assert!(f.is_finite());
     debug_assert!(f.is_sign_positive());
@@ -206,7 +214,7 @@ pub(crate) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
             signif2 <<= adj;
             exp2 -= adj as i32;
         }
-        round = bin_fract_2_dec_str(signif2, exp2, prec, &mut res)
+        round = bin_fract_2_dec_str(signif2, exp2, prec, &mut res);
     }
     if round == Round::Up
         || (round == Round::ToEven
@@ -224,6 +232,9 @@ fn split_into_buf(buf: &mut String, s: &str) {
     buf.push_str(&s[1..]);
 }
 
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 fn bin_small_float_2_scientific(
     signif2: u256,
     exp2: i32,
@@ -280,6 +291,9 @@ fn bin_small_float_2_scientific(
     (Round::Down, exp10)
 }
 
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 fn bin_small_int_2_scientific(
     signif2: u256,
     exp2: i32,
@@ -321,6 +335,10 @@ fn bin_small_int_2_scientific(
     (Round::Down, exp10)
 }
 
+#[allow(clippy::integer_division)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 fn bin_large_int_2_scientific(
     signif2: u256,
     exp2: i32,
@@ -394,6 +412,7 @@ fn bin_large_int_2_scientific(
     let rem = chunk % d;
     chunk /= d;
     let tie = d >> 1;
+    #[allow(clippy::comparison_chain)]
     if rem > tie {
         round = Round::Up;
     } else if rem == tie {
@@ -418,6 +437,11 @@ fn bin_large_int_2_scientific(
     (round, exp10 as i32)
 }
 
+#[allow(clippy::cognitive_complexity)]
+#[allow(clippy::integer_division)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 fn bin_fract_2_scientific(
     signif2: u256,
     exp2: i32,
@@ -495,6 +519,7 @@ fn bin_fract_2_scientific(
     let rem = chunk % d;
     chunk /= d;
     let tie = d >> 1;
+    #[allow(clippy::comparison_chain)]
     if rem > tie {
         round = Round::Up;
     } else if rem == tie {
@@ -523,6 +548,7 @@ fn bin_fract_2_scientific(
 fn round_up_scientific_inplace(num: &mut str) -> i32 {
     let mut carry = 0_i32;
     let mut idx = num.len() - 1;
+    // SAFETY: see comment at str::as_bytes_mut.
     unsafe {
         let bytes = num.as_bytes_mut();
         loop {
@@ -548,6 +574,8 @@ fn round_up_scientific_inplace(num: &mut str) -> i32 {
 /// Converts a positive finite binary float into a string representing a
 /// decimal number d₀.d₋₁⋯d₋ₚEe where d ∈ [0..9], e ∈ [-78912..78913], E is
 /// the given exponent marker and p is the given number of fractional digits.
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 pub(crate) fn bin_2_dec_scientific(
     f: f256,
     exp_mark: char,
@@ -622,6 +650,7 @@ pub(crate) fn bin_2_dec_scientific(
 
 #[cfg(test)]
 mod to_fixed_point_tests {
+    use alloc::borrow::ToOwned;
     use core::{ops::Index, str::FromStr};
 
     use super::*;
@@ -670,7 +699,7 @@ mod to_fixed_point_tests {
         let f = f256::MIN_GT_ZERO;
         let s = bin_2_dec_fixed_point(f, 79004);
         assert!(s.starts_with("00.0"));
-        assert_eq!(s[s.len() - 23..], "00224800708647703657297".to_string());
+        assert_eq!(s[s.len() - 23..], "00224800708647703657297".to_owned());
     }
 
     #[test]
@@ -689,7 +718,9 @@ mod to_fixed_point_tests {
 }
 
 #[cfg(test)]
+#[allow(clippy::decimal_literal_representation)]
 mod to_scientific_tests {
+    use alloc::borrow::ToOwned;
     use core::{ops::Index, str::FromStr};
 
     use super::*;
@@ -755,7 +786,7 @@ mod to_scientific_tests {
     fn test_min_gt_zero() {
         let f = f256::MIN_GT_ZERO;
         let s = bin_2_dec_scientific(f, 'e', 20);
-        assert_eq!(s, "2.24800708647703657297e-78984".to_string());
+        assert_eq!(s, "2.24800708647703657297e-78984".to_owned());
     }
 
     #[test]
@@ -779,7 +810,7 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 16);
-        assert_eq!(s, "5.9863107065073784e51".to_string());
+        assert_eq!(s, "5.9863107065073784e51".to_owned());
     }
 
     #[test]
@@ -793,7 +824,7 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 27);
-        assert_eq!(s, "9.134385233318143238773030204e46".to_string());
+        assert_eq!(s, "9.134385233318143238773030204e46".to_owned());
     }
 
     #[test]
@@ -807,7 +838,7 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 9);
-        assert_eq!(s, "4.676805239e49".to_string());
+        assert_eq!(s, "4.676805239e49".to_owned());
     }
 
     #[test]
@@ -821,7 +852,7 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 30);
-        assert_eq!(s, "1.312872648118838857960020003483e53".to_string());
+        assert_eq!(s, "1.312872648118838857960020003483e53".to_owned());
     }
 
     #[test]
@@ -837,7 +868,7 @@ mod to_scientific_tests {
         let s = bin_2_dec_scientific(f, 'e', 73);
         assert_eq!(s,
                    "1.104279415486490205989560937964452094099678404234621628410\
-                   7225517843852100e71".to_string());
+                   7225517843852100e71".to_owned());
     }
 
     #[test]
@@ -851,7 +882,7 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 32);
-        assert_eq!(s, "1.10427941548649020598956093796444e71".to_string());
+        assert_eq!(s, "1.10427941548649020598956093796444e71".to_owned());
     }
 
     #[test]
@@ -867,7 +898,7 @@ mod to_scientific_tests {
         let s = bin_2_dec_scientific(f, 'e', 71);
         assert_eq!(s,
                    "1.104279415486490205989560937964481749676984270347197623992\
-                   92717863585167e71".to_string());
+                   92717863585167e71".to_owned());
     }
 
     #[test]
@@ -881,7 +912,7 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 0);
-        assert_eq!(s, "1e153".to_string());
+        assert_eq!(s, "1e153".to_owned());
     }
 
     #[test]
@@ -895,7 +926,7 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 0);
-        assert_eq!(s, "1e153".to_string());
+        assert_eq!(s, "1e153".to_owned());
     }
 
     #[test]
@@ -911,7 +942,7 @@ mod to_scientific_tests {
         let s = bin_2_dec_scientific(f, 'e', 61);
         assert_eq!(s,
                    "1.969005496764332863783443912931624800937847641827908017905\
-                   9660e154".to_string());
+                   9660e154".to_owned());
     }
 
     #[test]
@@ -928,7 +959,7 @@ mod to_scientific_tests {
         assert_eq!(
             s,
             "1.44230415231821555091417756482480990212576324553723504560651e154"
-                .to_string()
+                .to_owned()
         );
     }
 
@@ -943,7 +974,7 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 20);
-        assert_eq!(s, "1.49207415878946667629e154".to_string());
+        assert_eq!(s, "1.49207415878946667629e154".to_owned());
     }
 
     #[test]
@@ -958,7 +989,7 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 64);
         assert_eq!(s, "9.677969339371647374674789631478211843426763786935989435\
-            5285173687e-10918".to_string());
+            5285173687e-10918".to_owned());
     }
 
     #[test]
@@ -968,7 +999,7 @@ mod to_scientific_tests {
         assert_eq!(
             s,
             "1.000000000000000000000000000000000000000000000000000000e0"
-                .to_string()
+                .to_owned()
         );
     }
 
@@ -984,7 +1015,7 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 71);
         assert_eq!(s, "2.471570072197153940829180483920657748943792994870723271\
-            92157954211602055e-35402".to_string());
+            92157954211602055e-35402".to_owned());
     }
 
     #[test]
@@ -999,7 +1030,7 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 70);
         assert_eq!(s, "2.471570072197153940829180483920657748943792994870723271\
-            9215795421160206e-35402".to_string());
+            9215795421160206e-35402".to_owned());
     }
 
     #[test]
@@ -1014,7 +1045,7 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 73);
         assert_eq!(s, "8.447646086055224609046497651648431840143361281963366366\
-            6796603174614594313e16807".to_string());
+            6796603174614594313e16807".to_owned());
     }
 
     #[test]
@@ -1029,7 +1060,7 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 67);
         assert_eq!(s, "8.447646086055224609046497651648431840143361281963366366\
-            6796603174615e16807".to_string());
+            6796603174615e16807".to_owned());
     }
 
     #[test]
@@ -1044,7 +1075,7 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 72);
         assert_eq!(s, "2.372882823780069989738354638128785919529692752357933380\
-            060881450776866269e-47352".to_string());
+            060881450776866269e-47352".to_owned());
     }
 
     #[test]
@@ -1059,7 +1090,7 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 61);
         assert_eq!(s, "2.751944825690125768618234983557273839998107604792147797\
-            6588487e-55309".to_string());
+            6588487e-55309".to_owned());
     }
 
     #[test]
@@ -1074,6 +1105,6 @@ mod to_scientific_tests {
         );
         let s = bin_2_dec_scientific(f, 'e', 67);
         assert_eq!(s, "1.319942082877611614846938029746780763801526923656755728\
-            9282641062734e-28481".to_string());
+            9282641062734e-28481".to_owned());
     }
 }

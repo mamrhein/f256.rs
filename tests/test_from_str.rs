@@ -46,7 +46,7 @@ mod from_random_str_tests {
         for rec in rdr.deserialize::<Record>() {
             match rec {
                 Ok(rec) => {
-                    let res = f256::from_str(&*rec.lit);
+                    let res = f256::from_str(&rec.lit);
                     match res {
                         Ok(f) => {
                             let a = f.as_sign_exp_signif();

@@ -57,13 +57,13 @@ impl FromStr for f256 {
 
     fn from_str(lit: &str) -> Result<Self, Self::Err> {
         match FloatRepr::from_str(lit) {
-            FloatRepr::EMPTY => Err(parse_float_error(true)),
-            FloatRepr::INVALID => Err(parse_float_error(false)),
-            FloatRepr::NAN => Ok(Self::NAN),
-            FloatRepr::INF(sign) => {
+            FloatRepr::Empty => Err(parse_float_error(true)),
+            FloatRepr::Invalid => Err(parse_float_error(false)),
+            FloatRepr::Nan => Ok(Self::NAN),
+            FloatRepr::Inf(sign) => {
                 Ok([Self::INFINITY, Self::NEG_INFINITY][sign as usize])
             }
-            FloatRepr::NUMBER(repr) => {
+            FloatRepr::Number(repr) => {
                 let sign = repr.sign;
                 let exp10 = repr.exponent;
                 let signif10 = repr.significand;
@@ -124,8 +124,9 @@ impl TryFrom<&str> for f256 {
 mod cmp_algos_tests {
     use super::{fast_approx::fast_approx, *};
 
+    #[allow(clippy::print_stdout)]
     fn cmp_algos(lit: &str) -> bool {
-        if let FloatRepr::NUMBER(repr) = FloatRepr::from_str(lit) {
+        if let FloatRepr::Number(repr) = FloatRepr::from_str(lit) {
             let sign = repr.sign;
             let exp10 = repr.exponent;
             let signif10 = repr.significand;
@@ -173,8 +174,9 @@ mod cmp_algos_tests {
 }
 
 #[cfg(test)]
+#[allow(clippy::decimal_literal_representation)]
 mod from_str_tests {
-    use alloc::string::ToString;
+    use alloc::{borrow::ToOwned, string::ToString};
 
     use super::*;
 
@@ -289,9 +291,9 @@ mod from_str_tests {
 
     #[test]
     fn test_fast_exact_max_digits_exceeded() {
-        let mut s = "1.".to_string();
-        s.push_str(&*"9".repeat(70));
-        s.push_str(&*"0".repeat(8));
+        let mut s = "1.".to_owned();
+        s.push_str(&"9".repeat(70));
+        s.push_str(&"0".repeat(8));
         s.push('2');
         let s = s.as_str();
         let f = f256::from_str(s).unwrap();
@@ -352,9 +354,9 @@ mod from_str_tests {
 
     #[test]
     fn test_fast_approx_max_digits_exceeded() {
-        let mut s = "1.".to_string();
-        s.push_str(&*"9".repeat(70));
-        s.push_str(&*"0".repeat(8));
+        let mut s = "1.".to_owned();
+        s.push_str(&"9".repeat(70));
+        s.push_str(&"0".repeat(8));
         s.push_str("2e-95");
         let s = s.as_str();
         let f = f256::from_str(s).unwrap();

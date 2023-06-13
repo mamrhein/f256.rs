@@ -60,7 +60,7 @@ mod random_math_fn_tests {
         }
     }
 
-    fn sqrt<'a>(x: &'a f256) -> f256 {
+    fn sqrt(x: &f256) -> f256 {
         x.sqrt()
     }
 

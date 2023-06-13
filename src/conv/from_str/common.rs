@@ -11,7 +11,7 @@ use core::ptr;
 
 /// Check whether an u64 is holding 8 decimal digits.
 #[inline]
-pub fn chunk_contains_8_digits(chunk: u64) -> bool {
+pub const fn chunk_contains_8_digits(chunk: u64) -> bool {
     // Subtract b'0' from each byte.
     let x = chunk.wrapping_sub(0x3030303030303030);
     // Add 0x46 (= 0x7f - b'9') to each byte.
@@ -28,6 +28,7 @@ pub fn chunk_contains_8_digits(chunk: u64) -> bool {
 /// If so, return the index of the b'.', counted from lowest byte, i.e. the
 /// left-most byte (digits in little endian order!).
 #[inline]
+#[allow(clippy::integer_division)]
 pub fn chunk_contains_7_digits_and_a_dot_at(mut chunk: u64) -> Option<u32> {
     let x = chunk ^ 0x2e2e2e2e2e2e2e2e;
     let y = x.wrapping_sub(0x0101010101010101);
@@ -44,11 +45,7 @@ pub fn chunk_contains_7_digits_and_a_dot_at(mut chunk: u64) -> Option<u32> {
         let n = z.leading_zeros();
         // Turn the b'.' into b'0'.
         chunk += ((b'0' - b'.') as u64) << ((u64::BITS - 8 - n) as u64);
-        if chunk_contains_8_digits(chunk) {
-            Some(n / 8)
-        } else {
-            None
-        }
+        chunk_contains_8_digits(chunk).then_some(n / 8)
     } else {
         None
     }
@@ -56,7 +53,7 @@ pub fn chunk_contains_7_digits_and_a_dot_at(mut chunk: u64) -> Option<u32> {
 
 /// Convert an u64 holding a sequence of 8 decimal digits into an u64.
 #[inline]
-pub fn chunk_to_u64(mut chunk: u64) -> u64 {
+pub const fn chunk_to_u64(mut chunk: u64) -> u64 {
     // The following is adopted from Johnny Lee: Fast numeric string to int
     // [https://johnnylee-sde.github.io/Fast-numeric-string-to-int].
     chunk &= 0x0f0f0f0f0f0f0f0f;
@@ -97,12 +94,12 @@ impl<'a> AsciiNumLit<'a> {
     }
 
     #[inline]
-    pub(super) fn is_empty(&self) -> bool {
+    pub(super) const fn is_empty(&self) -> bool {
         self.bytes.is_empty()
     }
 
     #[inline]
-    pub(super) fn len(&self) -> usize {
+    pub(super) const fn len(&self) -> usize {
         self.bytes.len()
     }
 
@@ -118,11 +115,11 @@ impl<'a> AsciiNumLit<'a> {
     #[inline]
     #[allow(unsafe_code)]
     pub(super) unsafe fn skip_1(&mut self) {
-        self.skip_n(1)
+        self.skip_n(1);
     }
 
     #[inline]
-    pub(super) fn first(&self) -> Option<&u8> {
+    pub(super) const fn first(&self) -> Option<&u8> {
         self.bytes.first()
     }
 
@@ -132,11 +129,8 @@ impl<'a> AsciiNumLit<'a> {
     }
 
     #[inline]
-    pub(super) fn first_is_digit(&self) -> bool {
-        match self.first() {
-            Some(c) if c.wrapping_sub(b'0') < 10 => true,
-            _ => false,
-        }
+    pub(super) const fn first_is_digit(&self) -> bool {
+        matches!(self.first(), Some(c) if c.wrapping_sub(b'0') < 10)
     }
 
     #[inline]
@@ -175,12 +169,10 @@ impl<'a> AsciiNumLit<'a> {
     #[inline]
     #[allow(unsafe_code)]
     pub(super) fn read_u64(&self) -> Option<u64> {
-        if self.len() >= 8 {
+        (self.len() >= 8).then(|| {
             // SAFETY: safe because of condition above!
-            Some(unsafe { self.read_u64_unchecked() })
-        } else {
-            None
-        }
+            unsafe { self.read_u64_unchecked() }
+        })
     }
 
     // self <- self[x..] where x is the position of the first non-zero digit
@@ -212,7 +204,7 @@ impl<'a> AsciiNumLit<'a> {
             };
         }
         if self.first_eq(b'.') {
-            if let Some(_) = self.state.pos_radix_point {
+            if self.state.pos_radix_point.is_some() {
                 // Double radix point
                 self.state.invalid = true;
                 return;
