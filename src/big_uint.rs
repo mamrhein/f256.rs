@@ -12,11 +12,10 @@ use core::{
     fmt,
     mem::size_of,
     ops::{
-        Add, AddAssign, BitOrAssign, MulAssign, Rem, Shl, ShlAssign, Shr,
-        ShrAssign, Sub, SubAssign,
+        Add, AddAssign, BitOrAssign, Mul, MulAssign, Rem, Shl, ShlAssign,
+        Shr, ShrAssign, Sub, SubAssign,
     },
 };
-use std::ops::Mul;
 
 const CHUNK_SIZE: u32 = 19;
 const CHUNK_BASE: u64 = 10_u64.pow(CHUNK_SIZE);
