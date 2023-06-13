@@ -7,6 +7,10 @@
 // $Source$
 // $Revision$
 
+use alloc::{
+    format,
+    string::{String, ToString},
+};
 use core::{
     cmp::{max, min},
     fmt,
@@ -618,8 +622,7 @@ pub(crate) fn bin_2_dec_scientific(
 
 #[cfg(test)]
 mod to_fixed_point_tests {
-    use core::str::FromStr;
-    use std::ops::Index;
+    use core::{ops::Index, str::FromStr};
 
     use super::*;
 
@@ -687,8 +690,7 @@ mod to_fixed_point_tests {
 
 #[cfg(test)]
 mod to_scientific_tests {
-    use core::str::FromStr;
-    use std::ops::Index;
+    use core::{ops::Index, str::FromStr};
 
     use super::*;
 

@@ -1291,6 +1291,8 @@ mod u256_div_rem_tests {
 
 #[cfg(test)]
 mod u256_to_str_tests {
+    use alloc::string::ToString;
+
     use super::*;
 
     #[test]

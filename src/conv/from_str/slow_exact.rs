@@ -187,6 +187,8 @@ pub(super) fn f256_exact(s: &str) -> f256 {
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::ToString;
+
     use super::*;
 
     #[test]

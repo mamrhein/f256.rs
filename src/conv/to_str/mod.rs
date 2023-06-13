@@ -13,8 +13,14 @@ mod formatted;
 mod powers_of_five;
 mod to_fixed_prec;
 
-use core::fmt::{self, Display, Write};
-use std::cmp::min;
+use alloc::{
+    format,
+    string::{String, ToString},
+};
+use core::{
+    cmp::min,
+    fmt::{self, Display, Write},
+};
 
 use dec_repr::DecNumRepr;
 use to_fixed_prec::{bin_2_dec_fixed_point, bin_2_dec_scientific};
@@ -89,7 +95,7 @@ impl fmt::Display for f256 {
 }
 
 impl fmt::Debug for f256 {
-    fn fmt(&self, form: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (sign, exp, signif) = split_f256_enc(self);
         if exp == EXP_MAX as i32 {
             fmt::Debug::fmt(&self.to_string(), form)

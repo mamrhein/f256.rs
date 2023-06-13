@@ -120,6 +120,7 @@ impl TryFrom<&str> for f256 {
     }
 }
 
+#[cfg(feature = "std")]
 mod cmp_algos_tests {
     use super::{fast_approx::fast_approx, *};
 
@@ -173,6 +174,8 @@ mod cmp_algos_tests {
 
 #[cfg(test)]
 mod from_str_tests {
+    use alloc::string::ToString;
+
     use super::*;
 
     #[test]

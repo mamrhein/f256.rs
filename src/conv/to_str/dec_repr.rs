@@ -7,6 +7,7 @@
 // $Source$
 // $Revision$
 
+use alloc::string::ToString;
 use core::{cmp::max, fmt, mem::MaybeUninit};
 
 use f256_pow2_div_pow5_lut;

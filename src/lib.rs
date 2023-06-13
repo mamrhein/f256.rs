@@ -57,6 +57,7 @@
 #![warn(clippy::used_underscore_binding)]
 #![warn(clippy::wildcard_imports)]
 
+extern crate alloc;
 extern crate core;
 
 use core::{
