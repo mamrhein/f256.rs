@@ -3,6 +3,7 @@
 * Exponentiation (powf, powi, exp, exp_m1, exp2, exp10)
 * Logarithms (ln, log2, log10, ln_1p)
 * Trigonometric functions (sin, cos, tan)
+* ~~Square root (sqrt)~~
 * Cubic root (cbrt)
 
 ### Special operators
@@ -26,5 +27,5 @@
 
 ### Tests on random data generated via rug (GNU MFPR)
 
-* For ~~add, sub, mul, div~~, rem
+* For ~~add, sub, mul, div, rem~~
 * For elementary functions
