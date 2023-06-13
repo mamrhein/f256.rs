@@ -56,3 +56,18 @@ Add `f256` to your `Cargo.toml`:
 [dependencies]
 f256 = "0.1"
 ```
+
+### Crate features
+
+By default, only the feature `std` is enabled.
+
+#### Ecosystem
+
+* **std** - Printing and some tests depend on this feature. Besides that, support
+  for conversion to string and formatting is provided by using crate `alloc` so 
+  that this functionality is also availbale in non-standard environments.
+
+#### Optional dependencies
+
+* **num-traits** - When enabled, the trait `num-traits::Num` is implemented
+  for `f256`.
