@@ -54,7 +54,7 @@ Add `f256` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-f256 = "0.1"
+f256 = "0.2"
 ```
 
 ### Crate features
@@ -65,7 +65,7 @@ By default, only the feature `std` is enabled.
 
 * **std** - Printing and some tests depend on this feature. Besides that, support
   for conversion to string and formatting is provided by using crate `alloc` so 
-  that this functionality is also availbale in non-standard environments.
+  that this functionality is also available in non-standard environments.
 
 #### Optional dependencies
 
