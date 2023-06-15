@@ -1,0 +1,23 @@
+Version   Changes
+--------  --------------------------------------------------------------------
+ 0.2.0    Added some basic mathematical constants.
+          Implemented fns f256::sqrt, f256::to_degrees and f256::to_radians.
+          Implemented traits Rem, RemAssign.
+          Added tests based on random data generated via crate rug (GNU MPFR).
+          Added mod num_traits and correspoding optional feature.
+          Allow 'no_std' environment.
+          Added CI actions.
+
+ 0.1.2    Fixed defects.
+
+ 0.1.1    Moved lookup tables to separate crates.
+
+ 0.1.0    First public version.
+          Including:
+          * basic properties of f256
+          * basic functions like abs/min/max
+          * basic constants
+          * conversion from integers and f64/f32 and from/to bits/bytes
+          * conversion from/to strings
+          * impl of traits Default, Add, Sub, Mul, Div, AddAssign, SubAssign,
+            MulAssign, DivAssign, PartialEq, PartialOrd
