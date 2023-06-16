@@ -16,7 +16,7 @@ use crate::{
     abs_bits, abs_bits_sticky,
     big_uint::{u128_widening_mul, u512},
     exp_bits, f256, left_adj_signif, norm_bit, signif, u256, EMAX, EMIN,
-    EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK,
+    EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS, HI_ABS_MASK,
     HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
     INF_HI, MAX_HI, SIGNIFICAND_BITS, TOTAL_BITS,
 };
@@ -62,18 +62,18 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
         let min_abs_bits_sticky = min(abs_bits_sticky_x, abs_bits_sticky_y);
         if min_abs_bits_sticky == 0 {
             // Atleast one operand is zero.
-            if max_abs_bits_sticky < HI_EXP_MASK {
+            if max_abs_bits_sticky < INF_HI {
                 // ±0 × ±finite or ±finite × ±0
                 return f256 {
                     bits: u256::new(sign_bits_hi_z, 0),
                 };
             };
-            if max_abs_bits_sticky == HI_EXP_MASK {
+            if max_abs_bits_sticky == INF_HI {
                 // ±0 × ±Inf or ±Inf × ±0
                 return f256::NAN;
             }
         }
-        if max_abs_bits_sticky > HI_EXP_MASK {
+        if max_abs_bits_sticky > INF_HI {
             // Atleast one operand is NAN.
             return f256::NAN;
         }
