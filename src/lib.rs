@@ -524,15 +524,12 @@ impl f256 {
     #[inline]
     #[must_use]
     pub const fn classify(&self) -> FpCategory {
-        match (
-            self.bits.hi & HI_EXP_MASK,
-            self.bits.hi & HI_FRACTION_MASK,
-            self.bits.lo,
-        ) {
-            (HI_EXP_MASK, 0, 0) => FpCategory::Infinite,
-            (HI_EXP_MASK, ..) => FpCategory::Nan,
-            (0, 0, 0) => FpCategory::Zero,
-            (0, ..) => FpCategory::Subnormal,
+        let abs_bits_sticky = abs_bits_sticky(&abs_bits(self));
+        match abs_bits_sticky {
+            0 => FpCategory::Zero,
+            INF_HI => FpCategory::Infinite,
+            NAN_HI => FpCategory::Nan,
+            ..=HI_FRACTION_MASK => FpCategory::Subnormal,
             _ => FpCategory::Normal,
         }
     }
