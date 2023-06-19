@@ -852,7 +852,7 @@ impl f256 {
     #[must_use]
     fn nearest_integral(&self, adj: fn(u32) -> bool) -> Self {
         let mut abs_bits = abs_bits(self);
-        if abs_bits_sticky_minus_1(&abs_bits) >= MAX_HI {
+        if abs_bits.is_special() {
             // self is special
             return *self;
         }
@@ -992,7 +992,7 @@ impl f256 {
     #[must_use]
     pub fn round(&self) -> Self {
         let mut abs_bits = abs_bits(self);
-        if abs_bits_sticky_minus_1(&abs_bits) >= MAX_HI {
+        if abs_bits.is_special() {
             // self is special
             return *self;
         }
@@ -1068,20 +1068,41 @@ pub(crate) const fn abs_bits(f: &f256) -> u256 {
     }
 }
 
-// Returns the high bits `abs_bits` or'ed with 1 if the lower bits of
-// `abs_bits` != 0.
+/// Returns the high bits of `abs_bits` or'ed with 1 if the lower bits of
+/// `abs_bits` != 0.
 #[inline(always)]
 pub(crate) const fn abs_bits_sticky(abs_bits: &u256) -> u128 {
     abs_bits.hi | (abs_bits.lo != 0) as u128
 }
 
-// Returns abs_bits_sticky(`abs_bits`) - 1.
-//
-// This can be used for testing whether `abs_bits` represents |Inf|, NaN or
-// |0|.
-#[inline(always)]
-pub(crate) const fn abs_bits_sticky_minus_1(abs_bits: &u256) -> u128 {
-    abs_bits_sticky(abs_bits).wrapping_sub(1)
+pub(crate) trait BinEncSpecial {
+    /// Returns true if self represents |Inf|, NaN or |0|.
+    fn is_special(&self) -> bool;
+}
+
+impl BinEncSpecial for u128 {
+    #[inline(always)]
+    fn is_special(&self) -> bool {
+        self.wrapping_sub(1) >= MAX_HI
+    }
+}
+
+impl BinEncSpecial for u256 {
+    #[inline(always)]
+    fn is_special(&self) -> bool {
+        abs_bits_sticky(self).is_special()
+    }
+}
+
+pub(crate) trait BinEncAnySpecial {
+    /// Returns true if any element of self represents |Inf|, NaN or |0|.
+    fn any_special(&self) -> bool;
+}
+
+impl BinEncAnySpecial for (u128, u128) {
+    fn any_special(&self) -> bool {
+        max(self.0.wrapping_sub(1), self.1.wrapping_sub(1)) >= MAX_HI
+    }
 }
 
 /// Returns 0 if `abs_bits` represents a subnormal f256 or ZERO, 1 otherwise.

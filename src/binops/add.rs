@@ -14,10 +14,10 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky, abs_bits_sticky_minus_1, exp_bits, f256,
-    norm_bit, sign_bits_hi, signif, u256, EXP_MAX, FRACTION_BITS,
-    HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS,
-    HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS,
+    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, sign_bits_hi,
+    signif, u256, BinEncAnySpecial, EXP_MAX, FRACTION_BITS, HI_ABS_MASK,
+    HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK,
+    HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS,
 };
 
 pub(crate) fn add(x: f256, y: f256) -> f256 {
@@ -31,11 +31,7 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
     // use only that part for the handling of special cases.
     let abs_bits_sticky_x = abs_bits_sticky(&abs_bits_x);
     let abs_bits_sticky_y = abs_bits_sticky(&abs_bits_y);
-    if max(
-        abs_bits_sticky_x.wrapping_sub(1),
-        abs_bits_sticky_y.wrapping_sub(1),
-    ) >= MAX_HI
-    {
+    if (abs_bits_sticky_x, abs_bits_sticky_y).any_special() {
         let max_abs_bits_sticky = max(abs_bits_sticky_x, abs_bits_sticky_y);
         if max_abs_bits_sticky == 0 {
             // Both operands are zero.
