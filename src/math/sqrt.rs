@@ -8,8 +8,8 @@
 // $Revision$
 
 use crate::{
-    f256, u256, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, HI_FRACTION_BIAS,
-    HI_FRACTION_BITS, SIGNIFICAND_BITS,
+    abs_bits, exp_bits, f256, fraction, u256, BinEncSpecial, EMIN, EXP_BIAS,
+    EXP_BITS, EXP_MAX, HI_FRACTION_BIAS, HI_FRACTION_BITS, SIGNIFICAND_BITS,
 };
 
 impl f256 {
@@ -31,30 +31,31 @@ impl f256 {
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cast_sign_loss)]
     pub fn sqrt(self) -> Self {
+        let bin_enc = self.bits;
         // Check whether `self` is negative or ∈ {-0, +0, +∞, NAN}.
-        if self.bits > Self::NEG_ZERO.bits {
+        if bin_enc > Self::NEG_ZERO.bits {
             // `self` < 0
             return Self::NAN;
         }
-        if self.is_special() {
+        if bin_enc.is_special() {
             // `self` either not a number, infinite or equal to zero.
             return self;
         }
 
         // `self` is (sub-)normal and positive
-        let biased_exp = self.bits.hi >> HI_FRACTION_BITS;
+        let biased_exp = exp_bits(&bin_enc);
         let hidden_bit = (biased_exp != 0) as i32;
-        let norm_shift = self.bits.leading_zeros().saturating_sub(EXP_BITS);
+        let norm_shift = bin_enc.leading_zeros().saturating_sub(EXP_BITS);
         // Calculate the exponent
         let mut exp =
             biased_exp as i32 + EMIN - hidden_bit - norm_shift as i32;
-        let odd_exp = exp & 1;
-        exp = (exp - odd_exp) / 2;
+        let exp_is_odd = exp & 1;
+        exp = (exp - exp_is_odd) / 2;
         // Calculate the significand, gain extra bit for final rounding
-        let mut signif = &self.fraction() << norm_shift;
+        let mut signif = &fraction(&bin_enc) << norm_shift;
         signif.hi |= (hidden_bit as u128) << HI_FRACTION_BITS;
         let mut q = u256::new(HI_FRACTION_BIAS << 1, 0);
-        let mut r = &(&signif << (1 + odd_exp as u32)) - &q;
+        let mut r = &(&signif << (1 + exp_is_odd as u32)) - &q;
         let mut s = q;
         for i in 1..=SIGNIFICAND_BITS {
             s >>= 1;
