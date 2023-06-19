@@ -37,6 +37,76 @@ fn mul_signifs(x: &u256, y: &u256) -> (u256, u32, u32) {
     (t.hi, carry, rnd_bits)
 }
 
+fn mul_abs_finite(abs_bits_x: &u256, abs_bits_y: &u256) -> (u256, u32) {
+    // Extract biased exponents and normalized significands.
+    let mut exp_bits_x = exp_bits(abs_bits_x) as i32;
+    let mut exp_bits_y = exp_bits(abs_bits_y) as i32;
+    let norm_bit_x = norm_bit(abs_bits_x) as i32;
+    let norm_bit_y = norm_bit(abs_bits_y) as i32;
+    let (mut norm_signif_x, norm_shift_x) = left_adj_signif(abs_bits_x);
+    let (mut norm_signif_y, norm_shift_y) = left_adj_signif(abs_bits_y);
+
+    // Calculate |x| * |y|.
+    let (mut signif_z, carry, mut rnd_bits) =
+        mul_signifs(&norm_signif_x, &norm_signif_y);
+    const EMIN_EXTRA_SHIFT_BIAS: i32 = EMIN + 2 * EXP_BITS as i32;
+    let mut exp_bits_z_minus_1 = (exp_bits_x - norm_bit_x)
+        + (exp_bits_y - norm_bit_y)
+        - (norm_shift_x + norm_shift_y) as i32
+        + EMIN_EXTRA_SHIFT_BIAS
+        + carry as i32;
+
+    // If the result overflows the range of values representable as `f256`,
+    // return +/- Infinity.
+    if exp_bits_z_minus_1 >= (EXP_MAX - 1) as i32 {
+        return (u256::new(INF_HI, 0), 0_u32);
+    }
+
+    // If the calculated biased exponent <= 0, the result may be subnormal or
+    // underflow to ZERO.
+    if exp_bits_z_minus_1 < 0 {
+        let shift = exp_bits_z_minus_1.unsigned_abs();
+        if shift > SIGNIFICAND_BITS + 1 {
+            // Result underflows to zero.
+            return (u256::ZERO, 0_u32);
+        }
+        if shift > 0 {
+            // Adjust the rounding bits for correct final rounding.
+            match shift {
+                1 => {
+                    rnd_bits = (((signif_z.lo & 1) as u32) << 1)
+                        | (rnd_bits != 0) as u32;
+                }
+                2 => {
+                    rnd_bits =
+                        ((signif_z.lo & 3) as u32) | (rnd_bits != 0) as u32;
+                }
+                3..=127 => {
+                    let rem = signif_z.rem_pow2(shift).lo;
+                    rnd_bits = (rem >> (shift - 2)) as u32
+                        | (rem > (1_u128 << (shift - 1))) as u32
+                        | (rnd_bits != 0) as u32;
+                }
+                _ => {
+                    let rem = signif_z.rem_pow2(shift);
+                    rnd_bits = (&rem >> (shift - 2)).lo as u32
+                        | (rem > (&u256::ONE << (shift - 1))) as u32
+                        | (rnd_bits != 0) as u32;
+                }
+            }
+            signif_z >>= shift;
+        }
+        exp_bits_z_minus_1 = 0;
+    }
+
+    // Assemble the result.
+    let abs_bits_z = u256::new(
+        signif_z.hi + ((exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS),
+        signif_z.lo,
+    );
+    (abs_bits_z, rnd_bits)
+}
+
 /// Compute z = x * y, rounded tie to even.
 #[allow(clippy::cast_possible_truncation)]
 #[allow(clippy::cast_possible_wrap)]
@@ -80,77 +150,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
     }
 
     // Both operands are finite and non-zero.
-
-    // Extract biased exponents and normalized significands.
-    let mut exp_bits_x = exp_bits(&abs_bits_x) as i32;
-    let mut exp_bits_y = exp_bits(&abs_bits_y) as i32;
-    let norm_bit_x = norm_bit(&abs_bits_x) as i32;
-    let norm_bit_y = norm_bit(&abs_bits_y) as i32;
-    let (mut norm_signif_x, norm_shift_x) = left_adj_signif(&abs_bits_x);
-    let (mut norm_signif_y, norm_shift_y) = left_adj_signif(&abs_bits_y);
-
-    // Calculate |x| * |y|.
-    let (mut signif_z, carry, mut rnd_bits) =
-        mul_signifs(&norm_signif_x, &norm_signif_y);
-    const EMIN_EXTRA_SHIFT_BIAS: i32 = EMIN + 2 * EXP_BITS as i32;
-    let mut exp_bits_z_minus_1 = (exp_bits_x - norm_bit_x)
-        + (exp_bits_y - norm_bit_y)
-        - (norm_shift_x + norm_shift_y) as i32
-        + EMIN_EXTRA_SHIFT_BIAS
-        + carry as i32;
-
-    // If the result overflows the range of values representable as `f256`,
-    // return +/- Infinity.
-    if exp_bits_z_minus_1 >= (EXP_MAX - 1) as i32 {
-        return f256 {
-            bits: u256::new(sign_bits_hi_z | INF_HI, 0),
-        };
-    }
-
-    // If the calculated biased exponent <= 0, the result may be subnormal or
-    // underflow to ZERO.
-    if exp_bits_z_minus_1 < 0 {
-        let shift = exp_bits_z_minus_1.unsigned_abs();
-        if shift > SIGNIFICAND_BITS + 1 {
-            // Result underflows to zero.
-            return f256 {
-                bits: u256::new(sign_bits_hi_z, 0),
-            };
-        }
-        if shift > 0 {
-            // Adjust the rounding bits for correct final rounding.
-            match shift {
-                1 => {
-                    rnd_bits = (((signif_z.lo & 1) as u32) << 1)
-                        | (rnd_bits != 0) as u32;
-                }
-                2 => {
-                    rnd_bits =
-                        ((signif_z.lo & 3) as u32) | (rnd_bits != 0) as u32;
-                }
-                3..=127 => {
-                    let rem = signif_z.rem_pow2(shift).lo;
-                    rnd_bits = (rem >> (shift - 2)) as u32
-                        | (rem > (1_u128 << (shift - 1))) as u32
-                        | (rnd_bits != 0) as u32;
-                }
-                _ => {
-                    let rem = signif_z.rem_pow2(shift);
-                    rnd_bits = (&rem >> (shift - 2)).lo as u32
-                        | (rem > (&u256::ONE << (shift - 1))) as u32
-                        | (rnd_bits != 0) as u32;
-                }
-            }
-            signif_z >>= shift;
-        }
-        exp_bits_z_minus_1 = 0;
-    }
-
-    // Assemble the result.
-    let mut bits_z = u256::new(
-        signif_z.hi + ((exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS),
-        signif_z.lo,
-    );
+    let (mut bits_z, rnd_bits) = mul_abs_finite(&abs_bits_x, &abs_bits_y);
     bits_z.hi |= sign_bits_hi_z;
 
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
