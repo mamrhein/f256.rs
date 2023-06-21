@@ -30,12 +30,6 @@ const fn u128_lo(u: u128) -> u128 {
     u & 0xffffffffffffffff
 }
 
-#[inline(always)]
-#[allow(clippy::integer_division)]
-const fn u128_divrem(x: u128, y: u128) -> (u128, u128) {
-    (x / y, x % y)
-}
-
 // Calculate z = x * y.
 pub(crate) const fn u128_widening_mul(x: u128, y: u128) -> u256 {
     let xh = u128_hi(x);
@@ -74,6 +68,16 @@ pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
 pub(crate) trait DivRem<RHS = Self> {
     type Output;
     fn div_rem(self, rhs: RHS) -> Self::Output;
+}
+
+impl DivRem for u128 {
+    type Output = (Self, Self);
+
+    #[inline(always)]
+    #[allow(clippy::integer_division)]
+    fn div_rem(self, rhs: Self) -> Self::Output {
+        (self / rhs, self % rhs)
+    }
 }
 
 /// Helper type representing unsigned integers of 256 bits.
@@ -207,7 +211,7 @@ impl u256 {
         let y1 = u128_hi(y);
         let y0 = u128_lo(y);
 
-        let (mut q1, mut rhat) = u128_divrem(x32, y1);
+        let (mut q1, mut rhat) = x32.div_rem(y1);
         // Now we have
         // q1 * y1 + rhat = x32
         // so that
@@ -233,7 +237,7 @@ impl u256 {
         // x32 * 2⁶⁴ + x1 - q1 * y. Thus, in the following we can safely
         // ignore any possible overflow in x32 * 2⁶⁴ or q1 * y.
         let t = (x32.wrapping_shl(64) + x1).wrapping_sub(q1.wrapping_mul(y));
-        let (mut q0, mut rhat) = u128_divrem(t, y1);
+        let (mut q0, mut rhat) = t.div_rem(y1);
         while q0 >= B || q0 * y0 > rhat * B + x0 {
             q0 -= 1;
             rhat += y1;
@@ -562,11 +566,11 @@ impl DivRem<u64> for &u256 {
     /// Returns `self` / rhs, `self` % rhs
     #[allow(clippy::cast_possible_truncation)]
     fn div_rem(self, rhs: u64) -> Self::Output {
-        let (quot_hi, r) = u128_divrem(self.hi, rhs as u128);
+        let (quot_hi, r) = self.hi.div_rem(rhs as u128);
         let (mut quot_lo, r) =
-            u128_divrem((r << 64) + u128_hi(self.lo), rhs as u128);
+            ((r << 64) + u128_hi(self.lo)).div_rem(rhs as u128);
         quot_lo <<= 64;
-        let (t, r) = u128_divrem((r << 64) + u128_lo(self.lo), rhs as u128);
+        let (t, r) = ((r << 64) + u128_lo(self.lo)).div_rem(rhs as u128);
         quot_lo += t;
         (u256::new(quot_hi, quot_lo), r as u64)
     }
