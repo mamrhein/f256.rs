@@ -37,7 +37,10 @@ fn mul_signifs(x: &u256, y: &u256) -> (u256, u32, u32) {
     (t.hi, carry, rnd_bits)
 }
 
-fn mul_abs_finite(abs_bits_x: &u256, abs_bits_y: &u256) -> (u256, u32) {
+pub(crate) fn mul_abs_finite(
+    abs_bits_x: &u256,
+    abs_bits_y: &u256,
+) -> (u256, u32) {
     // Extract biased exponents and normalized significands.
     let mut exp_bits_x = exp_bits(abs_bits_x) as i32;
     let mut exp_bits_y = exp_bits(abs_bits_y) as i32;

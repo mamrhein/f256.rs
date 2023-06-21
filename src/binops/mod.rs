@@ -55,5 +55,5 @@ macro_rules! forward_op_assign {
 mod add;
 mod cmp;
 mod div;
-mod mul;
+pub(crate) mod mul;
 mod rem;
