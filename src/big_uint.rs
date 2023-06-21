@@ -30,19 +30,52 @@ const fn u128_lo(u: u128) -> u128 {
     u & 0xffffffffffffffff
 }
 
+// TODO: remove this trait when [feature(bigint_helper_methods)] got stable.
+pub(crate) trait BigIntHelper: Sized {
+    /// `self + rhs + carry` (full adder), along with a boolean indicating
+    /// whether an arithmetic overflow occurred.
+    fn bih_carrying_add(self, rhs: Self, carry: bool) -> (Self, bool);
+
+    /// `self - rhs - carry` (full "subtractor"), along with a boolean
+    /// indicating whether an arithmetic overflow occurred.
+    fn bih_borrowing_sub(self, rhs: Self, carry: bool) -> (Self, bool);
+
+    /// `self * rhs` (wide multiplication)
+    fn bih_widening_mul(self, rhs: Self) -> (Self, Self);
+}
+
+impl BigIntHelper for u128 {
+    fn bih_carrying_add(self, rhs: Self, carry: bool) -> (Self, bool) {
+        let (a, b) = self.overflowing_add(rhs);
+        let (c, d) = a.overflowing_add(carry as Self);
+        (c, b != d)
+    }
+
+    fn bih_borrowing_sub(self, rhs: Self, borrow: bool) -> (Self, bool) {
+        let (a, b) = self.overflowing_sub(rhs);
+        let (c, d) = a.overflowing_sub(borrow as Self);
+        (c, b != d)
+    }
+
+    fn bih_widening_mul(self, rhs: Self) -> (Self, Self) {
+        let xh = u128_hi(self);
+        let xl = u128_lo(self);
+        let yh = u128_hi(rhs);
+        let yl = u128_lo(rhs);
+        let mut t = xl * yl;
+        let mut rl = u128_lo(t);
+        t = xl * yh + u128_hi(t);
+        let mut rh = u128_hi(t);
+        t = xh * yl + u128_lo(t);
+        rl += u128_lo(t) << 64;
+        rh += xh * yh + u128_hi(t);
+        (rh, rl)
+    }
+}
+
 // Calculate z = x * y.
-pub(crate) const fn u128_widening_mul(x: u128, y: u128) -> u256 {
-    let xh = u128_hi(x);
-    let xl = u128_lo(x);
-    let yh = u128_hi(y);
-    let yl = u128_lo(y);
-    let mut t = xl * yl;
-    let mut rl = u128_lo(t);
-    t = xl * yh + u128_hi(t);
-    let mut rh = u128_hi(t);
-    t = xh * yl + u128_lo(t);
-    rl += u128_lo(t) << 64;
-    rh += xh * yh + u128_hi(t);
+pub(crate) fn u128_widening_mul(x: u128, y: u128) -> u256 {
+    let (rh, rl) = x.bih_widening_mul(y);
     u256::new(rh, rl)
 }
 
@@ -416,14 +449,9 @@ impl Add for &u256 {
     type Output = u256;
 
     fn add(self, rhs: Self) -> Self::Output {
+        let (lo, carry) = self.lo.overflowing_add(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
-        // let (lo, carry) = self.lo.carrying_add(rhs.lo, false);
-        // let (hi, _) = self.hi.carrying_add(rhs.hi, carry);
-        let lo = self.lo.wrapping_add(rhs.lo);
-        let hi = self
-            .hi
-            .wrapping_add(rhs.hi)
-            .wrapping_add((lo < rhs.lo) as u128);
+        let (hi, _) = self.hi.bih_carrying_add(rhs.hi, carry);
         Self::Output { hi, lo }
     }
 }
@@ -441,33 +469,26 @@ impl Add<u128> for &u256 {
     type Output = u256;
 
     fn add(self, rhs: u128) -> Self::Output {
-        // TODO: change when [feature(bigint_helper_methods)] got stable
-        // let (lo, carry) = self.lo.carrying_add(rhs, false);
-        // let hi = self.hi.wrapping_add(carry);
-        let lo = self.lo.wrapping_add(rhs);
-        let hi = self.hi.wrapping_add((lo < self.lo) as u128);
+        let (lo, carry) = self.lo.overflowing_add(rhs);
+        let hi = self.hi.wrapping_add(carry as u128);
         Self::Output { hi, lo }
     }
 }
 
 impl AddAssign<&Self> for u256 {
     fn add_assign(&mut self, rhs: &Self) {
+        let mut carry = false;
+        (self.lo, carry) = self.lo.overflowing_add(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
-        // let mut carry = false;
-        // (self.lo, carry) = self.lo.carrying_add(rhs.lo, carry);
-        // (self.hi, carry) = self.hi.carrying_add(rhs.hi, carry);
-        self.lo = self.lo.wrapping_add(rhs.lo);
-        self.hi = self
-            .hi
-            .wrapping_add(rhs.hi)
-            .wrapping_add((self.lo < rhs.lo) as u128);
+        (self.hi, _) = self.hi.bih_carrying_add(rhs.hi, carry);
     }
 }
 
 impl AddAssign<u128> for u256 {
     fn add_assign(&mut self, rhs: u128) {
-        self.lo = self.lo.wrapping_add(rhs);
-        self.hi = self.hi.wrapping_add((self.lo < rhs) as u128);
+        let mut carry = false;
+        (self.lo, carry) = self.lo.overflowing_add(rhs);
+        self.hi = self.hi.wrapping_add(carry as u128);
     }
 }
 
@@ -475,14 +496,9 @@ impl Sub for &u256 {
     type Output = u256;
 
     fn sub(self, rhs: Self) -> Self::Output {
+        let (lo, borrow) = self.lo.overflowing_sub(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
-        // let (lo, borrow) = self.lo.borrowing_sub(rhs.lo, false);
-        // let (hi, _) = self.hi.borrowing_sub(rhs.hi, borrow);
-        let lo = self.lo.wrapping_sub(rhs.lo);
-        let hi = self
-            .hi
-            .wrapping_sub(rhs.hi)
-            .wrapping_sub((lo > self.lo) as u128);
+        let (hi, _) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
         Self::Output { hi, lo }
     }
 }
@@ -500,35 +516,26 @@ impl Sub<u128> for &u256 {
     type Output = u256;
 
     fn sub(self, rhs: u128) -> Self::Output {
-        // TODO: change when [feature(bigint_helper_methods)] got stable
-        // let (lo, borrow) = self.lo.borrowing_add(rhs, false);
-        // let hi = self.hi.wrapping_add(borrow);
-        let lo = self.lo.wrapping_sub(rhs);
-        let hi = self.hi.wrapping_sub((lo > self.lo) as u128);
+        let (lo, borrow) = self.lo.overflowing_sub(rhs);
+        let hi = self.hi.wrapping_sub(borrow as u128);
         Self::Output { hi, lo }
     }
 }
 
 impl SubAssign<&Self> for u256 {
     fn sub_assign(&mut self, rhs: &Self) {
+        let mut borrow = false;
+        (self.lo, borrow) = self.lo.overflowing_sub(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
-        // let mut borrow = false;
-        // (self.lo, borrow) = self.lo.borrowing_sub(rhs.lo, borrow);
-        // (self.hi, borrow) = self.hi.borrowing_sub(rhs.lo, borrow);
-        let t = self.lo.wrapping_sub(rhs.lo);
-        self.hi = self
-            .hi
-            .wrapping_sub(rhs.hi)
-            .wrapping_sub((t > self.lo) as u128);
-        self.lo = t;
+        (self.hi, borrow) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
     }
 }
 
 impl SubAssign<u128> for u256 {
     fn sub_assign(&mut self, rhs: u128) {
-        let t = self.lo.wrapping_sub(rhs);
-        self.hi = self.hi.wrapping_sub((t > self.lo) as u128);
-        self.lo = t;
+        let mut borrow = false;
+        (self.lo, borrow) = self.lo.overflowing_sub(rhs);
+        self.hi = self.hi.wrapping_sub(borrow as u128);
     }
 }
 
