@@ -62,13 +62,14 @@ impl BigIntHelper for u128 {
         let xl = u128_lo(self);
         let yh = u128_hi(rhs);
         let yl = u128_lo(rhs);
-        let mut t = xl * yl;
-        let mut rl = u128_lo(t);
-        t = xl * yh + u128_hi(t);
-        let mut rh = u128_hi(t);
-        t = xh * yl + u128_lo(t);
-        rl += u128_lo(t) << 64;
-        rh += xh * yh + u128_hi(t);
+        let mut rl = xl * yl;
+        let t1 = xl * yh;
+        let t2 = xh * yl;
+        let mut rh = xh * yh;
+        let (t1, mut carry) = t1.overflowing_add(t2);
+        rh += ((carry as Self) << 64) + u128_hi(t1);
+        (rl, carry) = rl.overflowing_add(u128_lo(t1) << 64);
+        rh += carry as Self;
         (rh, rl)
     }
 }
@@ -336,7 +337,7 @@ impl u256 {
         }
     }
 
-    // TODO: remove this function and replaced calls to it by op <<
+    // TODO: remove this function and replace calls to it by op <<
     // when trait fns can be declared const.
     pub(crate) const fn shift_left(&self, rhs: u32) -> Self {
         const LIMIT: u32 = u256::BITS - 1;
@@ -404,6 +405,7 @@ impl u256 {
 
     // Calculate z = x * y.
     pub(crate) fn widening_mul(&self, rhs: &Self) -> u512 {
+        // TODO: change when [feature(bigint_helper_methods)] got stable
         let mut lo = u128_widening_mul(self.lo, rhs.lo);
         let mut t1 = u128_widening_mul(self.lo, rhs.hi);
         let mut t2 = u128_widening_mul(self.hi, rhs.lo);
@@ -1333,6 +1335,18 @@ mod u256_to_str_tests {
             "115792089237316195423570985008687907853269984665640564039457584007\
              913129639935"
         );
+    }
+}
+
+#[cfg(test)]
+mod u128_widening_mul_tests {
+    use super::*;
+
+    #[test]
+    fn test_max() {
+        let x = u128::MAX;
+        let z = x.bih_widening_mul(x);
+        assert_eq!(z, (u128::MAX - 1, 1));
     }
 }
 
