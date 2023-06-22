@@ -443,13 +443,10 @@ impl u256 {
 
     // Calculate ⌊(x * y) % 2²⁵⁶⌋.
     pub(crate) fn wrapping_mul(&self, rhs: &Self) -> Self {
-        let mut lo = u128_widening_mul(self.lo, rhs.lo);
-        let mut t1 = u128_widening_mul(self.lo, rhs.hi);
-        let mut t2 = u128_widening_mul(self.hi, rhs.lo);
-        t1 += &t2;
-        t2 = Self::new(t1.lo, 0);
-        lo += &t2;
-        lo
+        let (mut rh, rl) = self.lo.widening_mul(rhs.lo);
+        rh = rh.wrapping_add(self.lo.wrapping_mul(rhs.hi));
+        rh = rh.wrapping_add(self.hi.wrapping_mul(rhs.lo));
+        Self::new(rh, rl)
     }
 }
 
