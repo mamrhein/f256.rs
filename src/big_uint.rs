@@ -39,6 +39,9 @@ pub(crate) trait BigIntHelper: Sized {
     /// `self - rhs - carry` (full "subtractor"), along with a boolean
     /// indicating whether an arithmetic overflow occurred.
     fn bih_borrowing_sub(self, rhs: Self, carry: bool) -> (Self, bool);
+
+    /// `self * rhs + carry` (multiply-accumulate)
+    fn bih_carrying_mul(self, rhs: Self, carry: Self) -> (Self, Self);
 }
 
 impl BigIntHelper for u128 {
@@ -52,6 +55,13 @@ impl BigIntHelper for u128 {
         let (a, b) = self.overflowing_sub(rhs);
         let (c, d) = a.overflowing_sub(borrow as Self);
         (c, b != d)
+    }
+
+    fn bih_carrying_mul(self, rhs: Self, carry: Self) -> (Self, Self) {
+        let (a, mut b) = self.widening_mul(rhs);
+        let (c, d) = a.overflowing_add(carry);
+        b += d as u128;
+        (c, b)
     }
 }
 
@@ -88,21 +98,25 @@ pub(crate) fn u128_widening_mul(x: u128, y: u128) -> u256 {
 
 // Calculate ⌊(x * y) / 2⁵¹²⌋.
 pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
-    let mut t = u256::new(0, u128_widening_mul(x.lo, y.lo.lo).hi);
-    t += &u128_widening_mul(x.hi, y.lo.lo);
-    let mut u = u128_widening_mul(x.lo, y.lo.hi);
-    t += &u;
-    t = u256::new((t < u) as u128, t.hi);
-    t += &u128_widening_mul(x.hi, y.lo.hi);
-    u = u128_widening_mul(x.lo, y.hi.lo);
-    t += &u;
-    t = u256::new((t < u) as u128, t.hi);
-    t += &u128_widening_mul(x.hi, y.hi.lo);
-    u = u128_widening_mul(x.lo, y.hi.hi);
-    t += &u;
-    t = u256::new((t < u) as u128, t.hi);
-    t += &u128_widening_mul(x.hi, y.hi.hi);
-    t
+    let mut carry = 0_128;
+    let mut l = (0_u128, 0_u128, 0_u128, 0_u128);
+    let mut h = (0_u128, 0_u128, 0_u128, 0_u128);
+    (_, carry) = y.lo.lo.widening_mul(x.lo);
+    (l.0, carry) = y.lo.hi.bih_carrying_mul(x.lo, carry);
+    (l.1, carry) = y.hi.lo.bih_carrying_mul(x.lo, carry);
+    (l.2, carry) = y.hi.hi.bih_carrying_mul(x.lo, carry);
+    l.3 = carry;
+    (h.0, carry) = y.lo.lo.widening_mul(x.hi);
+    (h.1, carry) = y.lo.hi.bih_carrying_mul(x.hi, carry);
+    (h.2, carry) = y.hi.lo.bih_carrying_mul(x.hi, carry);
+    (h.3, carry) = y.hi.hi.bih_carrying_mul(x.hi, carry);
+    let mut hi = carry;
+    let (_, carry) = l.0.overflowing_add(h.0);
+    let (_, carry) = l.1.bih_carrying_add(h.1, carry);
+    let (_, carry) = l.2.bih_carrying_add(h.2, carry);
+    let (lo, carry) = l.3.bih_carrying_add(h.3, carry);
+    hi += carry as u128;
+    u256::new(hi, lo)
 }
 
 pub(crate) trait DivRem<RHS = Self> {
