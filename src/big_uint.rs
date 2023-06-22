@@ -90,12 +90,6 @@ impl WideningMul for u128 {
     }
 }
 
-// Calculate z = x * y.
-pub(crate) fn u128_widening_mul(x: u128, y: u128) -> u256 {
-    let (rl, rh) = x.widening_mul(y);
-    u256::new(rh, rl)
-}
-
 // Calculate ⌊(x * y) / 2⁵¹²⌋.
 pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
     let mut carry = 0_128;
@@ -446,18 +440,7 @@ impl u256 {
 
     // Calculate ⌊(x * y) / 2²⁵⁶⌋.
     pub(crate) fn truncating_mul(&self, rhs: &Self) -> Self {
-        let mut r = u128_widening_mul(self.hi, rhs.hi);
-        let t1 = u128_widening_mul(self.hi, rhs.lo);
-        r += t1.hi;
-        let t2 = u128_widening_mul(self.lo, rhs.hi);
-        r += t2.hi;
-        let mut c = 0_u128;
-        let t3 = t1.lo.wrapping_add(t2.lo);
-        c += (t3 < t1.lo) as u128;
-        let t4 = t3.wrapping_add(u128_widening_mul(self.lo, rhs.lo).hi);
-        c += (t4 < t3) as u128;
-        r += c;
-        r
+        self.widening_mul(rhs).hi
     }
 
     // Calculate ⌊(x * y) % 2²⁵⁶⌋.

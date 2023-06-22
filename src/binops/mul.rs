@@ -13,12 +13,11 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky,
-    big_uint::{u128_widening_mul, u512},
-    exp_bits, f256, left_adj_signif, norm_bit, signif, u256,
-    BinEncAnySpecial, EMAX, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS,
-    HI_ABS_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK,
-    HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS, TOTAL_BITS,
+    abs_bits, abs_bits_sticky, big_uint::u512, exp_bits, f256,
+    left_adj_signif, norm_bit, signif, u256, BinEncAnySpecial, EMAX, EMIN,
+    EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS, HI_ABS_MASK,
+    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
+    INF_HI, MAX_HI, SIGNIFICAND_BITS, TOTAL_BITS,
 };
 
 #[inline]
