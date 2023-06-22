@@ -76,13 +76,13 @@ impl WideningMul for u128 {
         rh += ((carry as Self) << 64) + u128_hi(t1);
         (rl, carry) = rl.overflowing_add(u128_lo(t1) << 64);
         rh += carry as Self;
-        (rh, rl)
+        (rl, rh)
     }
 }
 
 // Calculate z = x * y.
 pub(crate) fn u128_widening_mul(x: u128, y: u128) -> u256 {
-    let (rh, rl) = x.widening_mul(y);
+    let (rl, rh) = x.widening_mul(y);
     u256::new(rh, rl)
 }
 
@@ -443,7 +443,7 @@ impl u256 {
 
     // Calculate ⌊(x * y) % 2²⁵⁶⌋.
     pub(crate) fn wrapping_mul(&self, rhs: &Self) -> Self {
-        let (mut rh, rl) = self.lo.widening_mul(rhs.lo);
+        let (rl, mut rh) = self.lo.widening_mul(rhs.lo);
         rh = rh.wrapping_add(self.lo.wrapping_mul(rhs.hi));
         rh = rh.wrapping_add(self.hi.wrapping_mul(rhs.lo));
         Self::new(rh, rl)
@@ -552,7 +552,7 @@ impl Mul<&u256> for &u256 {
             self.hi == 0 || rhs.hi == 0,
             "Attempt to multiply with overflow."
         );
-        let (mut hi, lo) = self.lo.widening_mul(rhs.lo);
+        let (lo, mut hi) = self.lo.widening_mul(rhs.lo);
         let (mut t, mut ovfl) = self.lo.overflowing_mul(rhs.hi);
         assert!(!ovfl, "Attempt to multiply with overflow.");
         (hi, ovfl) = hi.overflowing_add(t);
@@ -567,7 +567,7 @@ impl Mul<&u256> for &u256 {
 
 impl MulAssign<u128> for u256 {
     fn mul_assign(&mut self, rhs: u128) {
-        let (carry, t) = self.lo.widening_mul(rhs);
+        let (t, carry) = self.lo.widening_mul(rhs);
         self.lo = t;
         let (t, mut ovfl) = self.hi.overflowing_mul(rhs);
         assert!(!ovfl, "Attempt to multiply with overflow.");
@@ -1353,7 +1353,7 @@ mod u128_widening_mul_tests {
     fn test_max() {
         let x = u128::MAX;
         let z = x.widening_mul(x);
-        assert_eq!(z, (u128::MAX - 1, 1));
+        assert_eq!(z, (1, u128::MAX - 1));
     }
 }
 
