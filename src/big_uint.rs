@@ -39,9 +39,6 @@ pub(crate) trait BigIntHelper: Sized {
     /// `self - rhs - carry` (full "subtractor"), along with a boolean
     /// indicating whether an arithmetic overflow occurred.
     fn bih_borrowing_sub(self, rhs: Self, carry: bool) -> (Self, bool);
-
-    /// `self * rhs` (wide multiplication)
-    fn bih_widening_mul(self, rhs: Self) -> (Self, Self);
 }
 
 impl BigIntHelper for u128 {
@@ -56,8 +53,17 @@ impl BigIntHelper for u128 {
         let (c, d) = a.overflowing_sub(borrow as Self);
         (c, b != d)
     }
+}
 
-    fn bih_widening_mul(self, rhs: Self) -> (Self, Self) {
+// [feature(bigint_helper_methods)] does not (yet?) provide an impl of
+// u128::widening_mul.
+pub(crate) trait WideningMul: Sized {
+    /// `self * rhs` (wide multiplication)
+    fn widening_mul(self, rhs: Self) -> (Self, Self);
+}
+
+impl WideningMul for u128 {
+    fn widening_mul(self, rhs: Self) -> (Self, Self) {
         let xh = u128_hi(self);
         let xl = u128_lo(self);
         let yh = u128_hi(rhs);
@@ -76,7 +82,7 @@ impl BigIntHelper for u128 {
 
 // Calculate z = x * y.
 pub(crate) fn u128_widening_mul(x: u128, y: u128) -> u256 {
-    let (rh, rl) = x.bih_widening_mul(y);
+    let (rh, rl) = x.widening_mul(y);
     u256::new(rh, rl)
 }
 
@@ -1345,7 +1351,7 @@ mod u128_widening_mul_tests {
     #[test]
     fn test_max() {
         let x = u128::MAX;
-        let z = x.bih_widening_mul(x);
+        let z = x.widening_mul(x);
         assert_eq!(z, (u128::MAX - 1, 1));
     }
 }
