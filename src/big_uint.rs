@@ -552,14 +552,16 @@ impl Mul<&u256> for &u256 {
             self.hi == 0 || rhs.hi == 0,
             "Attempt to multiply with overflow."
         );
-        let mut res = u128_widening_mul(self.lo, rhs.lo);
-        let mut t = u128_widening_mul(self.lo, rhs.hi);
-        assert_eq!(t.hi, 0, "Attempt to multiply with overflow.");
-        res.hi += t.lo;
-        t = u128_widening_mul(self.hi, rhs.lo);
-        assert_eq!(t.hi, 0, "Attempt to multiply with overflow.");
-        res.hi += t.lo;
-        res
+        let (mut hi, lo) = self.lo.widening_mul(rhs.lo);
+        let (mut t, mut ovfl) = self.lo.overflowing_mul(rhs.hi);
+        assert!(!ovfl, "Attempt to multiply with overflow.");
+        (hi, ovfl) = hi.overflowing_add(t);
+        assert!(!ovfl, "Attempt to multiply with overflow.");
+        (t, ovfl) = self.hi.overflowing_mul(rhs.lo);
+        assert!(!ovfl, "Attempt to multiply with overflow.");
+        (hi, ovfl) = hi.overflowing_add(t);
+        assert!(!ovfl, "Attempt to multiply with overflow.");
+        Self::Output::new(hi, lo)
     }
 }
 
