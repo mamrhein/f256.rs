@@ -475,7 +475,8 @@ impl Add for &u256 {
     fn add(self, rhs: Self) -> Self::Output {
         let (lo, carry) = self.lo.overflowing_add(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
-        let (hi, _) = self.hi.bih_carrying_add(rhs.hi, carry);
+        let (hi, carry) = self.hi.bih_carrying_add(rhs.hi, carry);
+        assert!(!carry, "Attempt to add with overflow");
         Self::Output { hi, lo }
     }
 }
@@ -494,7 +495,8 @@ impl Add<u128> for &u256 {
 
     fn add(self, rhs: u128) -> Self::Output {
         let (lo, carry) = self.lo.overflowing_add(rhs);
-        let hi = self.hi.wrapping_add(carry as u128);
+        let (hi, carry) = self.hi.overflowing_add(carry as u128);
+        assert!(!carry, "Attempt to add with overflow");
         Self::Output { hi, lo }
     }
 }
@@ -504,7 +506,8 @@ impl AddAssign<&Self> for u256 {
         let mut carry = false;
         (self.lo, carry) = self.lo.overflowing_add(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
-        (self.hi, _) = self.hi.bih_carrying_add(rhs.hi, carry);
+        (self.hi, carry) = self.hi.bih_carrying_add(rhs.hi, carry);
+        assert!(!carry, "Attempt to add with overflow");
     }
 }
 
@@ -512,7 +515,8 @@ impl AddAssign<u128> for u256 {
     fn add_assign(&mut self, rhs: u128) {
         let mut carry = false;
         (self.lo, carry) = self.lo.overflowing_add(rhs);
-        self.hi = self.hi.wrapping_add(carry as u128);
+        (self.hi, carry) = self.hi.overflowing_add(carry as u128);
+        assert!(!carry, "Attempt to add with overflow");
     }
 }
 
@@ -522,7 +526,8 @@ impl Sub for &u256 {
     fn sub(self, rhs: Self) -> Self::Output {
         let (lo, borrow) = self.lo.overflowing_sub(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
-        let (hi, _) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
+        let (hi, borrow) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
+        assert!(!borrow, "Attempt to subtract with overflow");
         Self::Output { hi, lo }
     }
 }
@@ -541,7 +546,8 @@ impl Sub<u128> for &u256 {
 
     fn sub(self, rhs: u128) -> Self::Output {
         let (lo, borrow) = self.lo.overflowing_sub(rhs);
-        let hi = self.hi.wrapping_sub(borrow as u128);
+        let (hi, borrow) = self.hi.overflowing_sub(borrow as u128);
+        assert!(!borrow, "Attempt to subtract with overflow");
         Self::Output { hi, lo }
     }
 }
@@ -552,6 +558,7 @@ impl SubAssign<&Self> for u256 {
         (self.lo, borrow) = self.lo.overflowing_sub(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
         (self.hi, borrow) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
+        assert!(!borrow, "Attempt to subtract with overflow");
     }
 }
 
@@ -559,7 +566,8 @@ impl SubAssign<u128> for u256 {
     fn sub_assign(&mut self, rhs: u128) {
         let mut borrow = false;
         (self.lo, borrow) = self.lo.overflowing_sub(rhs);
-        self.hi = self.hi.wrapping_sub(borrow as u128);
+        (self.hi, borrow) = self.hi.overflowing_sub(borrow as u128);
+        assert!(!borrow, "Attempt to subtract with overflow");
     }
 }
 
