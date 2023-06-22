@@ -569,8 +569,10 @@ impl MulAssign<u128> for u256 {
     fn mul_assign(&mut self, rhs: u128) {
         let (carry, t) = self.lo.widening_mul(rhs);
         self.lo = t;
-        let (_, t) = self.hi.widening_mul(rhs);
-        self.hi = t.wrapping_add(carry);
+        let (t, mut ovfl) = self.hi.overflowing_mul(rhs);
+        assert!(!ovfl, "Attempt to multiply with overflow.");
+        (self.hi, ovfl) = t.overflowing_add(carry);
+        assert!(!ovfl, "Attempt to multiply with overflow.");
     }
 }
 
