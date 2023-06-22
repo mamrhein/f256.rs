@@ -423,6 +423,13 @@ impl u256 {
         }
     }
 
+    fn wrapping_sub(&self, rhs: &Self) -> Self {
+        let (lo, borrow) = self.lo.overflowing_sub(rhs.lo);
+        // TODO: change when [feature(bigint_helper_methods)] got stable
+        let (hi, _) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
+        Self { hi, lo }
+    }
+
     // Calculate z = x * y.
     pub(crate) fn widening_mul(&self, rhs: &Self) -> u512 {
         // TODO: change when [feature(bigint_helper_methods)] got stable
@@ -958,7 +965,7 @@ impl u512 {
         // x32 * 2¹²⁸ + x1 - q1 * y. Thus, in the following we can safely
         // ignore any possible overflow in x32 * 2¹²⁸ or q1 * y.
         let mut t = u256::new(x32.lo, x1);
-        t -= &q1.wrapping_mul(&y);
+        t = t.wrapping_sub(&q1.wrapping_mul(&y));
         let (mut q0, mut rhat) = t.div_rem(&y1);
         while q0 >= B || &q0 * &y0 > &(&rhat * &B) + x0 {
             q0.decr();
@@ -972,7 +979,7 @@ impl u512 {
         q += &q0;
         // Denormalize remainder
         let mut r = u256::new(t.lo, x0);
-        r -= &q0.wrapping_mul(&y);
+        r = r.wrapping_sub(&q0.wrapping_mul(&y));
         r >>= shift;
         (Self::new(u256::ZERO, q), r)
     }
