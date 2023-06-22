@@ -432,17 +432,15 @@ impl u256 {
 
     // Calculate z = x * y.
     pub(crate) fn widening_mul(&self, rhs: &Self) -> u512 {
+        let (ll, carry) = self.lo.widening_mul(rhs.lo);
+        let (lh, hl) = self.lo.bih_carrying_mul(rhs.hi, carry);
         // TODO: change when [feature(bigint_helper_methods)] got stable
-        let mut lo = u128_widening_mul(self.lo, rhs.lo);
-        let mut t1 = u128_widening_mul(self.lo, rhs.hi);
-        let mut t2 = u128_widening_mul(self.hi, rhs.lo);
-        let mut hi = u128_widening_mul(self.hi, rhs.hi);
-        t1 += &t2;
-        hi += t1.hi;
-        hi.hi += (t1 < t2) as u128;
-        t2 = Self::new(t1.lo, 0);
-        lo += &t2;
-        hi += (lo < t2) as u128;
+        let (lh, carry) = self.hi.bih_carrying_mul(rhs.lo, lh);
+        let (hl, incr) = hl.overflowing_add(carry);
+        let (hl, mut hh) = self.hi.bih_carrying_mul(rhs.hi, hl);
+        hh += incr as u128;
+        let hi = u256::new(hh, hl);
+        let lo = u256::new(lh, ll);
         u512 { hi, lo }
     }
 
