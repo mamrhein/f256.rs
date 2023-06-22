@@ -565,10 +565,10 @@ impl Mul<&u256> for &u256 {
 
 impl MulAssign<u128> for u256 {
     fn mul_assign(&mut self, rhs: u128) {
-        let tl = u128_widening_mul(self.lo, rhs);
-        self.lo = tl.lo;
-        let th = u128_widening_mul(self.hi, rhs);
-        self.hi = th.lo.wrapping_add(tl.hi);
+        let (carry, t) = self.lo.widening_mul(rhs);
+        self.lo = t;
+        let (_, t) = self.hi.widening_mul(rhs);
+        self.hi = t.wrapping_add(carry);
     }
 }
 
