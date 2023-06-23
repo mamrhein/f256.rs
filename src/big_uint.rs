@@ -1042,6 +1042,15 @@ impl u512 {
     }
 }
 
+impl AddAssign<&Self> for u512 {
+    fn add_assign(&mut self, rhs: &Self) {
+        let mut carry = false;
+        (self.lo, carry) = self.lo.overflowing_add(&rhs.lo);
+        (self.hi, carry) = self.hi.carrying_add(&rhs.hi, carry);
+        assert!(!carry, "Attempt to add with overflow");
+    }
+}
+
 impl DivRem<u128> for &u512 {
     type Output = (u512, u128);
 
@@ -1579,6 +1588,47 @@ mod u256_shift_tests {
         u = o;
         u >>= 255;
         assert_eq!(u, u256 { hi: 0, lo: 1 });
+    }
+}
+
+#[cfg(test)]
+mod u512_add_assign_tests {
+    use super::*;
+
+    #[test]
+    fn test_add_assign_1() {
+        let two = &u256::ONE + &u256::ONE;
+        let mut v = u512::new(u256::ONE, u256::ONE);
+        let w = v;
+        let z = u512::new(two, two);
+        v += &w;
+        assert_eq!(v, z);
+    }
+
+    #[test]
+    fn test_add_assign_2() {
+        let mut v = u512::new(u256::ZERO, u256::MAX);
+        let w = u512::new(u256::ONE, u256::ONE);
+        let z = u512::new(&u256::ONE + &u256::ONE, u256::ZERO);
+        v += &w;
+        assert_eq!(v, z);
+    }
+
+    #[test]
+    fn test_add_assign_3() {
+        let mut v = u512::new(u256::ZERO, u256::MAX);
+        let w = v;
+        let z = u512::new(u256::ONE, &u256::MAX - &u256::ONE);
+        v += &w;
+        assert_eq!(v, z);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_add_assign_ovfl() {
+        let mut v = u512::new(u256::ZERO, u256::MAX);
+        let w = u512::new(u256::MAX, u256::ONE);
+        v += &w;
     }
 }
 
