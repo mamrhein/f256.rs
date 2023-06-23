@@ -186,14 +186,14 @@ impl u256 {
         Self::BITS - self.leading_zeros() - 1
     }
 
-    /// Add 1 to `self` inplace.
+    /// Add 1 to `self` inplace, wrapping around at Self::MAX.
     #[inline]
     pub(crate) fn incr(&mut self) {
         self.lo = self.lo.wrapping_add(1_u128);
         self.hi = self.hi.wrapping_add((self.lo == 0) as u128);
     }
 
-    /// Subtract 1 from `self` inplace.
+    /// Subtract 1 from `self` inplace, wrapping around at Self::ZERO.
     #[inline]
     pub(crate) fn decr(&mut self) {
         self.hi = self.hi.wrapping_sub((self.lo == 0) as u128);
@@ -417,6 +417,7 @@ impl u256 {
         }
     }
 
+    /// Calculate (x - y) % 2²⁵⁶.
     fn wrapping_sub(&self, rhs: &Self) -> Self {
         let (lo, borrow) = self.lo.overflowing_sub(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
@@ -424,7 +425,7 @@ impl u256 {
         Self { hi, lo }
     }
 
-    // Calculate z = x * y.
+    /// Calculate z = x * y.
     pub(crate) fn widening_mul(&self, rhs: &Self) -> u512 {
         let (ll, carry) = self.lo.widening_mul(rhs.lo);
         let (lh, hl) = self.lo.bih_carrying_mul(rhs.hi, carry);
@@ -438,12 +439,12 @@ impl u256 {
         u512 { hi, lo }
     }
 
-    // Calculate ⌊(x * y) / 2²⁵⁶⌋.
+    /// Calculate ⌊(x * y) / 2²⁵⁶⌋.
     pub(crate) fn truncating_mul(&self, rhs: &Self) -> Self {
         self.widening_mul(rhs).hi
     }
 
-    // Calculate ⌊(x * y) % 2²⁵⁶⌋.
+    /// Calculate (x * y) % 2²⁵⁶.
     pub(crate) fn wrapping_mul(&self, rhs: &Self) -> Self {
         let (rl, mut rh) = self.lo.widening_mul(rhs.lo);
         rh = rh.wrapping_add(self.lo.wrapping_mul(rhs.hi));
@@ -885,7 +886,7 @@ impl u512 {
         Self::BITS - self.leading_zeros() - 1
     }
 
-    /// Add 1 to `self` inplace.
+    /// Add 1 to `self` inplace, wrapping around at Self::MAX.
     #[inline]
     pub(crate) fn incr(&mut self) {
         self.lo.incr();
@@ -894,7 +895,7 @@ impl u512 {
         }
     }
 
-    /// Subtract 1 from `self` inplace.
+    /// Subtract 1 from `self` inplace, wrapping around at Self::ZERO.
     #[inline]
     pub(crate) fn decr(&mut self) {
         if self.lo.is_zero() {
