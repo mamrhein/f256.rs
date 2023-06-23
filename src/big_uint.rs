@@ -48,13 +48,13 @@ impl BigIntHelper for u128 {
     fn bih_carrying_add(self, rhs: Self, carry: bool) -> (Self, bool) {
         let (a, b) = self.overflowing_add(rhs);
         let (c, d) = a.overflowing_add(carry as Self);
-        (c, b != d)
+        (c, b || d)
     }
 
     fn bih_borrowing_sub(self, rhs: Self, borrow: bool) -> (Self, bool) {
         let (a, b) = self.overflowing_sub(rhs);
         let (c, d) = a.overflowing_sub(borrow as Self);
-        (c, b != d)
+        (c, b || d)
     }
 
     fn bih_carrying_mul(self, rhs: Self, carry: Self) -> (Self, Self) {
