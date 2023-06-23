@@ -46,22 +46,22 @@ pub(crate) trait BigIntHelper: Sized {
 
 impl BigIntHelper for u128 {
     fn bih_carrying_add(self, rhs: Self, carry: bool) -> (Self, bool) {
-        let (a, b) = self.overflowing_add(rhs);
-        let (c, d) = a.overflowing_add(carry as Self);
-        (c, b || d)
+        let (t, o1) = self.overflowing_add(rhs);
+        let (t, o2) = t.overflowing_add(carry as Self);
+        (t, o1 || o2)
     }
 
     fn bih_borrowing_sub(self, rhs: Self, borrow: bool) -> (Self, bool) {
-        let (a, b) = self.overflowing_sub(rhs);
-        let (c, d) = a.overflowing_sub(borrow as Self);
-        (c, b || d)
+        let (t, o1) = self.overflowing_sub(rhs);
+        let (t, o2) = t.overflowing_sub(borrow as Self);
+        (t, o1 || o2)
     }
 
     fn bih_carrying_mul(self, rhs: Self, carry: Self) -> (Self, Self) {
-        let (a, mut b) = self.widening_mul(rhs);
-        let (c, d) = a.overflowing_add(carry);
-        b += d as u128;
-        (c, b)
+        let (rl, mut rh) = self.widening_mul(rhs);
+        let (rl, ovfl) = rl.overflowing_add(carry);
+        rh += ovfl as u128;
+        (rl, rh)
     }
 }
 
@@ -417,12 +417,37 @@ impl u256 {
         }
     }
 
-    /// Calculate (x - y) % 2²⁵⁶.
-    fn wrapping_sub(&self, rhs: &Self) -> Self {
+    /// `self + rhs`, along with a boolean indicating whether an arithmetic
+    /// overflow occurred.
+    fn overflowing_add(&self, rhs: &Self) -> (Self, bool) {
+        let (lo, carry) = self.lo.overflowing_add(rhs.lo);
+        // TODO: change when [feature(bigint_helper_methods)] got stable
+        let (hi, carry) = self.hi.bih_carrying_add(rhs.hi, carry);
+        (Self { hi, lo }, carry)
+    }
+
+    /// `self + rhs + carry` (full adder), along with a boolean indicating
+    /// whether an arithmetic overflow occurred.
+    fn carrying_add(&self, rhs: &Self, carry: bool) -> (Self, bool) {
+        let (mut t, o1) = self.overflowing_add(rhs);
+        let mut o2 = false;
+        (t.lo, o2) = t.lo.overflowing_add(carry as u128);
+        (t.hi, o2) = t.hi.overflowing_add(o2 as u128);
+        (t, o1 || o2)
+    }
+
+    /// `self - rhs`, along with a boolean indicating whether an arithmetic
+    /// overflow occurred.
+    fn overflowing_sub(&self, rhs: &Self) -> (Self, bool) {
         let (lo, borrow) = self.lo.overflowing_sub(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
-        let (hi, _) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
-        Self { hi, lo }
+        let (hi, borrow) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
+        (Self { hi, lo }, borrow)
+    }
+
+    /// Calculate (x - y) % 2²⁵⁶.
+    fn wrapping_sub(&self, rhs: &Self) -> Self {
+        self.overflowing_sub(rhs).0
     }
 
     /// Calculate z = x * y.
@@ -457,11 +482,9 @@ impl Add for &u256 {
     type Output = u256;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let (lo, carry) = self.lo.overflowing_add(rhs.lo);
-        // TODO: change when [feature(bigint_helper_methods)] got stable
-        let (hi, carry) = self.hi.bih_carrying_add(rhs.hi, carry);
+        let (r, carry) = self.overflowing_add(rhs);
         assert!(!carry, "Attempt to add with overflow");
-        Self::Output { hi, lo }
+        r
     }
 }
 
@@ -508,11 +531,9 @@ impl Sub for &u256 {
     type Output = u256;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let (lo, borrow) = self.lo.overflowing_sub(rhs.lo);
-        // TODO: change when [feature(bigint_helper_methods)] got stable
-        let (hi, borrow) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
+        let (r, borrow) = self.overflowing_sub(rhs);
         assert!(!borrow, "Attempt to subtract with overflow");
-        Self::Output { hi, lo }
+        r
     }
 }
 
