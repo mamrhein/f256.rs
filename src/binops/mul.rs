@@ -42,10 +42,10 @@ pub(crate) fn mul_abs_finite(
 ) -> (u256, u32) {
     // Extract biased exponents and normalized significands.
     let mut exp_bits_x = exp_bits(abs_bits_x) as i32;
-    let mut exp_bits_y = exp_bits(abs_bits_y) as i32;
     let norm_bit_x = norm_bit(abs_bits_x) as i32;
-    let norm_bit_y = norm_bit(abs_bits_y) as i32;
     let (mut norm_signif_x, norm_shift_x) = left_adj_signif(abs_bits_x);
+    let mut exp_bits_y = exp_bits(abs_bits_y) as i32;
+    let norm_bit_y = norm_bit(abs_bits_y) as i32;
     let (mut norm_signif_y, norm_shift_y) = left_adj_signif(abs_bits_y);
 
     // Calculate |x| * |y|.
