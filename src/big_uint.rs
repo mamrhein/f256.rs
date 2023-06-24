@@ -450,6 +450,16 @@ impl u256 {
         self.overflowing_sub(rhs).0
     }
 
+    /// `self - rhs - borrow` (full subtractor), along with a boolean
+    /// indicating whether an arithmetic overflow occurred.
+    fn borrowing_sub(self, rhs: &Self, borrow: bool) -> (Self, bool) {
+        let (mut t, o1) = self.overflowing_sub(rhs);
+        let mut o2 = false;
+        (t.lo, o2) = t.lo.overflowing_sub(borrow as u128);
+        (t.hi, o2) = t.hi.overflowing_sub(o2 as u128);
+        (t, o1 || o2)
+    }
+
     /// Calculate z = x * y.
     pub(crate) fn widening_mul(&self, rhs: &Self) -> u512 {
         let (ll, carry) = self.lo.widening_mul(rhs.lo);
