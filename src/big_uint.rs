@@ -36,9 +36,9 @@ pub(crate) trait BigIntHelper: Sized {
     /// whether an arithmetic overflow occurred.
     fn bih_carrying_add(self, rhs: Self, carry: bool) -> (Self, bool);
 
-    /// `self - rhs - carry` (full "subtractor"), along with a boolean
+    /// `self - rhs - borrow` (full subtractor), along with a boolean
     /// indicating whether an arithmetic overflow occurred.
-    fn bih_borrowing_sub(self, rhs: Self, carry: bool) -> (Self, bool);
+    fn bih_borrowing_sub(self, rhs: Self, borrow: bool) -> (Self, bool);
 
     /// `self * rhs + carry` (multiply-accumulate)
     fn bih_carrying_mul(self, rhs: Self, carry: Self) -> (Self, Self);
