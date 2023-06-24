@@ -1061,6 +1061,15 @@ impl AddAssign<&Self> for u512 {
     }
 }
 
+impl SubAssign<&Self> for u512 {
+    fn sub_assign(&mut self, rhs: &Self) {
+        let mut borrow = false;
+        (self.lo, borrow) = self.lo.overflowing_sub(&rhs.lo);
+        (self.hi, borrow) = self.hi.borrowing_sub(&rhs.hi, borrow);
+        assert!(!borrow, "Attempt to add with overflow");
+    }
+}
+
 impl DivRem<u128> for &u512 {
     type Output = (u512, u128);
 
@@ -1639,6 +1648,46 @@ mod u512_add_assign_tests {
         let mut v = u512::new(u256::ZERO, u256::MAX);
         let w = u512::new(u256::MAX, u256::ONE);
         v += &w;
+    }
+}
+
+#[cfg(test)]
+mod u512_sub_assign_tests {
+    use super::*;
+
+    #[test]
+    fn test_sub_assign_1() {
+        let two = &u256::ONE + &u256::ONE;
+        let mut v = u512::new(two, two);
+        let w = u512::new(u256::ONE, u256::ONE);
+        v -= &w;
+        assert_eq!(v, w);
+    }
+
+    #[test]
+    fn test_sub_assign_2() {
+        let mut v = u512::new(u256::MAX, u256::ZERO);
+        let w = u512::new(u256::ZERO, u256::ONE);
+        let z = u512::new(&u256::MAX - &u256::ONE, u256::MAX);
+        v -= &w;
+        assert_eq!(v, z);
+    }
+
+    #[test]
+    fn test_sub_assign_3() {
+        let mut v = u512::new(u256::ONE, u256::MAX);
+        let w = u512::new(u256::ONE, &u256::MAX - &u256::ONE);
+        let z = u512::new(u256::ZERO, u256::ONE);
+        v -= &w;
+        assert_eq!(v, z);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_sub_assign_ovfl() {
+        let mut v = u512::new(u256::ONE, &u256::MAX - &u256::ONE);
+        let w = u512::new(u256::ONE, u256::MAX);
+        v -= &w;
     }
 }
 
