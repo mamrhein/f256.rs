@@ -602,7 +602,8 @@ impl f256 {
         const SH: i32 = 250_i32;
         let signif = self.significand();
         let exp = self.exponent();
-        let mut t = M.widening_mul(&signif);
+        let (lo, hi) = M.widening_mul(&signif);
+        let mut t = u512::new(hi, lo);
         let sh = signif.msb() + 256 - SIGNIFICAND_BITS;
         t.idiv_pow2(sh);
         Self::encode(self.sign(), exp - SH + sh as i32, t.lo)
@@ -623,7 +624,8 @@ impl f256 {
         const SH: i32 = 261_i32;
         let signif = self.significand();
         let exp = self.exponent();
-        let mut t = M.widening_mul(&signif);
+        let (lo, hi) = M.widening_mul(&signif);
+        let mut t = u512::new(hi, lo);
         let sh = signif.msb() + 256 - SIGNIFICAND_BITS;
         t.idiv_pow2(sh);
         Self::encode(self.sign(), exp - SH + sh as i32, t.lo)

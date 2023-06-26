@@ -25,15 +25,15 @@ use crate::{
 fn mul_signifs(x: &u256, y: &u256) -> (u256, u32, u32) {
     debug_assert!(x.hi >= HI_SIGN_MASK);
     debug_assert!(y.hi >= HI_SIGN_MASK);
-    let mut t = x.widening_mul(y);
-    let carry = (t.hi.hi >= HI_SIGN_MASK) as u32;
+    let (lo, mut hi) = x.widening_mul(y);
+    let carry = (hi.hi >= HI_SIGN_MASK) as u32;
     let shift = EXP_BITS - 1 + carry;
-    let rem = t.hi.rem_pow2(shift).lo;
+    let rem = hi.rem_pow2(shift).lo;
     let rnd_bits = (rem >> (shift - 2)) as u32
         | (rem > (1 << (shift - 1))) as u32
-        | !t.lo.is_zero() as u32;
-    t.hi >>= shift;
-    (t.hi, carry, rnd_bits)
+        | !lo.is_zero() as u32;
+    hi >>= shift;
+    (hi, carry, rnd_bits)
 }
 
 pub(crate) fn mul_abs_finite(

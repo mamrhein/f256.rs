@@ -468,8 +468,8 @@ impl u256 {
         (t, o1 || o2)
     }
 
-    /// Calculate z = x * y.
-    pub(crate) fn widening_mul(&self, rhs: &Self) -> u512 {
+    /// `self * rhs` (wide multiplication).
+    pub(crate) fn widening_mul(&self, rhs: &Self) -> (Self, Self) {
         let (ll, carry) = self.lo.widening_mul(rhs.lo);
         let (lh, hl) = self.lo.bih_carrying_mul(rhs.hi, carry);
         // TODO: change when [feature(bigint_helper_methods)] got stable
@@ -479,15 +479,15 @@ impl u256 {
         hh += incr as u128;
         let hi = u256::new(hh, hl);
         let lo = u256::new(lh, ll);
-        u512 { hi, lo }
+        (lo, hi)
     }
 
-    /// Calculate ⌊(x * y) / 2²⁵⁶⌋.
+    /// Calculate ⌊(self * rhs) / 2²⁵⁶⌋.
     pub(crate) fn truncating_mul(&self, rhs: &Self) -> Self {
-        self.widening_mul(rhs).hi
+        self.widening_mul(rhs).1
     }
 
-    /// Calculate (x * y) % 2²⁵⁶.
+    /// Calculate (self * rhs) % 2²⁵⁶.
     pub(crate) fn wrapping_mul(&self, rhs: &Self) -> Self {
         let (rl, mut rh) = self.lo.widening_mul(rhs.lo);
         rh = rh.wrapping_add(self.lo.wrapping_mul(rhs.hi));

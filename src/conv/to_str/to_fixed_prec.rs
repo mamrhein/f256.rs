@@ -48,14 +48,16 @@ enum Round {
 #[inline(always)]
 fn mul_shift_mod(x: &u256, y: &u512, k: u32) -> u64 {
     debug_assert!(k > 256);
-    let mut hi = x.widening_mul(&y.hi);
-    let lo = x.widening_mul(&y.lo);
-    hi.lo += &lo.hi;
-    if hi.lo < lo.hi {
-        hi.hi.incr();
+    let mut t = x.widening_mul(&y.hi);
+    let mut res = u512::new(t.1, t.0);
+    t = x.widening_mul(&y.lo);
+    let mut carry = false;
+    (res.lo, carry) = res.lo.overflowing_add(&t.1);
+    if carry {
+        res.hi.incr();
     }
-    hi >>= (k - 256);
-    &hi % CHUNK_BASE
+    res >>= (k - 256);
+    &res % CHUNK_BASE
 }
 
 #[inline(always)]
@@ -255,7 +257,8 @@ fn bin_small_float_2_scientific(
     let signif10 = if k >= 0 {
         // k >= 0 and 10ᵏ = 5ᵏ × 2ᵏ =>
         // ⌊signif2 × 10ᵏ / 2ⁿ⌋ = ⌊signif2 × 5ᵏ × 2ᵏ⁻ⁿ⌋
-        let mut t = signif2.widening_mul(&get_power_of_five(k as u32));
+        let (lo, hi) = signif2.widening_mul(&get_power_of_five(k as u32));
+        let mut t = u512::new(hi, lo);
         if k < n {
             // k < n => ⌊signif2 × 5ᵏ × 2ᵏ⁻ⁿ⌋ = ⌊signif2 × 5ᵏ / 2ⁿ⁻ᵏ⌋
             // 0 < n < 237 and 0 <= k < n => 0 < (n - k) < 237
@@ -319,7 +322,8 @@ fn bin_small_int_2_scientific(
     } else {
         // signif10 = ⌊signif2 × 2ⁿ × 10⁻ᵏ⌋ = ⌊signif2 × (5⁻ᵏ × 2ⁿ⁻ᵏ)⌋
         let t = &get_power_of_five(-k as u32) << (exp2 - k) as u32;
-        signif2.widening_mul(&t)
+        let (lo, hi) = signif2.widening_mul(&t);
+        u512::new(hi, lo)
     };
     let mut s = signif10.to_string();
     if s.len() > prec + 1 {
