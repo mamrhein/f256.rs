@@ -419,7 +419,7 @@ impl u256 {
 
     /// `self + rhs`, along with a boolean indicating whether an arithmetic
     /// overflow occurred.
-    fn overflowing_add(&self, rhs: &Self) -> (Self, bool) {
+    pub(crate) fn overflowing_add(&self, rhs: &Self) -> (Self, bool) {
         let (lo, carry) = self.lo.overflowing_add(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
         let (hi, carry) = self.hi.bih_carrying_add(rhs.hi, carry);
@@ -428,7 +428,11 @@ impl u256 {
 
     /// `self + rhs + carry` (full adder), along with a boolean indicating
     /// whether an arithmetic overflow occurred.
-    fn carrying_add(&self, rhs: &Self, carry: bool) -> (Self, bool) {
+    pub(crate) fn carrying_add(
+        &self,
+        rhs: &Self,
+        carry: bool,
+    ) -> (Self, bool) {
         let (mut t, o1) = self.overflowing_add(rhs);
         let mut o2 = false;
         (t.lo, o2) = t.lo.overflowing_add(carry as u128);
@@ -438,7 +442,7 @@ impl u256 {
 
     /// `self - rhs`, along with a boolean indicating whether an arithmetic
     /// overflow occurred.
-    fn overflowing_sub(&self, rhs: &Self) -> (Self, bool) {
+    pub(crate) fn overflowing_sub(&self, rhs: &Self) -> (Self, bool) {
         let (lo, borrow) = self.lo.overflowing_sub(rhs.lo);
         // TODO: change when [feature(bigint_helper_methods)] got stable
         let (hi, borrow) = self.hi.bih_borrowing_sub(rhs.hi, borrow);
@@ -452,7 +456,11 @@ impl u256 {
 
     /// `self - rhs - borrow` (full subtractor), along with a boolean
     /// indicating whether an arithmetic overflow occurred.
-    fn borrowing_sub(self, rhs: &Self, borrow: bool) -> (Self, bool) {
+    pub(crate) fn borrowing_sub(
+        self,
+        rhs: &Self,
+        borrow: bool,
+    ) -> (Self, bool) {
         let (mut t, o1) = self.overflowing_sub(rhs);
         let mut o2 = false;
         (t.lo, o2) = t.lo.overflowing_sub(borrow as u128);
