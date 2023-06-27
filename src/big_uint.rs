@@ -90,6 +90,45 @@ impl WideningMul for u128 {
     }
 }
 
+pub(crate) trait BigUIntHelper: Sized {
+    type Output;
+
+    fn widening_shl(self, shift: u32) -> Self::Output;
+    fn carrying_shl(self, shift: u32, carry: Self) -> Self::Output;
+    fn widening_shr(self, shift: u32) -> Self::Output;
+    fn carrying_shr(self, shift: u32, carry: Self) -> Self::Output;
+}
+
+impl BigUIntHelper for u128 {
+    type Output = (Self, Self);
+
+    #[inline]
+    fn widening_shl(self, shift: u32) -> (Self, Self) {
+        debug_assert!(shift < Self::BITS);
+        (self << shift, self >> (Self::BITS - shift))
+    }
+
+    #[inline]
+    fn carrying_shl(self, shift: u32, carry: Self) -> Self::Output {
+        debug_assert!(shift < Self::BITS);
+        debug_assert!(carry < (1_u128 << shift));
+        ((self << shift) | carry, self >> (Self::BITS - shift))
+    }
+
+    #[inline]
+    fn widening_shr(self, shift: u32) -> (Self, Self) {
+        debug_assert!(shift < Self::BITS);
+        (self >> shift, self << (Self::BITS - shift))
+    }
+
+    #[inline]
+    fn carrying_shr(self, shift: u32, carry: Self) -> Self::Output {
+        debug_assert!(shift < Self::BITS);
+        debug_assert!(carry >= (1_u128 << shift));
+        (carry | (self >> shift), self << (Self::BITS - shift))
+    }
+}
+
 // Calculate ⌊(x * y) / 2⁵¹²⌋.
 pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
     let mut carry = 0_128;
@@ -752,53 +791,80 @@ impl BitOrAssign for u256 {
     }
 }
 
+impl BigUIntHelper for &u256 {
+    type Output = (u256, u256);
+
+    fn widening_shl(self, mut shift: u32) -> Self::Output {
+        debug_assert!(shift < u256::BITS);
+        match shift {
+            1..=127 => {
+                let (lo, carry) = self.lo.widening_shl(shift);
+                let (hi, carry) = self.hi.carrying_shl(shift, carry);
+                (u256::new(hi, lo), u256::new(0_u128, carry))
+            }
+            128 => (u256::new(self.lo, 0_u128), u256::new(0_u128, self.hi)),
+            129..=255 => {
+                shift -= 128;
+                let (lo, carry) = self.lo.widening_shl(shift);
+                let (hi, carry) = self.hi.carrying_shl(shift, carry);
+                (u256::new(lo, 0_u128), u256::new(carry, hi))
+            }
+            0 => (*self, u256::ZERO),
+            _ => unreachable!(),
+        }
+    }
+
+    fn carrying_shl(self, shift: u32, carry: Self) -> Self::Output {
+        debug_assert!(shift < u256::BITS);
+        let (mut shifted, c) = self.widening_shl(shift);
+        shifted |= *carry;
+        (shifted, c)
+    }
+
+    fn widening_shr(self, mut shift: u32) -> Self::Output {
+        debug_assert!(shift < u256::BITS);
+        match shift {
+            1..=127 => {
+                let (hi, carry) = self.hi.widening_shr(shift);
+                let (lo, carry) = self.lo.carrying_shr(shift, carry);
+                (u256::new(hi, lo), u256::new(carry, 0_u128))
+            }
+            128 => (u256::new(0_u128, self.hi), u256::new(self.lo, 0_u128)),
+            129..=255 => {
+                shift -= 128;
+                let (hi, carry) = self.hi.widening_shr(shift);
+                let (lo, carry) = self.lo.carrying_shr(shift, carry);
+                (u256::new(0_u128, hi), u256::new(lo, carry))
+            }
+            0 => (*self, u256::ZERO),
+            _ => unreachable!(),
+        }
+    }
+
+    fn carrying_shr(self, shift: u32, carry: Self) -> Self::Output {
+        debug_assert!(shift < u256::BITS);
+        let (mut shifted, c) = self.widening_shr(shift);
+        shifted |= *carry;
+        (shifted, c)
+    }
+}
+
 impl Shl<u32> for &u256 {
     type Output = u256;
 
     fn shl(self, rhs: u32) -> Self::Output {
         assert!(
-            rhs <= (Self::Output::BITS - 1),
+            rhs < Self::Output::BITS,
             "Attempt to shift left with overflow."
         );
-        match rhs {
-            1..=127 => Self::Output {
-                hi: self.hi << rhs | self.lo >> (128 - rhs),
-                lo: self.lo << rhs,
-            },
-            128 => Self::Output { hi: self.lo, lo: 0 },
-            129..=255 => Self::Output {
-                hi: self.lo << (rhs - 128),
-                lo: 0,
-            },
-            0 => *self,
-            _ => unreachable!(),
-        }
+        self.widening_shl(rhs).0
     }
 }
 
 impl ShlAssign<u32> for u256 {
     fn shl_assign(&mut self, rhs: u32) {
-        assert!(
-            rhs <= (Self::BITS - 1),
-            "Attempt to shift left with overflow."
-        );
-        match rhs {
-            1..=127 => {
-                self.hi <<= rhs;
-                self.hi |= self.lo >> (128 - rhs);
-                self.lo <<= rhs;
-            }
-            128 => {
-                self.hi = self.lo;
-                self.lo = 0;
-            }
-            129..=255 => {
-                self.hi = self.lo << (rhs - 128);
-                self.lo = 0;
-            }
-            0 => {}
-            _ => unreachable!(),
-        }
+        assert!(rhs < Self::BITS, "Attempt to shift left with overflow.");
+        *self = self.widening_shl(rhs).0;
     }
 }
 
@@ -807,22 +873,10 @@ impl Shr<u32> for &u256 {
 
     fn shr(self, rhs: u32) -> Self::Output {
         assert!(
-            rhs <= (Self::Output::BITS - 1),
+            rhs <= Self::Output::BITS,
             "Attempt to shift right with underflow."
         );
-        match rhs {
-            1..=127 => Self::Output {
-                hi: self.hi >> rhs,
-                lo: self.hi << (128 - rhs) | self.lo >> rhs,
-            },
-            128 => Self::Output { hi: 0, lo: self.hi },
-            129..=255 => Self::Output {
-                hi: 0,
-                lo: self.hi >> (rhs - 128),
-            },
-            0 => *self,
-            _ => unreachable!(),
-        }
+        self.widening_shr(rhs).0
     }
 }
 
@@ -832,23 +886,7 @@ impl ShrAssign<u32> for u256 {
             rhs <= (Self::BITS - 1),
             "Attempt to shift right with underflow."
         );
-        match rhs {
-            1..=127 => {
-                self.lo >>= rhs;
-                self.lo |= self.hi << (128 - rhs);
-                self.hi >>= rhs;
-            }
-            128 => {
-                self.lo = self.hi;
-                self.hi = 0;
-            }
-            129..=255 => {
-                self.lo = self.hi >> (rhs - 128);
-                self.hi = 0;
-            }
-            0 => {}
-            _ => unreachable!(),
-        }
+        *self = self.widening_shr(rhs).0;
     }
 }
 
