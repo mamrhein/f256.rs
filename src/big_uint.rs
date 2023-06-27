@@ -1192,15 +1192,12 @@ impl Rem<&u256> for &u512 {
 
 impl ShlAssign<u32> for u512 {
     fn shl_assign(&mut self, rhs: u32) {
-        assert!(
-            rhs <= (Self::BITS - 1),
-            "Attempt to shift left with overflow."
-        );
+        assert!(rhs < Self::BITS, "Attempt to shift left with overflow.");
+        let mut carry = u256::ZERO;
         match rhs {
             1..=255 => {
-                self.hi <<= rhs;
-                self.hi |= &self.lo >> (256 - rhs);
-                self.lo <<= rhs;
+                (self.lo, carry) = self.lo.widening_shl(rhs);
+                (self.hi, _) = self.hi.carrying_shl(rhs, &carry);
             }
             256 => {
                 self.hi = self.lo;
@@ -1218,65 +1215,23 @@ impl ShlAssign<u32> for u512 {
 
 impl ShrAssign<u32> for u512 {
     fn shr_assign(&mut self, rhs: u32) {
-        assert!(
-            rhs <= (Self::BITS - 1),
-            "Attempt to shift right with underflow."
-        );
-        let mut k = rhs;
-        match k {
-            0..=127 => {
-                let m = (1 << k) - 1;
-                self.lo.lo =
-                    (self.lo.lo >> k) | ((self.lo.hi & m) << (128 - k));
-                self.lo.hi =
-                    (self.lo.hi >> k) | ((self.hi.lo & m) << (128 - k));
-                self.hi.lo =
-                    (self.hi.lo >> k) | ((self.hi.hi & m) << (128 - k));
-                self.hi.hi >>= k;
-            }
-            128 => {
-                self.lo.lo = self.lo.hi;
-                self.lo.hi = self.hi.lo;
-                self.hi.lo = self.hi.hi;
-                self.hi.hi = 0;
-            }
-            129..=255 => {
-                k -= 128;
-                let m = (1 << k) - 1;
-                self.lo.lo =
-                    (self.lo.hi >> k) | ((self.hi.lo & m) << (128 - k));
-                self.lo.hi =
-                    (self.hi.lo >> k) | ((self.hi.hi & m) << (128 - k));
-                self.hi.lo = self.hi.hi >> k;
-                self.hi.hi = 0;
+        assert!(rhs < Self::BITS, "Attempt to shift right with underflow.");
+        let mut carry = u256::ZERO;
+        match rhs {
+            1..=255 => {
+                (self.hi, carry) = self.hi.widening_shr(rhs);
+                (self.lo, _) = self.lo.carrying_shr(rhs, &carry);
             }
             256 => {
-                self.lo.lo = self.hi.lo;
-                self.lo.hi = self.hi.hi;
-                self.hi.lo = 0;
-                self.hi.hi = 0;
+                self.hi = u256::ZERO;
+                self.lo = self.lo;
             }
-            257..=383 => {
-                k -= 256;
-                let m = (1 << k) - 1;
-                self.lo.lo =
-                    (self.hi.lo >> k) | ((self.hi.hi & m) << (128 - k));
-                self.lo.hi = self.hi.hi >> k;
-                self.hi.lo = 0;
-                self.hi.hi = 0;
+            257..=511 => {
+                self.lo = &self.lo >> (rhs - 256);
+                self.hi = u256::ZERO;
             }
-            384 => {
-                self.lo.lo = self.hi.hi;
-                self.lo.hi = 0;
-                self.hi.lo = 0;
-                self.hi.hi = 0;
-            }
-            _ => {
-                self.lo.lo = self.hi.hi >> (k - 384);
-                self.lo.hi = 0;
-                self.hi.lo = 0;
-                self.hi.hi = 0;
-            }
+            0 => {}
+            _ => unreachable!(),
         }
     }
 }
