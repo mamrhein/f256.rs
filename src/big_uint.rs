@@ -124,7 +124,7 @@ impl BigUIntHelper for u128 {
     #[inline]
     fn carrying_shr(self, shift: u32, carry: Self) -> Self::Output {
         debug_assert!(shift < Self::BITS);
-        debug_assert!(carry >= (1_u128 << shift));
+        debug_assert!((carry << shift) == 0);
         (carry | (self >> shift), self << (Self::BITS - shift))
     }
 }
