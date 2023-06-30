@@ -169,7 +169,7 @@ impl DivRem for u128 {
 
 /// Helper type representing unsigned integers of 256 bits.
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialOrd, PartialEq)]
+#[derive(Clone, Copy, Default, Eq, Ord, PartialOrd, PartialEq)]
 pub(crate) struct u256 {
     pub(crate) hi: u128,
     pub(crate) lo: u128,
@@ -532,6 +532,12 @@ impl u256 {
         rh = rh.wrapping_add(self.lo.wrapping_mul(rhs.hi));
         rh = rh.wrapping_add(self.hi.wrapping_mul(rhs.lo));
         Self::new(rh, rl)
+    }
+}
+
+impl fmt::Debug for u256 {
+    fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(form, "(0x{:032x}, 0x{:032x})", self.hi, self.lo)
     }
 }
 

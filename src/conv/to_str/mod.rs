@@ -103,7 +103,7 @@ impl fmt::Debug for f256 {
         if exp == EXP_MAX as i32 {
             fmt::Debug::fmt(&self.to_string(), form)
         } else {
-            fmt::Debug::fmt(&(sign, exp, (signif.hi, signif.lo)), form)
+            fmt::Debug::fmt(&(sign, exp, signif), form)
         }
     }
 }
