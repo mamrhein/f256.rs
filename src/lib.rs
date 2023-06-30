@@ -69,6 +69,7 @@ mod big_uint;
 mod binops;
 pub mod consts;
 mod conv;
+mod fused_ops;
 mod math;
 #[cfg(feature = "num-traits")]
 mod num_traits;
@@ -1032,6 +1033,14 @@ impl f256 {
             },
         }
     }
+    /// Fused multiply-add.
+    ///
+    /// Computes `(self * f) + a` with only one rounding error, yielding a
+    /// more accurate result than an unfused multiply-add.
+    #[must_use]
+    pub fn mul_add(self, f: f256, a: f256) -> f256 {
+        fused_ops::fma::fma(self, f, a)
+    }
 }
 
 impl Neg for f256 {
@@ -1103,7 +1112,15 @@ pub(crate) trait BinEncAnySpecial {
 
 impl BinEncAnySpecial for (u128, u128) {
     fn any_special(&self) -> bool {
-        max(self.0.wrapping_sub(1), self.1.wrapping_sub(1)) >= MAX_HI
+        self.0.wrapping_sub(1) >= MAX_HI || self.1.wrapping_sub(1) >= MAX_HI
+    }
+}
+
+impl BinEncAnySpecial for (u128, u128, u128) {
+    fn any_special(&self) -> bool {
+        self.0.wrapping_sub(1) >= MAX_HI
+            || self.1.wrapping_sub(1) >= MAX_HI
+            || self.2.wrapping_sub(1) >= MAX_HI
     }
 }
 
