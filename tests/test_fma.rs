@@ -217,6 +217,42 @@ mod add_tests {
     }
 
     #[test]
+    fn test_addendtoo_small() {
+        let x = f256::from_sign_exp_signif(1, 237, (0_u128, 1_u128));
+        let y = f256::TWO;
+        let a = -f256::EPSILON;
+        let z = x * y;
+        assert_eq!(x.mul_add(y, a), z);
+    }
+
+    #[test]
+    fn test_product_anchored() {
+        let x = f256::TEN;
+        let y = f256::TWO;
+        let a = -f256::EPSILON;
+        let z = x * y;
+        assert_eq!(x.mul_add(y, a), z);
+    }
+
+    #[test]
+    fn test_addend_anchored() {
+        let x = f256::EPSILON * f256::EPSILON;
+        let y = f256::TWO;
+        let a = f256::from_sign_exp_signif(1, -234, (0_u128, 1_u128));
+        let z = a + f256::from_sign_exp_signif(0, -471, (0_u128, 1_u128));
+        assert_eq!(x.mul_add(y, a), z);
+    }
+
+    #[test]
+    fn test_product_too_small() {
+        let x = f256::EPSILON * f256::EPSILON;
+        let y = f256::TWO;
+        let a = f256::from_sign_exp_signif(1, -230, (0_u128, 1_u128));
+        let z = a;
+        assert_eq!(x.mul_add(y, a), z);
+    }
+
+    #[test]
     fn test_prod_overflow() {
         let f = f256::MAX;
         let z = f.mul_add(f, f256::NEG_INFINITY);
