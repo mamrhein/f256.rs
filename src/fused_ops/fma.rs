@@ -316,26 +316,6 @@ pub(crate) fn fma(x: f256, y: f256, a: f256) -> f256 {
     // 512 + FRACTION_BITS = 748. The initial offset between the radix points
     // of p and a is (512 + FRACTION_BITS) - (2 * FRACTION_BITS + 2).
     const REL_OFFSET: u32 = 512 - FRACTION_BITS - 2;
-    println!(
-        "Ex: {}, nx: {}, ex: {}",
-        exp_bits_x,
-        norm_bit_x,
-        exp_bits_x - norm_bit_x + EMIN
-    );
-    println!(
-        "Ey: {}, ny: {}, ey: {}",
-        exp_bits_y,
-        norm_bit_y,
-        exp_bits_y - norm_bit_y + EMIN
-    );
-    println!("Ep: {},      , ep: {}", exp_bits_p, exp_bits_p + EMIN);
-    println!(
-        "Ea: {}, na: {}, ea: {}",
-        exp_bits_a,
-        norm_bit_a,
-        exp_bits_a - norm_bit_a + EMIN
-    );
-    println!("d: {}, shr: {}", d, REL_OFFSET as i32 - d);
     let (mut signif_z, signif_t, sign_bits_hi_z) = match d {
         i32::MIN..=ADDEND_TOO_SMALL_UPPER_LIMIT => {
             (&mut signif_p, &u768::STICKY_BIT, sign_bits_hi_p)
@@ -362,25 +342,23 @@ pub(crate) fn fma(x: f256, y: f256, a: f256) -> f256 {
             (&mut signif_a_shifted, &signif_p, sign_bits_hi_a)
         }
         _ => {
+            // Product too small.
             signif_a_shifted = u768::from_u256_shifted(&signif_a, 0);
             (&mut signif_a_shifted, &signif_p, sign_bits_hi_a)
         }
     };
-    println!("{:?}", signif_z);
-    println!("{:?}", signif_t);
     // Calculate |p + a|.
     if sign_bits_hi_p == sign_bits_hi_a {
         signif_z.iadd(signif_t);
     } else {
         signif_z.isub(signif_t);
     }
-    println!("{:?}", signif_z);
     let signif_z_nlz = signif_z.leading_zeros();
     if signif_z_nlz == u768::BITS {
         return f256::ZERO;
     }
     // Calculate exponent and normalize result.
-    let (exp_bits_m1_z, shl) = {
+    let (exp_bits_m1_z, shl) = if d <= ADDEND_ANCHORED_UPPER_LIMIT {
         let n = signif_z_nlz - EXP_BITS;
         let carry = REL_OFFSET as i32 - n as i32;
         let t = exp_bits_p + carry + 1;
@@ -389,8 +367,9 @@ pub(crate) fn fma(x: f256, y: f256, a: f256) -> f256 {
         } else {
             (0, REL_OFFSET)
         }
+    } else {
+        (exp_bits_a - 1, 0)
     };
-    println!("{}, {}", exp_bits_m1_z, shl);
     *signif_z <<= shl;
     // Now we have the results preliminary significand in signif_z.hi, before
     // rounding.
