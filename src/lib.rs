@@ -1038,15 +1038,24 @@ impl f256 {
     ///
     /// Computes `(self * f) + a` with only one rounding error, yielding a
     /// more accurate result than an unfused multiply-add.
+    #[inline(always)]
     #[must_use]
     pub fn mul_add(self, f: f256, a: f256) -> f256 {
         fused_ops::fma::fma(&self, &f, &a)
+    }
+
+    /// Computes `self * self` .
+    #[inline(always)]
+    #[must_use]
+    pub fn square(self) -> f256 {
+        self * self
     }
 
     /// Fused square-add.
     ///
     /// Computes `(self * self) + a` with only one rounding error, yielding a
     /// more accurate result than an unfused square-add.
+    #[inline(always)]
     #[must_use]
     pub fn square_add(self, a: f256) -> f256 {
         fused_ops::fma::fma(&self, &self, &a)
