@@ -1212,49 +1212,115 @@ impl Rem<&u256> for &u512 {
     }
 }
 
+impl BitOrAssign for u512 {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.hi |= rhs.hi;
+        self.lo |= rhs.lo;
+    }
+}
+
+impl BigUIntHelper for &u512 {
+    type Output = (u512, u512);
+
+    fn widening_shl(self, mut shift: u32) -> Self::Output {
+        debug_assert!(shift < u512::BITS);
+        match shift {
+            1..=255 => {
+                let (lo, carry) = self.lo.widening_shl(shift);
+                let (hi, carry) = self.hi.carrying_shl(shift, &carry);
+                (u512::new(hi, lo), u512::new(u256::ZERO, carry))
+            }
+            256 => (
+                u512::new(self.lo, u256::ZERO),
+                u512::new(u256::ZERO, self.hi),
+            ),
+            257..=511 => {
+                shift -= 256;
+                let (lo, carry) = self.lo.widening_shl(shift);
+                let (hi, carry) = self.hi.carrying_shl(shift, &carry);
+                (u512::new(lo, u256::ZERO), u512::new(carry, hi))
+            }
+            0 => (*self, u512::ZERO),
+            _ => unreachable!(),
+        }
+    }
+
+    fn carrying_shl(self, shift: u32, carry: Self) -> Self::Output {
+        debug_assert!(shift < u512::BITS);
+        let (mut shifted, c) = self.widening_shl(shift);
+        shifted |= *carry;
+        (shifted, c)
+    }
+
+    fn widening_shr(self, mut shift: u32) -> Self::Output {
+        debug_assert!(shift < u512::BITS);
+        match shift {
+            1..=255 => {
+                let (hi, carry) = self.hi.widening_shr(shift);
+                let (lo, carry) = self.lo.carrying_shr(shift, &carry);
+                (u512::new(hi, lo), u512::new(carry, u256::ZERO))
+            }
+            256 => (
+                u512::new(u256::ZERO, self.hi),
+                u512::new(self.lo, u256::ZERO),
+            ),
+            257..=511 => {
+                shift -= 256;
+                let (hi, carry) = self.hi.widening_shr(shift);
+                let (lo, carry) = self.lo.carrying_shr(shift, &carry);
+                (u512::new(u256::ZERO, hi), u512::new(lo, carry))
+            }
+            0 => (*self, u512::ZERO),
+            _ => unreachable!(),
+        }
+    }
+
+    fn carrying_shr(self, shift: u32, carry: Self) -> Self::Output {
+        debug_assert!(shift < u512::BITS);
+        let (mut shifted, c) = self.widening_shr(shift);
+        shifted |= *carry;
+        (shifted, c)
+    }
+}
+
+impl Shl<u32> for &u512 {
+    type Output = u512;
+
+    fn shl(self, rhs: u32) -> Self::Output {
+        assert!(
+            rhs < Self::Output::BITS,
+            "Attempt to shift left with overflow."
+        );
+        self.widening_shl(rhs).0
+    }
+}
+
 impl ShlAssign<u32> for u512 {
     fn shl_assign(&mut self, rhs: u32) {
         assert!(rhs < Self::BITS, "Attempt to shift left with overflow.");
-        let mut carry = u256::ZERO;
-        match rhs {
-            1..=255 => {
-                (self.lo, carry) = self.lo.widening_shl(rhs);
-                (self.hi, _) = self.hi.carrying_shl(rhs, &carry);
-            }
-            256 => {
-                self.hi = self.lo;
-                self.lo = u256::ZERO;
-            }
-            257..=511 => {
-                self.hi = &self.lo << (rhs - 256);
-                self.lo = u256::ZERO;
-            }
-            0 => {}
-            _ => unreachable!(),
-        }
+        *self = self.widening_shl(rhs).0;
+    }
+}
+
+impl Shr<u32> for &u512 {
+    type Output = u512;
+
+    fn shr(self, rhs: u32) -> Self::Output {
+        assert!(
+            rhs <= Self::Output::BITS,
+            "Attempt to shift right with underflow."
+        );
+        self.widening_shr(rhs).0
     }
 }
 
 impl ShrAssign<u32> for u512 {
     fn shr_assign(&mut self, rhs: u32) {
-        assert!(rhs < Self::BITS, "Attempt to shift right with underflow.");
-        let mut carry = u256::ZERO;
-        match rhs {
-            1..=255 => {
-                (self.hi, carry) = self.hi.widening_shr(rhs);
-                (self.lo, _) = self.lo.carrying_shr(rhs, &carry);
-            }
-            256 => {
-                self.lo = self.hi;
-                self.hi = u256::ZERO;
-            }
-            257..=511 => {
-                self.lo = &self.lo >> (rhs - 256);
-                self.hi = u256::ZERO;
-            }
-            0 => {}
-            _ => unreachable!(),
-        }
+        assert!(
+            rhs <= (Self::BITS - 1),
+            "Attempt to shift right with underflow."
+        );
+        *self = self.widening_shr(rhs).0;
     }
 }
 
