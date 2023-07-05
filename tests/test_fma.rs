@@ -217,7 +217,7 @@ mod add_tests {
     }
 
     #[test]
-    fn test_addendtoo_small() {
+    fn test_addend_too_small() {
         let x = f256::from_sign_exp_signif(1, 237, (0_u128, 1_u128));
         let y = f256::TWO;
         let a = -f256::EPSILON;
@@ -259,6 +259,77 @@ mod add_tests {
         assert_eq!(z, f256::NEG_INFINITY);
         let z = f.mul_add(-f, f256::INFINITY);
         assert_eq!(z, f256::INFINITY);
+    }
+
+    #[test]
+    fn test_prod_near_inf_addend_too_small() {
+        let x = f256::from_sign_exp_signif(
+            1,
+            59475,
+            (
+                120198649360366752140478854203869_u128,
+                19877864256646562525490281781332283471_u128,
+            ),
+        );
+        let y = f256::from_sign_exp_signif(
+            0,
+            202197,
+            (
+                560870508001461712390608183239082_u128,
+                273628238883791416360744487559980823727_u128,
+            ),
+        );
+        let a = f256::from_sign_exp_signif(
+            1,
+            -7930,
+            (
+                37741064955055597530632249062215_u128,
+                309954851178925961869244196550435571865_u128,
+            ),
+        );
+        let z = f256::from_sign_exp_signif(
+            1,
+            261908,
+            (
+                207741211612810640180116323620161,
+                47364449980642121265839309460024045855,
+            ),
+        );
+        println!(
+            " x: {x:e}\n y: {y:e}\nxy: {:e}\n a: {a:e}\n z: {z:e}\n r: {:e}",
+            &(&x * &y),
+            &(&x * &y) + &a
+        );
+        assert_eq!(x.mul_add(y, a), z);
+    }
+
+    #[test]
+    fn test_prod_near_inf_result_overflow() {
+        let x = f256::from_sign_exp_signif(
+            1,
+            59475,
+            (
+                120198649360366752140478854203869_u128,
+                19877864256646562525490281781332283471_u128,
+            ),
+        );
+        let y = f256::from_sign_exp_signif(
+            0,
+            202197,
+            (
+                560870508001461712390608183239082_u128,
+                273628238883791416360744487559980823727_u128,
+            ),
+        );
+        let a = f256::from_sign_exp_signif(
+            1,
+            261910,
+            (
+                37741064955055597530632249062215_u128,
+                309954851178925961869244196550435571865_u128,
+            ),
+        );
+        assert_eq!(x.mul_add(y, a), f256::NEG_INFINITY);
     }
 
     #[test]
