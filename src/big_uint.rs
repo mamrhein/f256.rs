@@ -943,10 +943,16 @@ impl u512 {
     /// Maximum value = 2⁵¹² - 1.
     pub(crate) const MAX: Self = Self::new(u256::MAX, u256::MAX);
 
-    /// Create an `u256` value from two u256 values.
+    /// Create an `u512` value from two u256 values.
     #[inline(always)]
     pub(crate) const fn new(hi: u256, lo: u256) -> Self {
         Self { hi, lo }
+    }
+
+    /// Create an `u512` value from a tuple of two u256 values.
+    #[inline(always)]
+    pub(crate) const fn from_tuple(t: (u256, u256)) -> Self {
+        Self { hi: t.0, lo: t.1 }
     }
 
     /// Return true, if `self` == 0.
