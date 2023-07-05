@@ -1245,8 +1245,8 @@ impl ShrAssign<u32> for u512 {
                 (self.lo, _) = self.lo.carrying_shr(rhs, &carry);
             }
             256 => {
+                self.lo = self.hi;
                 self.hi = u256::ZERO;
-                self.lo = self.lo;
             }
             257..=511 => {
                 self.lo = &self.lo >> (rhs - 256);
