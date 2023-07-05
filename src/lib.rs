@@ -1039,7 +1039,7 @@ impl f256 {
     /// more accurate result than an unfused multiply-add.
     #[must_use]
     pub fn mul_add(self, f: f256, a: f256) -> f256 {
-        fused_ops::fma::fma(self, f, a)
+        fused_ops::fma::fma(&self, &f, &a)
     }
 }
 

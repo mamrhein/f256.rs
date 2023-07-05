@@ -19,8 +19,9 @@ use crate::{
     big_uint::{u256, u512, BigIntHelper, BigUIntHelper},
     binops::mul::mul_abs_finite,
     exp_bits, f256, left_adj_signif, norm_bit, norm_signif, sign_bits_hi,
-    signif, BinEncAnySpecial, EMIN, EXP_BIAS, EXP_BITS, FRACTION_BITS,
-    HI_FRACTION_BITS, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS,
+    signif, BinEncAnySpecial, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX,
+    FRACTION_BITS, HI_FRACTION_BITS, HI_SIGN_MASK, INF_HI, MAX_HI,
+    SIGNIFICAND_BITS,
 };
 
 /// Helper type representing signed integers of 768 bits.
@@ -163,7 +164,7 @@ impl ShlAssign<u32> for u768 {
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
 #[inline]
-pub(crate) fn fma(x: f256, y: f256, a: f256) -> f256 {
+pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
     // The products sign is the XOR of the signs of the operands.
     let sign_bits_hi_p = (x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK;
     let sign_bits_hi_a = sign_bits_hi(&a);
@@ -233,20 +234,20 @@ pub(crate) fn fma(x: f256, y: f256, a: f256) -> f256 {
                 }
                 // Product is infinite
                 if sign_bits_hi_p == sign_bits_hi_a {
-                    return a;
+                    return *a;
                 } else {
                     return f256::NAN;
                 }
             } else {
                 // The product is finite => result is infinite.
-                return a;
+                return *a;
             };
         }
         if min_abs_bits_sticky_xy == 0 {
             // Atleast one multiplicand is zero.
             if max_abs_bits_sticky_xy < INF_HI {
                 // The other is finite => product is zero => result = addend.
-                return a;
+                return *a;
             };
             if max_abs_bits_sticky_xy == INF_HI {
                 // The other is infinite => product is nan => result is nan.
@@ -362,6 +363,13 @@ pub(crate) fn fma(x: f256, y: f256, a: f256) -> f256 {
         let n = signif_z_nlz - EXP_BITS;
         let carry = REL_OFFSET as i32 - n as i32;
         let t = exp_bits_p + carry + 1;
+        // If the result overflows the range of values representable as
+        // `f256`, return +/- Infinity.
+        if t >= EXP_MAX as i32 {
+            return f256 {
+                bits: u256::new(sign_bits_hi_z | INF_HI, 0),
+            };
+        }
         if t >= 1 {
             (t - 1, n)
         } else {
