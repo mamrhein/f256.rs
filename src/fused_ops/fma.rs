@@ -10,9 +10,8 @@
 use core::{
     cmp::{max, min},
     fmt::{Debug, Formatter},
-    ops::BitXor,
+    ops::{BitXor, ShlAssign},
 };
-use std::ops::ShlAssign;
 
 use crate::{
     abs_bits, abs_bits_sticky,

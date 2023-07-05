@@ -9,7 +9,7 @@
 
 #[cfg(test)]
 mod rem_tests {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use f256::f256;
 

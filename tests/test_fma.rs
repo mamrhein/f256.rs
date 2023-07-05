@@ -9,8 +9,7 @@
 
 #[cfg(test)]
 mod mul_add_tests {
-    use core::cmp::Ordering;
-    use std::ops::Div;
+    use core::{cmp::Ordering, ops::Div};
 
     use f256::f256;
 

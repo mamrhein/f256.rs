@@ -7,7 +7,8 @@
 // $Source$
 // $Revision$
 
-use std::{path::PathBuf, str::FromStr};
+use core::str::FromStr;
+use std::path::PathBuf;
 
 use csv::ReaderBuilder;
 use f256::f256;
