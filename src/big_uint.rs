@@ -923,7 +923,7 @@ impl fmt::Display for u256 {
 
 /// Helper type representing unsigned integers of 512 bits.
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialOrd, PartialEq)]
+#[derive(Clone, Copy, Default, Eq, Ord, PartialOrd, PartialEq)]
 pub(crate) struct u512 {
     pub(crate) hi: u256,
     pub(crate) lo: u256,
@@ -1101,6 +1101,16 @@ impl u512 {
             }
         }
         q
+    }
+}
+
+impl fmt::Debug for u512 {
+    fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            form,
+            "(0x{:032x}, 0x{:032x}, 0x{:032x}, 0x{:032x})",
+            self.hi.hi, self.hi.lo, self.lo.hi, self.lo.lo,
+        )
     }
 }
 
