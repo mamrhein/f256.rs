@@ -9,7 +9,7 @@
 
 use core::{
     cmp::{max, min},
-    fmt::{Debug, Formatter},
+    fmt,
     ops::{BitXor, ShlAssign},
 };
 
@@ -105,11 +105,12 @@ impl u768 {
     }
 }
 
-impl Debug for u768 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+impl fmt::Debug for u768 {
+    fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
-            f,
-            "[{:032x} {:032x} {:032x} {:032x} {:032x} {:032x}]",
+            form,
+            "(0x{:032x}, 0x{:032x}, 0x{:032x}, 0x{:032x}, 0x{:032x}, \
+             0x{:032x})",
             self.hi.hi,
             self.hi.lo,
             self.mi.hi,
