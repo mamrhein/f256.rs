@@ -75,10 +75,10 @@ pub(crate) fn rem(x: f256, y: f256) -> f256 {
 
     // Extract biased exponents and significands.
     let mut exp_bits_x = exp_bits(&abs_bits_x);
-    let mut exp_bits_y = exp_bits(&abs_bits_y);
     let norm_bit_x = norm_bit(&abs_bits_x);
-    let norm_bit_y = norm_bit(&abs_bits_y);
     let mut signif_x = signif(&abs_bits_x);
+    let mut exp_bits_y = exp_bits(&abs_bits_y);
+    let norm_bit_y = norm_bit(&abs_bits_y);
     let mut signif_y = signif(&abs_bits_y);
 
     // If the significands are equal, |x| is an integral multiple of |y|.
