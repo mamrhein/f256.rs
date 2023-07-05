@@ -8,7 +8,7 @@
 // $Revision$
 
 #[cfg(test)]
-mod add_tests {
+mod mul_add_tests {
     use core::cmp::Ordering;
     use std::ops::Div;
 
