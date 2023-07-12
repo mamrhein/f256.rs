@@ -1037,7 +1037,7 @@ impl f256 {
     /// Fused multiply-add.
     ///
     /// Computes `(self * f) + a` with only one rounding error, yielding a
-    /// more accurate result than an unfused multiply-add.
+    /// more accurate result than an non-fused multiply-add.
     #[inline(always)]
     #[must_use]
     pub fn mul_add(self, f: f256, a: f256) -> f256 {
@@ -1054,11 +1054,22 @@ impl f256 {
     /// Fused square-add.
     ///
     /// Computes `(self * self) + a` with only one rounding error, yielding a
-    /// more accurate result than an unfused square-add.
+    /// more accurate result than an non-fused square-add.
     #[inline(always)]
     #[must_use]
     pub fn square_add(self, a: f256) -> f256 {
         fused_ops::fma::fma(&self, &self, &a)
+    }
+
+    /// Fused sum of squares.
+    ///
+    /// Computes `(self * self) + (other * other)` with only one rounding
+    /// error, yielding a more accurate result than an non-fused sum of
+    /// squares.
+    #[inline(always)]
+    #[must_use]
+    pub fn sum_of_squares(self, other: f256) -> f256 {
+        fused_ops::sos::sos(&self, &other)
     }
 }
 

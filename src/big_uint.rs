@@ -949,10 +949,17 @@ impl u512 {
         Self { hi, lo }
     }
 
-    /// Create an `u512` value from a tuple of two u256 values.
+    /// Create an `u512` value from a tuple of two u256 values (big endian).
     #[inline(always)]
-    pub(crate) const fn from_tuple(t: (u256, u256)) -> Self {
+    pub(crate) const fn from_big_endian_tuple(t: (u256, u256)) -> Self {
         Self { hi: t.0, lo: t.1 }
+    }
+
+    /// Create an `u512` value from a tuple of two u256 values (little
+    /// endian).
+    #[inline(always)]
+    pub(crate) const fn from_little_endian_tuple(t: (u256, u256)) -> Self {
+        Self { hi: t.1, lo: t.0 }
     }
 
     /// Return true, if `self` == 0.
