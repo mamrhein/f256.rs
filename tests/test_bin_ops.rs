@@ -102,4 +102,13 @@ mod random_bin_op_tests {
     fn test_rem() {
         run_tests(rem, "test_rem.txt");
     }
+
+    fn sos<'a>(x: &'a f256, y: &'a f256) -> f256 {
+        x.sum_of_squares(*y)
+    }
+
+    #[test]
+    fn test_sos() {
+        run_tests(sos, "test_sos.txt");
+    }
 }
