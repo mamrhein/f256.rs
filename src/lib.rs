@@ -1138,19 +1138,49 @@ impl BinEncSpecial for u256 {
 pub(crate) trait BinEncAnySpecial {
     /// Returns true if any element of self represents |Inf|, NaN or |0|.
     fn any_special(&self) -> bool;
+
+    /// Returns true if any element of self represents a subnormal.
+    fn any_subnormal(&self) -> bool;
+
+    /// Returns true if any element of self represents a non-normal.
+    fn any_non_normal(&self) -> bool;
 }
 
 impl BinEncAnySpecial for (u128, u128) {
+    #[inline(always)]
     fn any_special(&self) -> bool {
         self.0.wrapping_sub(1) >= MAX_HI || self.1.wrapping_sub(1) >= MAX_HI
+    }
+
+    #[inline(always)]
+    fn any_subnormal(&self) -> bool {
+        self.0 <= HI_FRACTION_MASK || self.1 <= HI_FRACTION_MASK
+    }
+
+    #[inline(always)]
+    fn any_non_normal(&self) -> bool {
+        self.any_special() || self.any_subnormal()
     }
 }
 
 impl BinEncAnySpecial for (u128, u128, u128) {
+    #[inline(always)]
     fn any_special(&self) -> bool {
         self.0.wrapping_sub(1) >= MAX_HI
             || self.1.wrapping_sub(1) >= MAX_HI
             || self.2.wrapping_sub(1) >= MAX_HI
+    }
+
+    #[inline(always)]
+    fn any_subnormal(&self) -> bool {
+        self.0 <= HI_FRACTION_MASK
+            || self.1 <= HI_FRACTION_MASK
+            || self.2 <= HI_FRACTION_MASK
+    }
+
+    #[inline(always)]
+    fn any_non_normal(&self) -> bool {
+        self.any_special() || self.any_subnormal()
     }
 }
 

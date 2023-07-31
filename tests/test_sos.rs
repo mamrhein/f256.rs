@@ -101,10 +101,16 @@ mod sum_of_squares_tests {
 
     #[test]
     fn test_square_underflow() {
-        let f = f256::MIN_GT_ZERO;
+        let f = f256::from_sign_exp_signif(
+            0,
+            -262378,
+            ((1_u128 << 108) - 1, u128::MAX),
+        );
         assert_eq!(-f.sum_of_squares(f256::ZERO), f256::ZERO);
         assert_eq!(-f.sum_of_squares(f), f256::ZERO);
         let z = f.sum_of_squares(f256::ONE);
+        assert_eq!(z, f256::ONE);
+        let z = f256::ONE.sum_of_squares(f);
         assert_eq!(z, f256::ONE);
     }
 }

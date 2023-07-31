@@ -32,20 +32,22 @@ pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
     // use only that part for the handling of special cases.
     let abs_bits_sticky_x = abs_bits_sticky(&abs_bits_x);
     let abs_bits_sticky_y = abs_bits_sticky(&abs_bits_y);
-    if (abs_bits_sticky_x, abs_bits_sticky_y).any_special() {
+    if (abs_bits_sticky_x, abs_bits_sticky_y).any_non_normal() {
         let max_abs_bits_sticky = max(abs_bits_sticky_x, abs_bits_sticky_y);
-        if max_abs_bits_sticky == 0 {
-            // Both operands are zero.
+        if max_abs_bits_sticky <= HI_FRACTION_MASK {
+            // Both operands are zero or subnormal.
             return f256::ZERO;
         }
         if max_abs_bits_sticky > HI_EXP_MASK {
             // Atleast one operand is NAN.
             return f256::NAN;
         }
-        if abs_bits_sticky_x == 0 {
+        if abs_bits_sticky_x <= HI_FRACTION_MASK {
+            // x is zero or subnormal.
             return y.square();
         }
-        if abs_bits_sticky_y == 0 {
+        if abs_bits_sticky_y <= HI_FRACTION_MASK {
+            // y is zero or subnormal.
             return x.square();
         }
         // For all other special cases the result is INF.
