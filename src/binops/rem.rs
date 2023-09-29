@@ -20,23 +20,6 @@ use crate::{
     SIGNIFICAND_BITS,
 };
 
-/// Compute (a * 2ⁿ) % b.
-#[inline]
-fn lshift_rem(a: &u256, b: &u256, n: u32) -> u256 {
-    let sh = n % u256::BITS;
-    let mut t = u512::new(u256::ZERO, *a);
-    t <<= sh;
-    let mut r = &t % b;
-    for _ in 0..n >> 8 {
-        t = u512::new(r, u256::ZERO);
-        r = &t % b;
-        if r.is_zero() {
-            break;
-        }
-    }
-    r
-}
-
 // Compute z = x % y.
 #[inline]
 pub(crate) fn rem(x: f256, y: f256) -> f256 {
@@ -87,7 +70,7 @@ pub(crate) fn rem(x: f256, y: f256) -> f256 {
     }
 
     let n_bits = exp_bits_x + norm_bit_y - exp_bits_y - norm_bit_x;
-    let mut abs_bits_z = lshift_rem(&signif_x, &signif_y, n_bits);
+    let mut abs_bits_z = signif_x.lshift_rem(&signif_y, n_bits);
     if abs_bits_z.is_zero() {
         return f256::ZERO;
     }
