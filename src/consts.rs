@@ -9,7 +9,7 @@
 
 //! Basic mathematical constants.
 
-use crate::{big_uint::u256, f256};
+use crate::{big_uint::u256, f256, EXP_BIAS};
 
 /// Archimedes' constant (π)
 ///
@@ -30,6 +30,18 @@ pub const TAU: f256 = f256 {
         lo: 174929234171320688473765933587459524450,
     },
 };
+
+/// 3π/2
+///
+/// 4.7123889803846898576939650749192543262957540990626587314624168884617246
+pub const FRAC_3_PI_2: f256 = f256::new(
+    u256::new(
+        382314414047586946914081706939412,
+        216267517358725132221168102048536696202,
+    ),
+    EXP_BIAS + 2,
+    0,
+);
 
 /// π/2
 ///
@@ -220,6 +232,7 @@ mod consts_tests {
         assert_eq!(PI * f256::TWO, TAU);
         assert_eq!(PI / f256::TWO, FRAC_PI_2);
         assert_eq!(PI, FRAC_PI_2 + FRAC_PI_2);
+        assert_eq!(PI + FRAC_PI_2, FRAC_3_PI_2);
         assert_eq!(PI / f256::from(3), FRAC_PI_3);
         assert_eq!(PI / f256::from(4), FRAC_PI_4);
         assert_eq!(PI / f256::from(6), FRAC_PI_6);
