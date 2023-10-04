@@ -48,7 +48,6 @@ pub(crate) fn cordic_circ_vm(
     debug_assert!(z >= FP248::ZERO);
     debug_assert!(z <= FP248::FRAC_PI_2);
 
-    // println!("=== {y:?} {x:?} {z:?}");
     for i in 0..=FP248::FRACTION_BITS {
         let op = OPS[(y >= FP248::ZERO) as usize];
         let mut dx = &y >> i;
@@ -60,7 +59,6 @@ pub(crate) fn cordic_circ_vm(
         let mut a = ATANS[i as usize];
         op(&mut a);
         z -= &a;
-        // println!("{i:>3} {y:?} {x:?} {z:?}");
     }
     (x, z)
 }
@@ -100,7 +98,6 @@ pub(crate) fn cordic_circ_rm(
     debug_assert!(z >= FP248::ZERO);
     debug_assert!(z <= FP248::FRAC_PI_2);
 
-    // println!("=== {y:?} {x:?} {z:?}");
     for i in 0..=FP248::FRACTION_BITS {
         let op = OPS[(z < FP248::ZERO) as usize];
         let mut dx = &y >> i;
@@ -112,7 +109,6 @@ pub(crate) fn cordic_circ_rm(
         let mut a = ATANS[i as usize];
         op(&mut a);
         z -= &a;
-        // println!("{i:>3} {y:?} {x:?} {z:?}");
     }
     (y, x)
 }
