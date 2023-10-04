@@ -294,11 +294,6 @@ mod mul_add_tests {
                 47364449980642121265839309460024045855,
             ),
         );
-        println!(
-            " x: {x:e}\n y: {y:e}\nxy: {:e}\n a: {a:e}\n z: {z:e}\n r: {:e}",
-            &(&x * &y),
-            &(&x * &y) + &a
-        );
         assert_eq!(x.mul_add(y, a), z);
     }
 
