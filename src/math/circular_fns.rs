@@ -24,6 +24,13 @@ use crate::{
 const PREC_ADJ: u32 = FP248::FRACTION_BITS - FRACTION_BITS;
 const EXP_BIAS_ADJ: u32 = EXP_BIAS - PREC_ADJ;
 
+// Cut-off for small values
+// ≈0.00000000000000000000000000000000000210094754024801845063812748106760843
+const SMALL_CUT_OFF: u256 = u256::new(
+    0x3ff8865752be2a167f0644b50757a602,
+    0x81800000000000000000000000000000,
+);
+
 // Bounds of the quarters of the unit circle (fixed with 248 fractional bits)
 const FP_HALF_PI: u256 = signif(&FRAC_PI_2.bits).shift_left(PREC_ADJ);
 const FP_PI: u256 = (&signif(&PI.bits)).shift_left(PREC_ADJ + 1);
@@ -56,7 +63,7 @@ impl f256 {
         }
         // If |x| is very small, sine x == x and cosine x == 1.
         let abs_bits_x = abs_bits(&self);
-        if abs_bits_x <= f256::EPSILON.bits {
+        if abs_bits_x <= SMALL_CUT_OFF {
             return (*self, f256::ONE);
         }
         // Now we have ε < |x| < ∞.
@@ -86,14 +93,9 @@ impl f256 {
                 // 0 < e <= EMAX
                 let x_rem_tau =
                     signif(&abs_bits_x).lshift_rem(&FP_TAU, sh as u32);
-                // println!(
-                //     "{self:?}\n{:?}\n{x_rem_tau:?}",
-                //     &signif(&abs_bits_x) << (sh as u32)
-                // );
                 div_rem_half_pi(&x_rem_tau)
             }
         };
-        // println!("{quadrant}:\n{FRAC_PI_2:?}\n{x_rem_half_pi:?}");
         // Calc sin / cos of |x| % ½π.
         let fp_x_rem_half_pi = FP248 {
             sign: 0,
@@ -151,6 +153,8 @@ impl f256 {
 
 #[cfg(test)]
 mod in_cos_tests {
+    use core::str::FromStr;
+
     use super::*;
     use crate::{
         consts::{FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
@@ -230,6 +234,53 @@ mod in_cos_tests {
         for f in [f256::MIN, -FRAC_PI_3, f256::NEG_ONE] {
             assert_eq!(f.sin(), -f.abs().sin());
             assert_eq!(f.cos(), f.abs().cos());
+        }
+    }
+
+    #[test]
+    fn test_continuity_near_zero() {
+        let c = f256 {
+            bits: SMALL_CUT_OFF,
+        };
+        let d = f256::encode(0, c.exponent(), u256::new(0, 1));
+        let mut f = c;
+        let mut g = f;
+        for i in 0..1000 {
+            g += d;
+            assert!(f < g);
+            assert!(f.sin() <= g.sin());
+            assert!(f.cos() >= g.cos());
+            f = g;
+        }
+    }
+
+    #[test]
+    fn test_continuity_near_one() {
+        let c = f256::ONE;
+        let d = f256::EPSILON;
+        let mut f = c;
+        let mut g = f;
+        for i in 0..10 {
+            g += d;
+            assert!(f < g);
+            assert!(f.sin() <= g.sin());
+            assert!(f.cos() >= g.cos());
+            f = g;
+        }
+    }
+
+    #[test]
+    fn test_continuity_near_three() {
+        let c = f256::from(3);
+        let d = f256::EPSILON * f256::TWO;
+        let mut f = c;
+        let mut g = f;
+        for i in 0..10 {
+            g += d;
+            assert!(f < g);
+            assert!(f.sin() >= g.sin());
+            assert!(f.cos() <= g.cos());
+            f = g;
         }
     }
 }
