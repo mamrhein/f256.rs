@@ -73,9 +73,26 @@ impl FP248 {
         self.sign ^= 1;
     }
 
-    #[inline(always)]
-    fn sin_cos(&self) -> (Self, Self) {
-        cordic_sin_cos(&self)
+    fn sin_cos(&self, quadrant: u32) -> (Self, Self) {
+        let (mut sin, mut cos) = cordic_sin_cos(&self);
+        // Map result according to quadrant
+        match quadrant {
+            0 => (sin, cos),
+            1 => {
+                &sin.flip_sign();
+                (cos, sin)
+            }
+            2 => {
+                &sin.flip_sign();
+                &cos.flip_sign();
+                (sin, cos)
+            }
+            3 => {
+                &cos.flip_sign();
+                (cos, sin)
+            }
+            _ => unreachable!(),
+        }
     }
 
     #[inline(always)]

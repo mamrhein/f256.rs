@@ -38,18 +38,47 @@ const FP_3_PI_HALF: u256 =
     (&signif(&FRAC_3_PI_2.bits)).shift_left(PREC_ADJ + 2);
 const FP_TAU: u256 = (&signif(&TAU.bits)).shift_left(PREC_ADJ + 2);
 
-#[inline(always)]
-fn div_rem_half_pi(x: &u256) -> (u32, u256) {
-    // TODO: replace by match statement when exclusive bounds got stable.
-    return if x < &FP_HALF_PI {
-        (0, *x)
-    } else if x < &FP_PI {
-        (1, x - &FP_HALF_PI)
-    } else if x < &FP_3_PI_HALF {
-        (2, x - &FP_PI)
-    } else {
-        (3, x - &FP_3_PI_HALF)
+fn div_rem_half_pi(abs_bits_x: &u256) -> (u32, FP248) {
+    let exp_x = exp_bits(&abs_bits_x) as i32 - EXP_BIAS as i32;
+    let sh = exp_x + PREC_ADJ as i32;
+    let (quadrant, mut x_rem_half_pi) = match sh {
+        ..=0 => {
+            // -236 <= e <= -12
+            (0_u32, &signif(&abs_bits_x) >> (-sh) as u32)
+        }
+        1..=11 => {
+            // -11 <= e < 0
+            (0_u32, &signif(&abs_bits_x) << sh as u32)
+        }
+        12 => {
+            // e = 0
+            let mut fp_x_signif = &signif(&abs_bits_x) << PREC_ADJ;
+            if fp_x_signif >= FP_HALF_PI {
+                (1_u32, &fp_x_signif - &FP_HALF_PI)
+            } else {
+                (0_u32, fp_x_signif)
+            }
+        }
+        _ => {
+            // 0 < e <= EMAX
+            let x_rem_tau =
+                signif(&abs_bits_x).lshift_rem(&FP_TAU, sh as u32);
+            if &x_rem_tau < &FP_HALF_PI {
+                (0, x_rem_tau)
+            } else if &x_rem_tau < &FP_PI {
+                (1, &x_rem_tau - &FP_HALF_PI)
+            } else if &x_rem_tau < &FP_3_PI_HALF {
+                (2, &x_rem_tau - &FP_PI)
+            } else {
+                (3, &x_rem_tau - &FP_3_PI_HALF)
+            }
+        }
     };
+    let fp_x_rem_half_pi = FP248 {
+        sign: 0,
+        signif: x_rem_half_pi,
+    };
+    (quadrant, fp_x_rem_half_pi)
 }
 
 impl f256 {
@@ -68,71 +97,13 @@ impl f256 {
         }
         // Now we have ε < |x| < ∞.
         // x = (-1)ˢ × m × 2ᵉ with 1 <= m < 2 and e >= -236
-        // Calculate |x| % ½π, adjusted to 248 fractional digits.
-        let exp_x = exp_bits(&abs_bits_x) as i32 - EXP_BIAS as i32;
-        let sh = exp_x + PREC_ADJ as i32;
-        let (quadrant, mut x_rem_half_pi) = match sh {
-            ..=0 => {
-                // -236 <= e <= -12
-                (0_u32, &signif(&abs_bits_x) >> (-sh) as u32)
-            }
-            1..=11 => {
-                // -11 <= e < 0
-                (0_u32, &signif(&abs_bits_x) << sh as u32)
-            }
-            12 => {
-                // e = 0
-                let mut fp_x_signif = &signif(&abs_bits_x) << PREC_ADJ;
-                if fp_x_signif >= FP_HALF_PI {
-                    (1_u32, &fp_x_signif - &FP_HALF_PI)
-                } else {
-                    (0_u32, fp_x_signif)
-                }
-            }
-            _ => {
-                // 0 < e <= EMAX
-                let x_rem_tau =
-                    signif(&abs_bits_x).lshift_rem(&FP_TAU, sh as u32);
-                div_rem_half_pi(&x_rem_tau)
-            }
-        };
+        // Calculate (|x| / ½π) % 4 and |x| % ½π, adjusted to 248 fractional
+        // digits.
+        let (quadrant, fp_x_rem_half_pi) = div_rem_half_pi(&abs_bits_x);
         // Calc sin / cos of |x| % ½π.
-        let fp_x_rem_half_pi = FP248 {
-            sign: 0,
-            signif: x_rem_half_pi,
-        };
-        let (mut fp_sin_x_rem_half_pi, mut fp_cos_x_rem_half_pi) =
-            fp_x_rem_half_pi.sin_cos();
-        // Map result according to quadrant
-        let (mut sin_x, cos_x) = match quadrant {
-            0 => (
-                f256::from(&fp_sin_x_rem_half_pi),
-                f256::from(&fp_cos_x_rem_half_pi),
-            ),
-            1 => {
-                &fp_sin_x_rem_half_pi.flip_sign();
-                (
-                    f256::from(&fp_cos_x_rem_half_pi),
-                    f256::from(&fp_sin_x_rem_half_pi),
-                )
-            }
-            2 => {
-                &fp_sin_x_rem_half_pi.flip_sign();
-                &fp_cos_x_rem_half_pi.flip_sign();
-                (
-                    f256::from(&fp_sin_x_rem_half_pi),
-                    f256::from(&fp_cos_x_rem_half_pi),
-                )
-            }
-            3 => {
-                &fp_cos_x_rem_half_pi.flip_sign();
-                (
-                    f256::from(&fp_cos_x_rem_half_pi),
-                    f256::from(&fp_sin_x_rem_half_pi),
-                )
-            }
-            _ => unreachable!(),
-        };
+        let (fp_sin_x, fp_cos_x) = fp_x_rem_half_pi.sin_cos(quadrant);
+        let mut sin_x = f256::from(&fp_sin_x);
+        let cos_x = f256::from(&fp_cos_x);
         // sin(-x) = -sin(x)
         sin_x.bits.hi ^= sign_bits_hi(&self);
         (sin_x, cos_x)
