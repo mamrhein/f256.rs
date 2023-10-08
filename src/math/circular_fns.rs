@@ -152,7 +152,7 @@ impl f256 {
 }
 
 #[cfg(test)]
-mod in_cos_tests {
+mod sin_cos_tests {
     use core::str::FromStr;
 
     use super::*;
