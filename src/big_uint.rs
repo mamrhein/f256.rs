@@ -16,6 +16,7 @@ use core::{
         Shr, ShrAssign, Sub, SubAssign,
     },
 };
+use std::sync::RwLockWriteGuard;
 
 const CHUNK_SIZE: u32 = 19;
 const CHUNK_BASE: u64 = 10_u64.pow(CHUNK_SIZE);
@@ -1088,12 +1089,11 @@ impl u512 {
 
     /// Divide `self` inplace by 2ⁿ and round (tie to even).
     pub(crate) fn idiv_pow2(&mut self, mut n: u32) {
-        debug_assert_ne!(n, 0);
-        debug_assert!(n < u256::BITS);
-        let tie = &u256::ONE << (n - 1);
-        let rem = self.lo.rem_pow2(n);
-        *self >>= n;
-        if rem > tie || (rem == tie && (self.lo.lo & 1) == 1) {
+        const TIE: u512 =
+            u512::new(u256::new(1_u128 << 127, 0_u128), u256::ZERO);
+        let (quot, rem) = self.widening_shr(n);
+        *self = quot;
+        if rem > TIE || (rem == TIE && (self.lo.lo & 1) == 1) {
             self.incr();
         }
     }
