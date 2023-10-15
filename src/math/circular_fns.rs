@@ -86,12 +86,12 @@ impl f256 {
     ///
     /// Returns (sin(x), cos(x)).
     pub fn sin_cos(&self) -> (Self, Self) {
+        let abs_bits_x = abs_bits(&self);
         // If x is NAN or infinite, both, sine x and cosine x, are NAN.
-        if (self.bits.hi & HI_ABS_MASK) == HI_EXP_MASK {
+        if abs_bits_x.hi >= HI_EXP_MASK {
             return (f256::NAN, f256::NAN);
         }
         // If |x| is very small, sine x == x and cosine x == 1.
-        let abs_bits_x = abs_bits(&self);
         if abs_bits_x <= SMALL_CUT_OFF {
             return (*self, f256::ONE);
         }
@@ -100,7 +100,7 @@ impl f256 {
         // Calculate (|x| / ½π) % 4 and |x| % ½π, adjusted to 248 fractional
         // digits.
         let (quadrant, fp_x_rem_half_pi) = div_rem_half_pi(&abs_bits_x);
-        // Calc sin / cos of |x| % ½π.
+        // Calc (sin, cos) of |x| % ½π.
         let (fp_sin_x, fp_cos_x) = fp_x_rem_half_pi.sin_cos(quadrant);
         let mut sin_x = f256::from(&fp_sin_x);
         let cos_x = f256::from(&fp_cos_x);
