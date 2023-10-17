@@ -41,13 +41,6 @@ pub(crate) fn cordic_circ_vm(
     mut y: FP248,
     mut z: FP248,
 ) -> (FP248, FP248) {
-    debug_assert!(x >= FP248::ZERO);
-    debug_assert!(x <= FP248::FRAC_PI_2);
-    debug_assert!(y >= FP248::ZERO);
-    debug_assert!(y <= FP248::FRAC_PI_2);
-    debug_assert!(z >= FP248::ZERO);
-    debug_assert!(z <= FP248::FRAC_PI_2);
-
     for i in 0..=FP248::FRACTION_BITS {
         let op = OPS[(y >= FP248::ZERO) as usize];
         let mut dx = &y >> i;
@@ -91,10 +84,6 @@ pub(crate) fn cordic_circ_rm(
     mut y: FP248,
     mut z: FP248,
 ) -> (FP248, FP248) {
-    debug_assert!(x >= FP248::ZERO);
-    debug_assert!(x <= FP248::FRAC_PI_2);
-    debug_assert!(y >= FP248::ZERO);
-    debug_assert!(y <= FP248::FRAC_PI_2);
     debug_assert!(z >= FP248::ZERO);
     debug_assert!(z <= FP248::FRAC_PI_2);
 
