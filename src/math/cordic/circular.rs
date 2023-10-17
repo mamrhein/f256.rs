@@ -34,6 +34,7 @@ pub(crate) const P: FP248 = FP248 {
 fn no_op(fp: &mut FP248) {}
 
 const OPS: [fn(&mut FP248); 2] = [no_op, FP248::flip_sign];
+const MAX_ABS_COORD: u256 = u256::new(1_u128 << 127, 0_u128);
 
 // Circular coordinates, vector mode
 pub(crate) fn cordic_circ_vm(
@@ -41,6 +42,9 @@ pub(crate) fn cordic_circ_vm(
     mut y: FP248,
     mut z: FP248,
 ) -> (FP248, FP248) {
+    debug_assert!(x.signif <= MAX_ABS_COORD);
+    debug_assert!(y.signif <= MAX_ABS_COORD);
+
     for i in 0..=FP248::FRACTION_BITS {
         let op = OPS[(y >= FP248::ZERO) as usize];
         let mut dx = &y >> i;
@@ -61,8 +65,15 @@ pub(crate) fn cordic_atan(a: &FP248) -> FP248 {
     cordic_circ_vm(FP248::ONE, *a, FP248::ZERO).1
 }
 
+#[inline(always)]
+pub(crate) fn cordic_atan2(y: &FP248, x: &FP248) -> FP248 {
+    cordic_circ_vm(*x, *y, FP248::ZERO).1
+}
+
 #[cfg(test)]
 mod vector_mode_tests {
+    use std::ops::Neg;
+
     use super::*;
 
     #[test]
@@ -86,6 +97,30 @@ mod vector_mode_tests {
     fn test_atan_one() {
         let a = cordic_atan(&FP248::ONE);
         assert_eq!(a, ATANS[0]);
+    }
+
+    #[test]
+    fn test_atan_max() {
+        let e = FP248 {
+            sign: 0,
+            signif: u256::new(0_u128, 0x7ff_u128),
+        };
+        let mut a = cordic_atan2(&FP248::ONE, &FP248::EPSILON);
+        a -= &FP248::FRAC_PI_2;
+        assert!(a.signif < e.signif);
+    }
+
+    #[test]
+    fn test_atan_signs() {
+        let m = FP248 {
+            sign: 0,
+            signif: MAX_ABS_COORD,
+        };
+        for f in
+            [FP248::ZERO, FP248::EPSILON, FP248::ONE, FP248::FRAC_PI_2, m]
+        {
+            assert_eq!(f.atan().neg(), f.neg().atan());
+        }
     }
 }
 
