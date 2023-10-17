@@ -7,7 +7,10 @@
 // $Source$
 // $Revision$
 
-use std::{cmp::min, ops::Rem};
+use std::{
+    cmp::min,
+    ops::{Rem, Shl, Shr},
+};
 
 use crate::{
     abs_bits,
@@ -16,7 +19,7 @@ use crate::{
     exp_bits, f256,
     math::FP248,
     norm_bit, sign_bits_hi, signif, EXP_BIAS, EXP_BITS, FRACTION_BITS,
-    HI_ABS_MASK, HI_EXP_MASK,
+    HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BITS,
 };
 
 // Number of bits to shift left for adjusting the radix point from f256 to
@@ -30,6 +33,10 @@ const SMALL_CUT_OFF: u256 = u256::new(
     0x3ff8865752be2a167f0644b50757a602,
     0x81800000000000000000000000000000,
 );
+
+// Cut-off for large values (2²⁴⁸)
+const LARGE_CUT_OFF: u256 =
+    u256::new(((EXP_BIAS + 248) as u128) << HI_FRACTION_BITS, 0_u128);
 
 // Bounds of the quarters of the unit circle (fixed with 248 fractional bits)
 const FP_HALF_PI: u256 = signif(&FRAC_PI_2.bits).shift_left(PREC_ADJ);
@@ -120,12 +127,49 @@ impl f256 {
     pub fn cos(&self) -> Self {
         self.sin_cos().1
     }
+
+    /// Computes the arctangent of a number (in radians).
+    ///
+    /// Return value is in radians in the range [-½π, ½π].
+    pub fn atan(&self) -> Self {
+        let abs_bits_self = abs_bits(self);
+        // If self is NAN, atan self is NAN.
+        if (abs_bits_self.hi | (abs_bits_self.lo != 0) as u128) > HI_EXP_MASK
+        {
+            return f256::NAN;
+        }
+        // If |self| >= 2²⁴⁸, atan self = ½π.
+        if abs_bits_self.hi >= LARGE_CUT_OFF.hi {
+            let mut res = FRAC_PI_2;
+            res.bits.hi ^= sign_bits_hi(self);
+            return res;
+        }
+        // If |self| is very small, atan self = self.
+        if abs_bits_self <= SMALL_CUT_OFF {
+            return *self;
+        }
+        // Now we have ε < |self| < 2²⁴⁸.
+        // self = (-1)ˢ × m × 2ᵉ with 1 <= m < 2 and -236 <= e < 248
+        // Convert self into a fraction of two FP248 values, so that
+        // self = y / x.
+        let exp_bits_self = exp_bits(&abs_bits_self);
+        let fp_signif_self = &signif(&abs_bits_self) << PREC_ADJ;
+        let x = FP248 {
+            sign: 0,
+            signif: &FP248::ONE.signif
+                >> exp_bits_self.saturating_sub(EXP_BIAS),
+        };
+        let y = FP248 {
+            sign: self.sign(),
+            signif: &fp_signif_self >> EXP_BIAS.saturating_sub(exp_bits_self),
+        };
+        let fp_atan_self = y.atan2(&x);
+        f256::from(&fp_atan_self)
+    }
 }
 
 #[cfg(test)]
 mod sin_cos_tests {
-    use core::str::FromStr;
-
     use super::*;
     use crate::{
         consts::{FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
@@ -252,6 +296,29 @@ mod sin_cos_tests {
             assert!(f.sin() >= g.sin());
             assert!(f.cos() <= g.cos());
             f = g;
+        }
+    }
+
+    #[cfg(test)]
+    mod atan_tests {
+        use super::*;
+
+        #[test]
+        fn test_atan_inf() {
+            assert_eq!(f256::INFINITY.atan(), FRAC_PI_2);
+        }
+
+        #[test]
+        fn test_atan_large_cutoff() {
+            let f = f256 {
+                bits: LARGE_CUT_OFF,
+            };
+            assert_eq!(f.atan(), FRAC_PI_2);
+        }
+
+        #[test]
+        fn test_atan_one() {
+            assert_eq!(f256::ONE.atan(), FRAC_PI_4);
         }
     }
 }
