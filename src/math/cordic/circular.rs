@@ -126,22 +126,22 @@ mod rotation_mode_tests {
 
     #[test]
     fn test_sin_cos_pi_half() {
-        let e = u256::new(0_u128, 0xfff_u128);
+        let e = u256::new(0_u128, 0x7ff_u128);
         let (sin, cos) = cordic_sin_cos(&FP248::FRAC_PI_2);
         assert_eq!(sin.sign, 0);
         assert_eq!(cos.sign, 0);
         let mut d = sin.clone();
         d -= &FP248::ONE;
-        assert!(d.signif <= e);
-        assert!(cos.signif <= e);
+        assert!(d.signif < e);
+        assert!(cos.signif < e);
     }
 
     #[test]
     fn test_special_values() {
-        let e = u256::new(0_u128, 0xfff_u128);
+        let e = u256::new(0_u128, 0x7ff_u128);
         let f = &FP248::FRAC_PI_2 >> 1;
         let (sin, cos) = cordic_sin_cos(&f);
         let d = &cos.signif - &sin.signif;
-        assert!(d <= e);
+        assert!(d < e);
     }
 }
