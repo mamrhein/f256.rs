@@ -19,8 +19,9 @@ use std::{
 use cordic::circular::{cordic_atan, cordic_sin_cos};
 
 use crate::{
-    big_uint::u256, f256, split_f256_enc, EXP_BIAS, EXP_BITS, FRACTION_BITS,
-    HI_FRACTION_BITS, SIGNIFICAND_BITS,
+    abs_bits, big_uint::u256, exp_bits, f256, signif, split_f256_enc,
+    EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS,
+    SIGNIFICAND_BITS,
 };
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -103,17 +104,23 @@ impl FP248 {
 
 impl From<&f256> for FP248 {
     fn from(f: &f256) -> Self {
-        debug_assert!(f.is_finite());
-        if f.eq_zero() {
+        const PREC_ADJ: u32 = FP248::FRACTION_BITS - FRACTION_BITS;
+        let abs_bits_f = abs_bits(f);
+        debug_assert!(abs_bits_f.hi < HI_EXP_MASK); // f is finite?
+        if abs_bits_f.is_zero() {
             return FP248::ZERO;
         }
-        let (sign, exp, mut signif) = split_f256_enc(&f);
-        let shl = max(0, FP248::FRACTION_BITS as i32 + exp) as u32;
+        let exp_bits_f = exp_bits(&abs_bits_f);
+        let mut signif_f = signif(&abs_bits_f);
+        let shl = (exp_bits_f + PREC_ADJ).saturating_sub(EXP_BIAS);
         debug_assert!(shl <= EXP_BITS, "Value too large!");
-        let shr = max(0, -exp - FP248::FRACTION_BITS as i32) as u32;
-        signif <<= shl;
-        signif >>= shr;
-        Self { sign, signif }
+        let shr = (EXP_BIAS - PREC_ADJ).saturating_sub(exp_bits_f);
+        signif_f <<= shl;
+        signif_f >>= shr;
+        Self {
+            sign: f.sign(),
+            signif: signif_f,
+        }
     }
 }
 
