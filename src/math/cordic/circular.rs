@@ -67,8 +67,19 @@ mod vector_mode_tests {
 
     #[test]
     fn test_scale_factor() {
-        let (k, _) = cordic_circ_vm(FP248::ZERO, FP248::ONE, FP248::ZERO);
+        let (k, _) = cordic_circ_vm(FP248::ONE, FP248::ZERO, FP248::ZERO);
         assert_eq!(k, K);
+    }
+
+    #[test]
+    fn test_atan_inf() {
+        let e = FP248 {
+            sign: 0,
+            signif: u256::new(0_u128, 0x7ff_u128),
+        };
+        let (_, mut a) = cordic_circ_vm(FP248::ZERO, FP248::ONE, FP248::ZERO);
+        a -= &FP248::FRAC_PI_2;
+        assert!(a.signif < e.signif);
     }
 
     #[test]
