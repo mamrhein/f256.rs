@@ -16,7 +16,7 @@ use std::{
     ops::{AddAssign, Neg, Shr, ShrAssign, SubAssign},
 };
 
-use cordic::circular::{cordic_atan, cordic_sin_cos};
+use cordic::circular::{cordic_atan, cordic_atan2, cordic_sin_cos};
 
 use crate::{
     abs_bits, big_uint::u256, exp_bits, f256, signif, split_f256_enc,
@@ -100,6 +100,11 @@ impl FP248 {
     fn atan(&self) -> Self {
         cordic_atan(&self)
     }
+
+    #[inline(always)]
+    fn atan2(&self, other: &Self) -> Self {
+        cordic_atan2(&self, other)
+    }
 }
 
 impl From<&f256> for FP248 {
@@ -127,6 +132,12 @@ impl From<&f256> for FP248 {
 #[cfg(test)]
 mod from_f256_tests {
     use super::*;
+
+    #[test]
+    fn test_neg_one() {
+        let fp = FP248::from(&f256::NEG_ONE);
+        assert_eq!(fp, FP248::NEG_ONE);
+    }
 
     #[test]
     fn test_normal_gt_one() {
