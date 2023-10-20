@@ -107,6 +107,18 @@ impl FP248 {
     }
 }
 
+impl From<&u256> for FP248 {
+    /// Convert a raw u256 into a FP248, without any modification, i.e
+    /// interptret the given value i as i * 2⁻²⁴⁸
+    #[inline(always)]
+    fn from(ui: &u256) -> Self {
+        Self {
+            sign: 0,
+            signif: *ui,
+        }
+    }
+}
+
 impl From<&f256> for FP248 {
     fn from(f: &f256) -> Self {
         const PREC_ADJ: u32 = FP248::FRACTION_BITS - FRACTION_BITS;
