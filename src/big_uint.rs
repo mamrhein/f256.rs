@@ -132,7 +132,7 @@ impl BigUIntHelper for u128 {
 
 // Calculate ⌊(x * y) / 2⁵¹²⌋.
 pub(crate) fn u256_truncating_mul_u512(x: &u256, y: &u512) -> u256 {
-    let mut carry = 0_128;
+    let mut carry = 0_u128;
     let mut l = (0_u128, 0_u128, 0_u128, 0_u128);
     let mut h = (0_u128, 0_u128, 0_u128, 0_u128);
     (_, carry) = y.lo.lo.widening_mul(x.lo);
