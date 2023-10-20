@@ -343,13 +343,11 @@ impl AddAssign<&Self> for FP248 {
     fn add_assign(&mut self, rhs: &Self) {
         if self.sign == rhs.sign {
             self.signif += &rhs.signif;
+        } else if self.signif >= rhs.signif {
+            self.signif -= &rhs.signif;
         } else {
-            if self.signif >= rhs.signif {
-                self.signif -= &rhs.signif;
-            } else {
-                self.sign = rhs.sign;
-                self.signif = &rhs.signif - &self.signif;
-            }
+            self.sign = rhs.sign;
+            self.signif = &rhs.signif - &self.signif;
         }
     }
 }
@@ -358,13 +356,11 @@ impl SubAssign<&Self> for FP248 {
     fn sub_assign(&mut self, rhs: &Self) {
         if self.sign != rhs.sign {
             self.signif += &rhs.signif;
+        } else if self.signif >= rhs.signif {
+            self.signif -= &rhs.signif;
         } else {
-            if self.signif >= rhs.signif {
-                self.signif -= &rhs.signif;
-            } else {
-                self.signif = &rhs.signif - &self.signif;
-                self.flip_sign();
-            }
+            self.signif = &rhs.signif - &self.signif;
+            self.flip_sign();
         }
     }
 }
