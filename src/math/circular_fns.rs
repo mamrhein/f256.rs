@@ -298,27 +298,53 @@ mod sin_cos_tests {
             f = g;
         }
     }
+}
 
-    #[cfg(test)]
-    mod atan_tests {
-        use super::*;
+#[cfg(test)]
+mod atan_tests {
+    use std::ops::Neg;
 
-        #[test]
-        fn test_atan_inf() {
-            assert_eq!(f256::INFINITY.atan(), FRAC_PI_2);
-        }
+    use super::*;
+    use crate::{
+        consts::{FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
+        ONE_HALF,
+    };
 
-        #[test]
-        fn test_atan_large_cutoff() {
-            let f = f256 {
-                bits: LARGE_CUT_OFF,
-            };
-            assert_eq!(f.atan(), FRAC_PI_2);
-        }
+    #[test]
+    fn test_atan_inf() {
+        assert_eq!(f256::INFINITY.atan(), FRAC_PI_2);
+    }
 
-        #[test]
-        fn test_atan_one() {
-            assert_eq!(f256::ONE.atan(), FRAC_PI_4);
-        }
+    #[test]
+    fn test_atan_large_cutoff() {
+        let f = f256 {
+            bits: LARGE_CUT_OFF,
+        };
+        assert_eq!(f.atan(), FRAC_PI_2);
+    }
+
+    #[test]
+    fn test_atan_zero() {
+        assert_eq!(f256::ZERO.atan(), f256::ZERO);
+        assert_eq!(f256::NEG_ZERO.atan(), f256::ZERO);
+    }
+
+    #[test]
+    fn test_atan_one() {
+        assert_eq!(f256::ONE.atan(), FRAC_PI_4);
+        assert_eq!(f256::NEG_ONE.atan(), -FRAC_PI_4);
+    }
+
+    #[test]
+    fn test_atan_sqrt_3() {
+        let t = f256::from(3);
+        let mut f = t.sqrt();
+        // arctan √3 = ⅓π
+        assert_eq!(f.atan(), FRAC_PI_3);
+        assert_eq!(f.neg().atan(), -FRAC_PI_3);
+        // arctan ⅓√3 = π/6
+        f /= t;
+        assert_eq!(f.atan(), FRAC_PI_6);
+        assert_eq!(f.neg().atan(), -FRAC_PI_6);
     }
 }
