@@ -25,7 +25,7 @@ use crate::{f256, u256, HI_FRACTION_BIAS, MIN_GT_ZERO_10_EXP};
 
 /// Minimum possible subnormal power of 10 exponent - adjustment of
 /// significand: ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉.
-pub(self) const MIN_10_EXP_CUTOFF: i32 = -79056;
+const MIN_10_EXP_CUTOFF: i32 = -79056;
 
 // The internals of ParseFloatError are not public. The following hack is used
 // to return the same errors as f64.
