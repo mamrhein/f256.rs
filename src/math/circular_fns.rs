@@ -7,19 +7,19 @@
 // $Source$
 // $Revision$
 
-use std::{
-    cmp::min,
-    ops::{Rem, Shl, Shr},
+use core::{
+    cmp::{max, min},
+    ops::{Div, Rem, Shl, Shr},
 };
 
+use super::FP248;
 use crate::{
-    abs_bits,
+    abs_bits, abs_bits_sticky,
     big_uint::u256,
-    consts::{FRAC_3_PI_2, FRAC_PI_2, PI, TAU},
-    exp_bits, f256,
-    math::FP248,
-    norm_bit, sign_bits_hi, signif, EXP_BIAS, EXP_BITS, FRACTION_BITS,
-    HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BITS,
+    consts::{FRAC_3_PI_2, FRAC_PI_2, FRAC_PI_4, PI, TAU},
+    exp_bits, f256, norm_bit, sign_bits_hi, signif, BinEncAnySpecial,
+    EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK,
+    HI_FRACTION_BITS,
 };
 
 // Number of bits to shift left for adjusting the radix point from f256 to
@@ -34,9 +34,13 @@ const SMALL_CUT_OFF: u256 = u256::new(
     0x81800000000000000000000000000000,
 );
 
-// Cut-off for large values (2²⁴⁸)
-const LARGE_CUT_OFF: u256 =
-    u256::new(((EXP_BIAS + 248) as u128) << HI_FRACTION_BITS, 0_u128);
+// Cut-off of exponent f{r large values
+const LARGE_EXP_CUT_OFF: u32 = 240;
+// Cut-off for large values (2²⁴⁰)
+const LARGE_CUT_OFF: u256 = u256::new(
+    ((EXP_BIAS + LARGE_EXP_CUT_OFF) as u128) << HI_FRACTION_BITS,
+    0_u128,
+);
 
 // Bounds of the quarters of the unit circle (fixed with 248 fractional bits)
 const FP_HALF_PI: u256 = signif(&FRAC_PI_2.bits).shift_left(PREC_ADJ);
@@ -302,7 +306,7 @@ mod sin_cos_tests {
 
 #[cfg(test)]
 mod atan_tests {
-    use std::ops::Neg;
+    use core::ops::Neg;
 
     use super::*;
     use crate::{

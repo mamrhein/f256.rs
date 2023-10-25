@@ -72,7 +72,7 @@ pub(crate) fn cordic_atan2(y: &FP248, x: &FP248) -> FP248 {
 
 #[cfg(test)]
 mod vector_mode_tests {
-    use std::ops::Neg;
+    use core::ops::Neg;
 
     use super::*;
 

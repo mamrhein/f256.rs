@@ -11,7 +11,7 @@ mod circular_fns;
 mod cordic;
 mod sqrt;
 
-use std::{
+use core::{
     cmp::{max, Ordering},
     ops::{AddAssign, Neg, Shr, ShrAssign, SubAssign},
 };
