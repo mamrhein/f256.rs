@@ -16,7 +16,6 @@ use core::{
         Shr, ShrAssign, Sub, SubAssign,
     },
 };
-use std::sync::RwLockWriteGuard;
 
 const CHUNK_SIZE: u32 = 19;
 const CHUNK_BASE: u64 = 10_u64.pow(CHUNK_SIZE);
