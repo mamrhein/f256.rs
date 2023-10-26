@@ -44,10 +44,9 @@ const LARGE_CUT_OFF: u256 = u256::new(
 
 // Bounds of the quarters of the unit circle (fixed with 248 fractional bits)
 const FP_HALF_PI: u256 = signif(&FRAC_PI_2.bits).shift_left(PREC_ADJ);
-const FP_PI: u256 = (&signif(&PI.bits)).shift_left(PREC_ADJ + 1);
-const FP_3_PI_HALF: u256 =
-    (&signif(&FRAC_3_PI_2.bits)).shift_left(PREC_ADJ + 2);
-const FP_TAU: u256 = (&signif(&TAU.bits)).shift_left(PREC_ADJ + 2);
+const FP_PI: u256 = signif(&PI.bits).shift_left(PREC_ADJ + 1);
+const FP_3_PI_HALF: u256 = signif(&FRAC_3_PI_2.bits).shift_left(PREC_ADJ + 2);
+const FP_TAU: u256 = signif(&TAU.bits).shift_left(PREC_ADJ + 2);
 
 fn div_rem_half_pi(abs_bits_x: &u256) -> (u32, FP248) {
     let exp_x = exp_bits(&abs_bits_x) as i32 - EXP_BIAS as i32;
@@ -169,6 +168,72 @@ impl f256 {
         };
         let fp_atan_self = y.atan2(&x);
         f256::from(&fp_atan_self)
+    }
+
+    /// Computes the four quadrant arctangent of `self` (`y`) and `other`
+    /// (`x`) in radians.
+    ///
+    /// * `x = 0`, `y = 0`: `0`
+    /// * `x >= 0`: `arctan(y/x)` -> `[-½π, ½π]`
+    /// * `y >= 0`: `arctan(y/x) + π` -> `(½π, π]`
+    /// * `y < 0`: `arctan(y/x) - π` -> `(-π, -½π)`
+    pub fn atan2(&self, other: &Self) -> Self {
+        let mut abs_bits_x = abs_bits(&other);
+        let mut abs_bits_y = abs_bits(&self);
+        // Check whether one or both operands are NaN, infinite or zero.
+        // We mask off the sign bit and mark subnormals having a significand
+        // less than 2¹²⁸ in least bit of the representations high
+        // u128. This allows to use only that part for the handling of
+        // special cases.
+        let abs_bits_sticky_x = abs_bits_sticky(&abs_bits_x);
+        let abs_bits_sticky_y = abs_bits_sticky(&abs_bits_y);
+        if (abs_bits_sticky_x, abs_bits_sticky_y).any_special() {
+            if max(abs_bits_sticky_x, abs_bits_sticky_y) > HI_EXP_MASK {
+                // Atleast one operand is NAN.
+                return f256::NAN;
+            }
+            if abs_bits_sticky_x == 0_u128 {
+                return if abs_bits_sticky_y == 0 {
+                    // Both operands are zero.
+                    f256::ZERO
+                } else {
+                    // other = 0, self != 0 => ±½π
+                    let mut res = FRAC_PI_2;
+                    res.bits.hi |= sign_bits_hi(&self);
+                    res
+                };
+            }
+            if abs_bits_sticky_y == 0_u128 {
+                // self = 0, other != 0 => ±π
+                let mut res = PI;
+                res.bits.hi |= sign_bits_hi(&other);
+                return res;
+            }
+            // Both operands are infinite.
+            return match (self.sign(), other.sign()) {
+                (0, 0) => FRAC_PI_4,
+                (0, 1) => PI - FRAC_PI_4,
+                (1, 0) => -FRAC_PI_4,
+                _ => FRAC_PI_4 - PI,
+            };
+        }
+
+        // Both operands are finite and non-zero.
+
+        let signif_x = signif(&abs_bits_x);
+        let signif_y = signif(&abs_bits_y);
+        // Examine magnitude of self / other
+        let exp_quot =
+            exp_bits(&abs_bits_y) as i32 - exp_bits(&abs_bits_x) as i32;
+        let (y, x) = match exp_quot {
+            0 => (
+                FP248::from(&(&signif_y << PREC_ADJ)),
+                FP248::from(&(&signif_x << PREC_ADJ)),
+            ),
+            _ => (FP248::from(&self.div(other)), FP248::ONE),
+        };
+        let fp_atan2 = y.atan2(&x);
+        f256::from(&fp_atan2)
     }
 }
 
@@ -306,11 +371,11 @@ mod sin_cos_tests {
 
 #[cfg(test)]
 mod atan_tests {
-    use core::ops::Neg;
+    use core::{ops::Neg, str::FromStr};
 
     use super::*;
     use crate::{
-        consts::{FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
+        consts::{FRAC_1_PI, FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
         ONE_HALF,
     };
 
@@ -350,5 +415,20 @@ mod atan_tests {
         f /= t;
         assert_eq!(f.atan(), FRAC_PI_6);
         assert_eq!(f.neg().atan(), -FRAC_PI_6);
+    }
+
+    #[test]
+    fn test_atan_frac_1_pi() {
+        assert_eq!(FRAC_1_PI.atan(), f256::ONE.atan2(&PI));
+    }
+
+    #[test]
+    fn test_atan_frac_pi_2() {
+        let s = "1.00388482185388721414842394491713228829210446059487057472971282410801519";
+        let a = f256::from_str(s).unwrap();
+        let f1 = FRAC_PI_2.atan();
+        assert_eq!(f1, a);
+        let f2 = PI.atan2(&f256::TWO);
+        assert_eq!(f1, f2);
     }
 }
