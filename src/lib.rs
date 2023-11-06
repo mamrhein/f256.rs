@@ -568,6 +568,29 @@ impl f256 {
         self.bits.hi >= HI_SIGN_MASK
     }
 
+    /// Returns the unit in the last place of `self`.
+    ///
+    /// ULP denotes the magnitude of the last significand digit of `self`.
+    #[must_use]
+    pub fn ulp(&self) -> Self {
+        if self.is_special() {
+            if self.eq_zero() {
+                return MIN_GT_ZERO;
+            } else {
+                return NAN;
+            }
+        }
+        let abs_bits_self = abs_bits(self);
+        let mut exp_bits = exp_bits(&abs_bits_self);
+        let mut signif = u256::new(HI_FRACTION_BIAS, 0_u128);
+        let sh =
+            FRACTION_BITS.saturating_sub(exp_bits - norm_bit(&abs_bits_self));
+        exp_bits = exp_bits.saturating_sub(FRACTION_BITS + 1);
+        signif >>= sh;
+        signif.hi += (exp_bits as u128) << HI_FRACTION_BITS;
+        f256 { bits: signif }
+    }
+
     /// Returns the reciprocal (multiplicative inverse) of `self`.
     ///
     /// # Examples
@@ -1416,5 +1439,42 @@ mod split_tests {
     fn test_subnormal() {
         let f = f256::MIN_GT_ZERO;
         assert_eq!(f.split(), (f256::ZERO, f256::MIN_GT_ZERO));
+    }
+}
+
+#[cfg(test)]
+mod ulp_tests {
+    use super::*;
+
+    #[test]
+    fn test_special() {
+        assert_eq!(f256::ZERO.ulp(), MIN_GT_ZERO);
+        assert!(f256::INFINITY.ulp().is_nan());
+        assert!(f256::NEG_INFINITY.ulp().is_nan());
+        assert!(f256::NAN.ulp().is_nan());
+    }
+
+    #[test]
+    fn test_normal() {
+        assert_eq!(f256::ONE.ulp(), f256::EPSILON);
+        assert_eq!(f256::TWO.ulp(), f256::TWO * f256::EPSILON);
+        assert_eq!(f256::from(3).ulp(), f256::TWO * f256::EPSILON);
+        assert_eq!(f256::TEN.ulp(), f256::from(8) * f256::EPSILON);
+        assert_eq!(f256::MIN_POSITIVE.ulp(), f256::MIN_GT_ZERO);
+        assert_eq!(
+            f256::MIN.ulp(),
+            f256::from_sign_exp_signif(
+                0,
+                EMAX - FRACTION_BITS as i32,
+                (0, 1)
+            )
+        );
+    }
+
+    #[test]
+    fn test_subnormal() {
+        let f = f256::MIN_POSITIVE - f256::MIN_GT_ZERO;
+        assert_eq!(f.ulp(), f256::MIN_GT_ZERO);
+        assert_eq!(f256::MIN_GT_ZERO.ulp(), f256::MIN_GT_ZERO);
     }
 }
