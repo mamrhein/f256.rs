@@ -1280,6 +1280,34 @@ pub(crate) const fn split_f256_enc(f: &f256) -> (u32, i32, u256) {
     }
 }
 
+/// Computes the rounded sum of two f256 values and the remainder.
+///
+/// Pre-condition: a >= b
+#[inline]
+pub(crate) fn fast_sum(a: &f256, b: &f256) -> (f256, f256) {
+    debug_assert!(a >= b);
+    let s = a + b;
+    let r = b - (s - a);
+    (s, r)
+}
+
+/// Computes the rounded sum of two f256 values and the remainder.
+pub(crate) fn sum(a: &f256, b: &f256) -> (f256, f256) {
+    let s = a + b;
+    let ta = a - (s - b);
+    let tb = b - (s - ta);
+    let r = ta + tb;
+    (s, r)
+}
+
+/// Computes the rounded product of two f256 values and the remainder.
+#[inline]
+pub(crate) fn fast_mul(a: &f256, b: &f256) -> (f256, f256) {
+    let p = a * b;
+    let r = a.mul_add(*b, -p);
+    (p, r)
+}
+
 #[cfg(test)]
 mod repr_tests {
     use super::*;
