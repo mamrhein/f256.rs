@@ -265,12 +265,10 @@ impl u256 {
 
     /// Divide `self` inplace by 2ⁿ and round (tie to even).
     pub(crate) fn idiv_pow2(&mut self, mut n: u32) {
-        debug_assert_ne!(n, 0);
-        debug_assert!(n < Self::BITS);
-        let tie = &Self::ONE << (n - 1);
-        let rem = self.rem_pow2(n);
-        *self >>= n;
-        if rem > tie || (rem == tie && (self.lo & 1) == 1) {
+        const TIE: u256 = u256::new(1_u128 << 127, 0);
+        let (quot, rem) = self.widening_shr(n);
+        *self = quot;
+        if rem > TIE || (rem == TIE && (self.lo & 1) == 1) {
             self.incr();
         }
     }
