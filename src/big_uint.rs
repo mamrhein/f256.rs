@@ -1494,6 +1494,25 @@ mod u256_div_rem_tests {
 }
 
 #[cfg(test)]
+mod u256_div_pow2_tests {
+    use super::*;
+
+    #[test]
+    fn test_idiv_pow2() {
+        let u = u256::new(
+            0x00001f6a7a2955385e583ebeff65cc22,
+            0x6480ae685c3155a037f22051d5c9f93a,
+        );
+        let mut v = u.clone();
+        v.idiv_pow2(12);
+        assert_eq!(v, &(&u >> 12) + &u256::ONE);
+        let mut v = u.clone();
+        v.idiv_pow2(137);
+        assert_eq!(v, (&u >> 137));
+    }
+}
+
+#[cfg(test)]
 mod u256_to_str_tests {
     use alloc::string::ToString;
 
