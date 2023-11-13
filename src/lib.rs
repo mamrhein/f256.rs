@@ -1248,12 +1248,11 @@ pub(crate) const fn norm_signif(abs_bits: &u256) -> (u256, u32) {
 /// Returns the left adjusted significand and the corresponding shift from
 /// `abs_bits`.
 #[inline(always)]
-pub(crate) fn left_adj_signif(abs_bits: &u256) -> (u256, u32) {
+pub(crate) const fn left_adj_signif(abs_bits: &u256) -> (u256, u32) {
     debug_assert!(!abs_bits.is_zero());
-    let shift = max(abs_bits.leading_zeros(), EXP_BITS);
-    let mut signif = abs_bits << shift;
-    signif.hi |= HI_SIGN_MASK;
-    (signif, shift)
+    let signif = signif(abs_bits);
+    let shift = signif.leading_zeros();
+    (signif.shift_left(shift), shift)
 }
 
 /// Extract sign, exponent and significand from f
