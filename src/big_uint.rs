@@ -263,14 +263,20 @@ impl u256 {
         self.hi += t << 64;
     }
 
-    /// Divide `self` inplace by 2ⁿ and round (tie to even).
-    pub(crate) fn idiv_pow2(&mut self, mut n: u32) {
+    /// Divide `self` by 2ⁿ and round (tie to even).
+    pub(crate) fn div_pow2(&self, mut n: u32) -> Self {
         const TIE: u256 = u256::new(1_u128 << 127, 0);
-        let (quot, rem) = self.widening_shr(n);
-        *self = quot;
-        if rem > TIE || (rem == TIE && (self.lo & 1) == 1) {
-            self.incr();
+        let (mut quot, rem) = self.widening_shr(n);
+        if rem > TIE || (rem == TIE && (quot.lo & 1) == 1) {
+            quot.incr();
         }
+        quot
+    }
+
+    /// Divide `self` inplace by 2ⁿ and round (tie to even).
+    #[inline(always)]
+    pub(crate) fn idiv_pow2(&mut self, mut n: u32) {
+        *self = self.div_pow2(n);
     }
 
     // Specialized version adapted from
@@ -1494,6 +1500,20 @@ mod u256_div_rem_tests {
 #[cfg(test)]
 mod u256_div_pow2_tests {
     use super::*;
+
+    #[test]
+    fn test_div_pow2() {
+        let u = u256::new(
+            0x00001000000000000000000000000003,
+            0x00001000000000000000000000000002,
+        );
+        let v = u.div_pow2(2);
+        assert_eq!(v, (&u >> 2));
+        let v = u.div_pow2(17);
+        assert_eq!(v, (&u >> 17));
+        let v = u.div_pow2(129);
+        assert_eq!(v, &(&u >> 129) + &u256::ONE);
+    }
 
     #[test]
     fn test_idiv_pow2() {
