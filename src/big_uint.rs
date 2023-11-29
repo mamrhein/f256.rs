@@ -848,7 +848,7 @@ impl BigUIntHelper for &u256 {
     }
 
     fn widening_shr(self, mut shift: u32) -> Self::Output {
-        debug_assert!(shift < u256::BITS);
+        debug_assert!(shift < 2 * u256::BITS);
         match shift {
             1..=127 => {
                 let (hi, carry) = self.hi.widening_shr(shift);
@@ -862,6 +862,8 @@ impl BigUIntHelper for &u256 {
                 let (lo, carry) = self.lo.carrying_shr(shift, carry);
                 (u256::new(0_u128, hi), u256::new(lo, carry))
             }
+            256 => (u256::ZERO, *self),
+            257..=511 => (u256::ZERO, self.widening_shr(shift - 256).0),
             0 => (*self, u256::ZERO),
             _ => unreachable!(),
         }
@@ -899,7 +901,7 @@ impl Shr<u32> for &u256 {
 
     fn shr(self, rhs: u32) -> Self::Output {
         assert!(
-            rhs <= Self::Output::BITS,
+            rhs <= 2 * Self::Output::BITS,
             "Attempt to shift right with underflow."
         );
         self.widening_shr(rhs).0

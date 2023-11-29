@@ -9,23 +9,22 @@
 
 use core::{
     cmp::{max, min},
-    ops::{Div, Rem, Shl, Shr},
+    ops::{Div, Neg, Rem, Shl, Shr},
 };
 
-use super::FP248;
+use super::{FP255, SIGNIF_ONE};
 use crate::{
     abs_bits, abs_bits_sticky,
     big_uint::u256,
     consts::{FRAC_3_PI_2, FRAC_PI_2, FRAC_PI_4, PI, TAU},
-    exp_bits, f256, norm_bit, sign_bits_hi, signif, BinEncAnySpecial,
-    EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK,
-    HI_FRACTION_BITS,
+    exp_bits, f256, fast_mul, fast_sum, norm_bit, sign_bits_hi, signif,
+    BinEncAnySpecial, EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_ABS_MASK,
+    HI_EXP_MASK, HI_FRACTION_BITS,
 };
 
 // Number of bits to shift left for adjusting the radix point from f256 to
-// FP248
-const PREC_ADJ: u32 = FP248::FRACTION_BITS - FRACTION_BITS;
-const EXP_BIAS_ADJ: u32 = EXP_BIAS - PREC_ADJ;
+// FP255
+const PREC_ADJ: u32 = FP255::FRACTION_BITS - FRACTION_BITS;
 
 // Cut-off for small values
 // ≈0.00000000000000000000000000000000000210094754024801845063812748106760843
@@ -34,7 +33,7 @@ const SMALL_CUT_OFF: u256 = u256::new(
     0x81800000000000000000000000000000,
 );
 
-// Cut-off of exponent f{r large values
+// Cut-off of exponent for large values
 const LARGE_EXP_CUT_OFF: u32 = 240;
 // Cut-off for large values (2²⁴⁰)
 const LARGE_CUT_OFF: u256 = u256::new(
@@ -42,53 +41,45 @@ const LARGE_CUT_OFF: u256 = u256::new(
     0_u128,
 );
 
-// Bounds of the quarters of the unit circle (fixed with 248 fractional bits)
-const FP_HALF_PI: u256 = signif(&FRAC_PI_2.bits).shift_left(PREC_ADJ);
-const FP_PI: u256 = signif(&PI.bits).shift_left(PREC_ADJ + 1);
-const FP_3_PI_HALF: u256 = signif(&FRAC_3_PI_2.bits).shift_left(PREC_ADJ + 2);
-const FP_TAU: u256 = signif(&TAU.bits).shift_left(PREC_ADJ + 2);
+fn rem_frac_pi_2(x: &f256) -> (u32, f256) {
+    debug_assert!(x.is_finite());
+    debug_assert!(x.is_sign_positive());
+    if x < &FRAC_PI_2 {
+        (0, *x)
+    } else if x < &PI {
+        (1, x - &FRAC_PI_2)
+    } else if x < &FRAC_3_PI_2 {
+        (2, x - &PI)
+    } else if x < &TAU {
+        (3, x - &FRAC_3_PI_2)
+    } else {
+        // TAU <= x <= f256::MAX
+        const D: u256 = signif(&TAU.bits);
+        // x >= TAU => exp(x) >= 2 => following expression can't be < 0
+        let sh = exp_bits(&x.bits) - EXP_BIAS - 2;
+        let mut t = signif(&x.bits);
+        t = t.lshift_rem(&D, sh);
+        if t.is_zero() {
+            return (0, f256::ZERO);
+        }
+        let shl = t.leading_zeros() - EXP_BITS;
+        t <<= shl;
+        let u = f256::from_sign_exp_signif(
+            0,
+            -((FRACTION_BITS + shl - 2) as i32),
+            (t.hi, t.lo),
+        );
+        debug_assert!(u < TAU);
+        debug_assert!(u <= *x);
+        rem_frac_pi_2(&u)
+    }
+}
 
-fn div_rem_half_pi(abs_bits_x: &u256) -> (u32, FP248) {
-    let exp_x = exp_bits(&abs_bits_x) as i32 - EXP_BIAS as i32;
-    let sh = exp_x + PREC_ADJ as i32;
-    let (quadrant, mut x_rem_half_pi) = match sh {
-        ..=0 => {
-            // -236 <= e <= -12
-            (0_u32, &signif(&abs_bits_x) >> (-sh) as u32)
-        }
-        1..=11 => {
-            // -11 <= e < 0
-            (0_u32, &signif(&abs_bits_x) << sh as u32)
-        }
-        12 => {
-            // e = 0
-            let mut fp_x_signif = &signif(&abs_bits_x) << PREC_ADJ;
-            if fp_x_signif >= FP_HALF_PI {
-                (1_u32, &fp_x_signif - &FP_HALF_PI)
-            } else {
-                (0_u32, fp_x_signif)
-            }
-        }
-        _ => {
-            // 0 < e <= EMAX
-            let x_rem_tau =
-                signif(&abs_bits_x).lshift_rem(&FP_TAU, sh as u32);
-            if &x_rem_tau < &FP_HALF_PI {
-                (0, x_rem_tau)
-            } else if &x_rem_tau < &FP_PI {
-                (1, &x_rem_tau - &FP_HALF_PI)
-            } else if &x_rem_tau < &FP_3_PI_HALF {
-                (2, &x_rem_tau - &FP_PI)
-            } else {
-                (3, &x_rem_tau - &FP_3_PI_HALF)
-            }
-        }
-    };
-    let fp_x_rem_half_pi = FP248 {
-        sign: 0,
-        signif: x_rem_half_pi,
-    };
-    (quadrant, fp_x_rem_half_pi)
+#[inline(always)]
+fn sin_cos(f: &f256) -> (f256, f256) {
+    let x = FP255::from(f);
+    let (fp_sin_x, fp_cos_x) = x.sin_cos();
+    (f256::from(&fp_sin_x), f256::from(&fp_cos_x))
 }
 
 impl f256 {
@@ -96,27 +87,31 @@ impl f256 {
     ///
     /// Returns (sin(x), cos(x)).
     pub fn sin_cos(&self) -> (Self, Self) {
-        let abs_bits_x = abs_bits(&self);
+        let x = self.abs();
         // If x is NAN or infinite, both, sine x and cosine x, are NAN.
-        if abs_bits_x.hi >= HI_EXP_MASK {
+        if x.bits.hi > f256::MAX.bits.hi {
             return (f256::NAN, f256::NAN);
         }
-        // If |x| is very small, sine x == x and cosine x == 1.
-        if abs_bits_x <= SMALL_CUT_OFF {
-            return (*self, f256::ONE);
-        }
-        // Now we have ε < |x| < ∞.
-        // x = (-1)ˢ × m × 2ᵉ with 1 <= m < 2 and e >= -236
-        // Calculate (|x| / ½π) % 4 and |x| % ½π, adjusted to 248 fractional
-        // digits.
-        let (quadrant, fp_x_rem_half_pi) = div_rem_half_pi(&abs_bits_x);
-        // Calc (sin, cos) of |x| % ½π.
-        let (fp_sin_x, fp_cos_x) = fp_x_rem_half_pi.sin_cos(quadrant);
-        let mut sin_x = f256::from(&fp_sin_x);
-        let cos_x = f256::from(&fp_cos_x);
+        // Calculate (x / ½π) % 4 and x % ½π.
+        let (quadrant, x) = rem_frac_pi_2(&x);
+        // If x is zero or very small, sine x == x and cosine x == 1.
+        // TODO: verify limit
+        let (sin, cos) = if x.eq_zero() || x.bits < SMALL_CUT_OFF {
+            (x, f256::ONE)
+        } else {
+            sin_cos(&x)
+        };
+        // Map result according to quadrant
+        let (mut sin, cos) = match quadrant {
+            0 => (sin, cos),
+            1 => (cos, -sin),
+            2 => (-sin, -cos),
+            3 => (-cos, sin),
+            _ => unreachable!(),
+        };
         // sin(-x) = -sin(x)
-        sin_x.bits.hi ^= sign_bits_hi(&self);
-        (sin_x, cos_x)
+        sin.bits.hi ^= sign_bits_hi(&self);
+        (sin, cos)
     }
 
     /// Computes the sine of a number (in radians).
@@ -152,32 +147,7 @@ impl f256 {
             return *self;
         }
         // Now we have ε < |self| < 2²⁴⁰.
-        // self = (-1)ˢ × m × 2ᵉ with 1 <= m < 2 and -236 <= e < 240
-        // Convert self into a fraction of two FP248 values, so that
-        // self = y / x.
-        let exp_bits_self = exp_bits(&abs_bits_self);
-        let fp_signif_self = &signif(&abs_bits_self) << PREC_ADJ;
-        let x = FP248 {
-            sign: 0,
-            signif: &FP248::ONE.signif
-                >> exp_bits_self.saturating_sub(EXP_BIAS),
-        };
-        let y = FP248 {
-            sign: self.sign(),
-            signif: &fp_signif_self >> EXP_BIAS.saturating_sub(exp_bits_self),
-        };
-        let fp_atan_self = y.atan2(&x);
-        f256::from(&fp_atan_self)
-    }
-
-    #[inline]
-    fn map_atan2_signs(&self, sign_y: u32, sign_x: u32) -> Self {
-        match (sign_y, sign_x) {
-            (0, 0) => *self,
-            (0, 1) => &PI - self,
-            (1, 0) => -*self,
-            _ => self - &PI,
-        }
+        f256::from(&FP255::from(self).atan())
     }
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other`
@@ -214,57 +184,25 @@ impl f256 {
                 };
             }
             if abs_bits_sticky_y == 0_u128 {
-                // self = 0, other != 0 => ±π
-                let mut res = PI;
-                res.bits.hi |= sign_bits_hi(&other);
-                return res;
+                // self = 0, other > 0 => 0
+                // self = 0, other < 0 => π
+                return [f256::ZERO, PI][other.sign() as usize];
             }
             // Both operands are infinite.
-            return FRAC_PI_4.map_atan2_signs(self.sign(), other.sign());
+            return match (self.sign(), other.sign()) {
+                (0, 0) => FRAC_PI_4,
+                // TODO: replace by constant FRAC_3_PI_2
+                (0, 1) => &PI - &FRAC_PI_4,
+                (1, 0) => -FRAC_PI_4,
+                _ => &FRAC_PI_4 - &PI,
+            };
         }
 
         // Both operands are finite and non-zero.
 
-        let mut signif_y = signif(&abs_bits_y);
-        let mut signif_x = signif(&abs_bits_x);
-        // Examine magnitude of self / other
-        let exp_quot =
-            exp_bits(&abs_bits_y) as i32 - exp_bits(&abs_bits_x) as i32;
-        const MAX_SHIFT: u32 = EXP_BITS - 1;
-        const SHIFT_UPPER_LIMIT: i32 = MAX_SHIFT as i32;
-        const SHIFT_LOWER_LIMIT: i32 = -SHIFT_UPPER_LIMIT;
-        const UPPER_CUT_OFF: i32 = LARGE_EXP_CUT_OFF as i32;
-        match exp_quot {
-            0 => {
-                signif_y <<= PREC_ADJ;
-                signif_x <<= PREC_ADJ;
-            }
-            sh @ 1..=SHIFT_UPPER_LIMIT => {
-                signif_y <<=
-                    PREC_ADJ + min(sh.unsigned_abs(), MAX_SHIFT - PREC_ADJ);
-                signif_x <<=
-                    MAX_SHIFT - max(sh.unsigned_abs(), MAX_SHIFT - PREC_ADJ);
-            }
-            sh @ SHIFT_LOWER_LIMIT..=-1 => {
-                signif_y <<=
-                    MAX_SHIFT - max(sh.unsigned_abs(), MAX_SHIFT - PREC_ADJ);
-                signif_x <<=
-                    PREC_ADJ + min(sh.unsigned_abs(), MAX_SHIFT - PREC_ADJ);
-            }
-            UPPER_CUT_OFF.. => {
-                return FRAC_PI_2.map_atan2_signs(self.sign(), other.sign());
-            }
-            _ => {
-                return self
-                    .div(other)
-                    .abs()
-                    .atan()
-                    .map_atan2_signs(self.sign(), other.sign());
-            }
-        };
-        let y = FP248::from(&signif_y);
-        let x = FP248::from(&signif_x);
-        f256::from(&y.atan2(&x)).map_atan2_signs(self.sign(), other.sign())
+        let y = FP255::from(self);
+        let x = FP255::from(other);
+        f256::from(&y.atan2(&x))
     }
 }
 
@@ -273,7 +211,7 @@ mod sin_cos_tests {
     use super::*;
     use crate::{
         consts::{FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
-        ONE_HALF,
+        EPSILON, ONE_HALF,
     };
 
     #[test]
@@ -297,21 +235,21 @@ mod sin_cos_tests {
         for i in 0..9 {
             let f = f256::from(i) * FRAC_PI_2 + p;
             let (sin, cos) = f.sin_cos();
-            let quadrant = (i % 4) + 1;
+            let quadrant = i % 4;
             match quadrant {
-                1 => {
+                0 => {
                     assert!(sin.is_sign_positive());
                     assert!(cos.is_sign_positive());
                 }
-                2 => {
+                1 => {
                     assert!(sin.is_sign_positive());
                     assert!(cos.is_sign_negative());
                 }
-                3 => {
+                2 => {
                     assert!(sin.is_sign_negative());
                     assert!(cos.is_sign_negative());
                 }
-                4 => {
+                3 => {
                     assert!(sin.is_sign_negative());
                     assert!(cos.is_sign_positive());
                 }
@@ -363,8 +301,22 @@ mod sin_cos_tests {
         for i in 0..1000 {
             g += d;
             assert!(f < g);
-            assert!(f.sin() <= g.sin());
-            assert!(f.cos() >= g.cos());
+            assert!(
+                f.sin() <= g.sin(),
+                "    f: {}\nsin f: {}\n    g: {}\nsin g: {}",
+                f,
+                f.sin(),
+                g,
+                g.sin()
+            );
+            assert!(
+                f.cos() >= g.cos(),
+                "    f: {}\ncos f: {}\n    g: {}\ncos g: {}",
+                f,
+                f.cos(),
+                g,
+                g.cos()
+            );
             f = g;
         }
     }
@@ -483,8 +435,6 @@ mod atan_tests {
         let n = f256::from(51043);
         let d = f256::from(7);
         let f = n / d;
-        println!("{}", f.atan());
-        // assert_eq!(f.atan(), a);
         assert_eq!(n.atan2(&d), a);
     }
 }
