@@ -41,6 +41,63 @@ const LARGE_CUT_OFF: u256 = u256::new(
     0_u128,
 );
 
+// Accurate range reduction algorithm, adapted from
+// S. Boldo, M. Daumas, R.-C. Li,
+// Formally verified argument reduction with a fused multiply-add
+// IEEE Trans. Comput. 58(8), 1139–1145 (2009)
+// For the input value f, calculate ⌊f/½π⌋ and f%½π
+fn fast_reduce(f: &f256) -> (f256, f256) {
+    // 1/½π
+    const R: f256 = f256 {
+        bits: u256 {
+            hi: 85070031364429158754372282577210457766,
+            lo: 206986278175927573935717840202627382232,
+        },
+    };
+    // 3 × 2ᴾ⁻²
+    const D: f256 = f256 {
+        bits: u256 {
+            hi: 85147015849621175360001085100787761152,
+            lo: 0,
+        },
+    };
+    const C1: f256 = f256 {
+        bits: u256 {
+            hi: 85070452445679362461652637654843486235,
+            lo: 174929234171320688473765933587459524448,
+        },
+    };
+    const C2: f256 = f256 {
+        bits: u256 {
+            hi: 84994005351571227158322827037086056448,
+            lo: 0,
+        },
+    };
+    let mut k = f.mul_add(R, D) - D;
+    debug_assert!(k.fract().eq_zero());
+    let mut u = f - k * C1;
+    if u.is_sign_negative() {
+        k -= f256::ONE;
+        u += C1;
+    }
+    debug_assert!(u.is_sign_positive());
+    let vh = u - k * C2;
+    debug_assert!(vh.is_sign_positive());
+    let (ph, pl) = fast_mul(&k, &C2);
+    let (th, tl) = fast_sum(&u, &ph.neg());
+    let vl = ((th - vh) + tl) - pl;
+    debug_assert!(vh.eq_zero() || vh.abs() > vl.abs(), "vh: {vh}\nvl: {vl}");
+    (k, vh + vl)
+}
+
+// Max input value for fast_reduce
+const M: f256 = f256 {
+    bits: u256 {
+        hi: 85147038824342751169173462475699482651,
+        lo: 174929234171320688473765933587459524448,
+    },
+};
+
 fn rem_frac_pi_2(x: &f256) -> (u32, f256) {
     debug_assert!(x.is_finite());
     debug_assert!(x.is_sign_positive());
@@ -52,6 +109,13 @@ fn rem_frac_pi_2(x: &f256) -> (u32, f256) {
         (2, x - &PI)
     } else if x < &TAU {
         (3, x - &FRAC_3_PI_2)
+    } else if x <= &M {
+        let (q, r) = fast_reduce(x);
+        // x <= M => q < 2ᴾ⁻²
+        let m = signif(&q.bits);
+        let e =
+            exp_bits(&q.bits) as i32 - EXP_BIAS as i32 - FRACTION_BITS as i32;
+        ((&m >> e.unsigned_abs()).lo as u32 & 0x3, r)
     } else {
         // TAU <= x <= f256::MAX
         const D: u256 = signif(&TAU.bits);
@@ -92,8 +156,9 @@ impl f256 {
         if x.bits.hi > f256::MAX.bits.hi {
             return (f256::NAN, f256::NAN);
         }
-        // Calculate (x / ½π) % 4 and x % ½π.
-        let (quadrant, x) = rem_frac_pi_2(&x);
+        // Calculate ⌊x/½π⌋ % 4 and x % ½π.
+        let (mut quadrant, mut x) = rem_frac_pi_2(&x);
+        debug_assert!(x.is_sign_positive());
         // If x is zero or very small, sine x == x and cosine x == 1.
         // TODO: verify limit
         let (sin, cos) = if x.eq_zero() || x.bits < SMALL_CUT_OFF {
@@ -255,6 +320,37 @@ mod sin_cos_tests {
                 }
                 _ => unreachable!(),
             }
+        }
+    }
+
+    #[test]
+    fn test_multiples_of_tau_plus_delta() {
+        let eps = f256::from_sign_exp_signif(
+            0,
+            -470,
+            (
+                0x00001000000000000000000000000000,
+                0x00000000000000000000000000000000,
+            ),
+        );
+        let d = f256::from(0.082735);
+        let (sin_d, cos_d) = d.sin_cos();
+        for i in [17_u128, 53904_u128, u128::MAX] {
+            let f = f256::from(i) * TAU + d;
+            let (sin_f, cos_f) = f.sin_cos();
+            let (k, r) = fast_reduce(&f);
+            assert!(
+                (sin_d - sin_f).abs() <= f * eps,
+                "{:?} !<= {:?}",
+                (sin_d - sin_f).abs(),
+                f * eps
+            );
+            assert!(
+                (cos_d - cos_f).abs() <= f * eps,
+                "{:?} !<= {:?}",
+                (cos_d - cos_f).abs(),
+                f * eps
+            );
         }
     }
 
@@ -436,5 +532,72 @@ mod atan_tests {
         let d = f256::from(7);
         let f = n / d;
         assert_eq!(n.atan2(&d), a);
+    }
+}
+#[cfg(test)]
+mod calc_reduce_consts {
+    use super::*;
+    use crate::{consts::FRAC_1_PI, SIGNIFICAND_BITS};
+
+    fn print_as_const(s: &str, f: f256) {
+        println!(
+            "const {}: f256 = f256 {{\nbits: u256 {{\nhi: {},\nlo: \
+             {},\n}},\n}};",
+            s, f.bits.hi, f.bits.lo
+        )
+    }
+
+    fn calc_reduce_consts(r: f256) {
+        let c = f256::ONE / r;
+        let mut m = c.significand();
+        m.idiv_pow2(2);
+        m <<= 2;
+        let c1 = f256::from_sign_exp_signif(0, c.exponent(), (m.hi, m.lo));
+        let d = c - c1;
+        let ulp_c1 = c1.ulp();
+        let f = (f256::from(8) * f256::EPSILON) * ulp_c1;
+        let c2 = (d / f) * f;
+        assert_eq!(c, c1 + c2);
+        let f = f256::from(f64::from(SIGNIFICAND_BITS - 2).exp2());
+        // 3 × 2ᴾ⁻²
+        let d = f256::from(3) * f;
+        // Upper limit
+        let m = f.mul_add(PI, -FRAC_PI_2);
+        println!(
+            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n",
+            r,
+            c,
+            c1,
+            d,
+            ulp_c1,
+            f,
+            c2,
+            c1 + c2,
+            m,
+        );
+        println!(
+            "{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n",
+            r,
+            c,
+            c1,
+            d,
+            ulp_c1,
+            f,
+            c2,
+            c1 + c2,
+            m,
+        );
+        print_as_const("R", r);
+        print_as_const("D", d);
+        print_as_const("C1", c1);
+        print_as_const("C2", c2);
+        print_as_const("M", m);
+    }
+
+    #[test]
+    fn calc_rem_frac_pi_2_consts() {
+        // f256::ONE / FRAC_PI_2;
+        let r = FRAC_1_PI * f256::TWO;
+        calc_reduce_consts(r);
     }
 }
