@@ -8,18 +8,18 @@
 // $Revision$
 
 use core::{
-    cmp::{max, min},
+    cmp::max,
     ops::{Div, Neg, Rem, Shl, Shr},
 };
 
-use super::{FP255, SIGNIF_ONE};
+use super::FP255;
 use crate::{
     abs_bits, abs_bits_sticky,
     big_uint::u256,
     consts::{FRAC_3_PI_2, FRAC_PI_2, FRAC_PI_4, PI, TAU},
-    exp_bits, f256, fast_mul, fast_sum, norm_bit, sign_bits_hi, signif,
-    BinEncAnySpecial, EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_ABS_MASK,
-    HI_EXP_MASK, HI_FRACTION_BITS,
+    exp_bits, f256, fast_mul, fast_sum, sign_bits_hi, signif,
+    BinEncAnySpecial, EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_EXP_MASK,
+    HI_FRACTION_BITS,
 };
 
 // Number of bits to shift left for adjusting the radix point from f256 to
@@ -276,7 +276,7 @@ mod sin_cos_tests {
     use super::*;
     use crate::{
         consts::{FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
-        EPSILON, ONE_HALF,
+        ONE_HALF,
     };
 
     #[test]
@@ -455,7 +455,7 @@ mod atan_tests {
     use super::*;
     use crate::{
         consts::{FRAC_1_PI, FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
-        EPSILON, ONE_HALF,
+        EPSILON,
     };
 
     #[test]

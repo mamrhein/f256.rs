@@ -7,12 +7,11 @@
 // $Source$
 // $Revision$
 
-use std::{cmp::min, ops::Neg};
+use core::{cmp::min, ops::Neg};
 
 use crate::{
     big_uint::u256,
-    f256,
-    math::{cordic::atan_table::ATANS, FP255, SIGNIF_ONE},
+    math::{cordic::atan_table::ATANS, fp255::SIGNIF_ONE, FP255},
 };
 
 // Cordic gain factor
