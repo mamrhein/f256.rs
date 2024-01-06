@@ -24,7 +24,7 @@ impl f256 {
     /// let f = f256::from(1822500);
     /// assert_eq!(f.sqrt(), f256::from(1350));
     /// assert!(f256::NEG_ONE.sqrt().is_nan());
-    /// assert!(f256::NEG_ZERO.sqrt() == f256::NEG_ZERO);
+    /// assert_eq!(f256::NEG_ZERO.sqrt(), f256::NEG_ZERO);
     /// ```
     #[must_use]
     #[allow(clippy::integer_division)]
@@ -70,7 +70,7 @@ impl f256 {
         }
         // Final rounding
         q = &(&q >> 1) + ((q.lo & 1) as u32);
-        Self::new(q, (exp + EXP_BIAS as i32) as u32, 0)
+        Self::new(0, exp, q)
     }
 }
 

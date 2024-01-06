@@ -94,7 +94,7 @@ pub(super) fn fast_approx(
             if exp2 > EMAX {
                 return [f256::INFINITY, f256::NEG_INFINITY][sign as usize];
             }
-            let f = f256::new(signif2, (exp2 + EXP_BIAS as i32) as u32, sign);
+            let f = f256::new(sign, exp2, signif2);
             if signif_truncated {
                 // The real significand w' has been truncated, so f may be
                 // less than the correctly rounded result f'.

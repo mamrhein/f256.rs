@@ -24,12 +24,12 @@ impl f256 {
         let j = (i as i128).unsigned_abs();
         let msb = 127 - j.leading_zeros();
         Self::new(
+            i.is_negative() as u32,
+            msb as i32,
             u256 {
                 hi: j << (HI_FRACTION_BITS - msb),
                 lo: 0,
             },
-            EXP_BIAS + msb,
-            i.is_negative() as u32,
         )
     }
 
@@ -47,9 +47,9 @@ impl f256 {
         };
         let msb = 127 - j.leading_zeros();
         Self::new(
-            u256::new(0, j).shift_left(FRACTION_BITS - msb),
-            EXP_BIAS + msb,
             i.is_negative() as u32,
+            msb as i32,
+            u256::new(0, j).shift_left(FRACTION_BITS - msb),
         )
     }
 
@@ -62,12 +62,12 @@ impl f256 {
         }
         let msb = 127 - (i as u128).leading_zeros();
         Self::new(
+            0_u32,
+            msb as i32,
             u256 {
                 hi: (i as u128) << (HI_FRACTION_BITS - msb),
                 lo: 0,
             },
-            EXP_BIAS + msb,
-            0_u32,
         )
     }
 
@@ -80,9 +80,9 @@ impl f256 {
         }
         let msb = 127 - i.leading_zeros();
         Self::new(
-            u256::new(0, i).shift_left(FRACTION_BITS - msb),
-            EXP_BIAS + msb,
             0_u32,
+            msb as i32,
+            u256::new(0, i).shift_left(FRACTION_BITS - msb),
         )
     }
 
@@ -95,7 +95,7 @@ impl f256 {
             return Self::ZERO;
         }
         let msb = 255 - i.leading_zeros();
-        Self::new(i.shift_left(FRACTION_BITS - msb), EXP_BIAS + msb, 0_u32)
+        Self::new(0_u32, msb as i32, i.shift_left(FRACTION_BITS - msb))
     }
 }
 

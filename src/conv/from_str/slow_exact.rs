@@ -187,8 +187,7 @@ pub(super) fn f256_exact(s: &str) -> f256 {
 
     debug_assert!(bin_exp >= -EMAX);
     debug_assert!(bin_exp <= EMAX);
-    let biased_exponent = (EXP_BIAS as i32 + bin_exp) as u32;
-    f256::new(significand, biased_exponent, dec.sign)
+    f256::new(dec.sign, bin_exp, significand)
 }
 
 #[cfg(test)]

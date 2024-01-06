@@ -283,17 +283,21 @@ impl f256 {
     /// Equivalent of decimal base (10.0).
     pub const TEN: Self = TEN;
 
-    /// Raw assembly from significand, biased exponent and sign.
+    /// Raw assembly from sign, exponent and significand.
     #[inline]
     pub(crate) const fn new(
-        significand: u256,
-        biased_exponent: u32,
         sign: u32,
+        exponent: i32,
+        significand: u256,
     ) -> Self {
+        debug_assert!(sign == 0 || sign == 1);
+        debug_assert!(exponent >= EMIN - 1 && exponent <= EMAX);
+        debug_assert!((significand.hi >> HI_FRACTION_BITS) <= 1_u128);
+        let biased_exp = (exponent + EXP_BIAS as i32) as u128;
         Self {
             bits: u256 {
                 hi: (significand.hi & HI_FRACTION_MASK)
-                    | ((biased_exponent as u128) << HI_FRACTION_BITS)
+                    | (biased_exp << HI_FRACTION_BITS)
                     | ((sign as u128) << HI_SIGN_SHIFT),
                 lo: significand.lo,
             },
@@ -316,7 +320,6 @@ impl f256 {
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cast_sign_loss)]
     pub(crate) fn encode(s: u32, mut t: i32, mut c: u256) -> Self {
-        debug_assert!(s == 0 || s == 1);
         debug_assert!(!c.is_zero());
         // We have an integer based representation `(-1)ˢ × 2ᵗ × c` and need
         // to transform it into a fraction based representation
@@ -363,10 +366,8 @@ impl f256 {
             (EMIN - 1..=EMAX).contains(&t),
             "Exponent limits exceeded: {t}"
         );
-        // 3. Offset exponent
-        t += EXP_BIAS as i32;
-        // 4. Assemble struct f256
-        Self::new(c, t as u32, s)
+        // 3. Assemble struct f256
+        Self::new(s, t, c)
     }
 
     /// Only public for testing!!!
