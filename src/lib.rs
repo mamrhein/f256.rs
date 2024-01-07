@@ -686,19 +686,21 @@ impl f256 {
         self
     }
 
-    /// Raw transmutation to `[u64; 4]` (in native endian order).
+    /// Raw transmutation to `(u128, u128)` ((self.bits.hi, self.bits.lo),
+    /// each in native endian order).
     #[inline]
     #[must_use]
-    pub const fn to_bits(&self) -> [u64; 4] {
-        self.bits.to_bits()
+    pub const fn to_bits(&self) -> (u128, u128) {
+        (self.bits.hi, self.bits.lo)
     }
 
-    /// Raw transmutation from `[u64; 4]` (in native endian order).
+    /// Raw transmutation from `(u128, u128)` ((self.bits.hi, self.bits.lo),
+    /// each in native endian order).
     #[inline]
     #[must_use]
-    pub const fn from_bits(bits: [u64; 4]) -> Self {
+    pub const fn from_bits(bits: (u128, u128)) -> Self {
         Self {
-            bits: u256::from_bits(bits),
+            bits: u256::new(bits.0, bits.1),
         }
     }
 
@@ -730,9 +732,9 @@ impl f256 {
     #[inline]
     #[allow(unsafe_code)]
     pub const fn to_ne_bytes(self) -> [u8; 32] {
-        let bytes = self.to_bits();
-        // SAFETY: safe because size of [u64; 4] == size of [u8; 32]
-        unsafe { core::mem::transmute(bytes) }
+        let bits = self.to_bits();
+        // SAFETY: safe because size of (u128, u128) == size of [u8; 32]
+        unsafe { core::mem::transmute(bits) }
     }
 
     /// Create a floating point value from its representation as a byte array
@@ -773,8 +775,8 @@ impl f256 {
     #[inline]
     #[allow(unsafe_code)]
     pub const fn from_ne_bytes(bytes: [u8; 32]) -> Self {
-        // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
-        let bits: [u64; 4] = unsafe { core::mem::transmute(bytes) };
+        // SAFETY: safe because size of (u128, u128) == size of [u8; 32]
+        let bits: (u128, u128) = unsafe { core::mem::transmute(bytes) };
         Self::from_bits(bits)
     }
 
@@ -1428,6 +1430,45 @@ mod encode_decode_tests {
         let f = f256::MIN_GT_ZERO;
         let (s, t, c) = f.decode();
         let g = f256::encode(s, t, c);
+        assert_eq!(f, g);
+    }
+}
+
+#[cfg(test)]
+mod raw_bits_tests {
+    use super::*;
+
+    #[test]
+    fn test_to_from_bits() {
+        let f = f256::TEN;
+        let bits = f.to_bits();
+        assert_eq!(bits.0, f.bits.hi);
+        assert_eq!(bits.1, f.bits.lo);
+        let g = f256::from_bits(bits);
+        assert_eq!(f, g);
+    }
+
+    #[test]
+    fn test_to_from_ne_bytes() {
+        let f = f256::TEN;
+        let bytes = f.to_ne_bytes();
+        let g = f256::from_ne_bytes(bytes);
+        assert_eq!(f, g);
+    }
+
+    #[test]
+    fn test_to_from_be_bytes() {
+        let f = f256::TEN;
+        let bytes = f.to_be_bytes();
+        let g = f256::from_be_bytes(bytes);
+        assert_eq!(f, g);
+    }
+
+    #[test]
+    fn test_to_from_le_bytes() {
+        let f = f256::TEN;
+        let bytes = f.to_le_bytes();
+        let g = f256::from_le_bytes(bytes);
         assert_eq!(f, g);
     }
 }
