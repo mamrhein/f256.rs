@@ -7,6 +7,8 @@
 // $Source$
 // $Revision$
 
+mod approx_cos;
+mod approx_sin;
 mod circular_fns;
 mod cordic;
 mod fp255;

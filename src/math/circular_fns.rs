@@ -17,9 +17,10 @@ use crate::{
     abs_bits, abs_bits_sticky,
     big_uint::u256,
     consts::{FRAC_3_PI_2, FRAC_PI_2, FRAC_PI_4, PI, TAU},
-    exp_bits, f256, fast_mul, fast_sum, sign_bits_hi, signif,
-    BinEncAnySpecial, EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_EXP_MASK,
-    HI_FRACTION_BITS,
+    exp_bits, f256, fast_mul, fast_sum,
+    math::{approx_cos::approx_cos, approx_sin::approx_sin},
+    sign_bits_hi, signif, BinEncAnySpecial, EXP_BIAS, EXP_BITS,
+    FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS,
 };
 
 // Number of bits to shift left for adjusting the radix point from f256 to
@@ -139,56 +140,62 @@ fn rem_frac_pi_2(x: &f256) -> (u32, f256) {
     }
 }
 
-#[inline(always)]
-fn sin_cos(f: &f256) -> (f256, f256) {
-    let x = FP255::from(f);
-    let (fp_sin_x, fp_cos_x) = x.sin_cos();
-    (f256::from(&fp_sin_x), f256::from(&fp_cos_x))
-}
-
 impl f256 {
-    /// Simultaneously computes the sine and cosine of the number x.
+    /// Simultaneously computes the sine and cosine of the number x
+    /// (in radians).
     ///
     /// Returns (sin(x), cos(x)).
     pub fn sin_cos(&self) -> (Self, Self) {
-        let x = self.abs();
-        // If x is NAN or infinite, both, sine x and cosine x, are NAN.
-        if x.bits.hi > f256::MAX.bits.hi {
-            return (f256::NAN, f256::NAN);
-        }
-        // Calculate ⌊x/½π⌋ % 4 and x % ½π.
-        let (mut quadrant, mut x) = rem_frac_pi_2(&x);
-        debug_assert!(x.is_sign_positive());
-        // If x is zero or very small, sine x == x and cosine x == 1.
-        // TODO: verify limit
-        let (sin, cos) = if x.eq_zero() || x.bits < SMALL_CUT_OFF {
-            (x, f256::ONE)
-        } else {
-            sin_cos(&x)
-        };
-        // Map result according to quadrant
-        let (mut sin, cos) = match quadrant {
-            0 => (sin, cos),
-            1 => (cos, -sin),
-            2 => (-sin, -cos),
-            3 => (-cos, sin),
-            _ => unreachable!(),
-        };
-        // sin(-x) = -sin(x)
-        sin.bits.hi ^= sign_bits_hi(&self);
-        (sin, cos)
+        (self.sin(), self.cos())
     }
 
     /// Computes the sine of a number (in radians).
     #[inline(always)]
     pub fn sin(&self) -> Self {
-        self.sin_cos().0
+        let x = self.abs();
+        // If x is NAN or infinite, sine x is NAN.
+        if x.bits.hi > f256::MAX.bits.hi {
+            return f256::NAN;
+        }
+        // Calculate ⌊x/½π⌋ % 4 and x % ½π.
+        let (quadrant, x) = rem_frac_pi_2(&x);
+        debug_assert!(x.is_sign_positive());
+        debug_assert!(x < FRAC_PI_2);
+        // Map result according to quadrant
+        let mut sin = match quadrant {
+            0 => approx_sin(x),
+            1 => approx_cos(x),
+            2 => -approx_sin(x),
+            3 => -approx_cos(x),
+            _ => unreachable!(),
+        };
+        // sine -x = -sine x
+        sin.bits.hi ^= sign_bits_hi(&self);
+        sin
     }
 
     /// Computes the cosine of a number (in radians).
     #[inline(always)]
     pub fn cos(&self) -> Self {
-        self.sin_cos().1
+        let x = self.abs();
+        // If x is NAN or infinite, cosine x is NAN.
+        if x.bits.hi > f256::MAX.bits.hi {
+            return f256::NAN;
+        }
+        // Calculate ⌊x/½π⌋ % 4 and x % ½π.
+        let (quadrant, x) = rem_frac_pi_2(&x);
+        debug_assert!(x.is_sign_positive());
+        debug_assert!(x < FRAC_PI_2);
+        // Map result according to quadrant
+        let cos = match quadrant {
+            0 => approx_cos(x),
+            1 => -approx_sin(x),
+            2 => -approx_cos(x),
+            3 => approx_sin(x),
+            _ => unreachable!(),
+        };
+        // cosine -x = cosine x
+        cos
     }
 
     /// Computes the arctangent of a number (in radians).
@@ -379,6 +386,44 @@ mod sin_cos_tests {
     }
 
     #[test]
+    fn test_some_lt_pi() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -261,
+            (
+                0x0000100410f1f3ab981fc5a9fd008e6e,
+                0x6ba97c4190d331836d7fd41d2009cdf8,
+            ),
+        );
+        let sin_f = f256::from_sign_exp_signif(
+            0,
+            -261,
+            (
+                0x0000100410f1f3ab977498bfffb5d0d5,
+                0xd4afb6f12a8836a249b17fbeb758fa8e,
+            ),
+        );
+        assert_eq!(f.sin(), sin_f);
+        let f = f256::from_sign_exp_signif(
+            0,
+            -234,
+            (
+                0x0000118e6e0f7f8c1bf76f66353e43e8,
+                0x174b9c1f7b472554750cdc3291809dbb,
+            ),
+        );
+        let sin_f = f256::from_sign_exp_signif(
+            1,
+            -237,
+            (
+                0x00001e5798f5153fa3e89b74fcfc5913,
+                0xe7d118458ec32236778d3011f7637966,
+            ),
+        );
+        assert_eq!(f.sin(), sin_f);
+    }
+
+    #[test]
     fn test_neg_values() {
         for f in [f256::MIN, -FRAC_PI_3, f256::NEG_ONE] {
             assert_eq!(f.sin(), -f.abs().sin());
@@ -534,6 +579,7 @@ mod atan_tests {
         assert_eq!(n.atan2(&d), a);
     }
 }
+
 #[cfg(test)]
 mod calc_reduce_consts {
     use super::*;
