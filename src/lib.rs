@@ -574,22 +574,21 @@ impl f256 {
     /// ULP denotes the magnitude of the last significand digit of `self`.
     #[must_use]
     pub fn ulp(&self) -> Self {
-        if self.is_special() {
-            if self.eq_zero() {
-                return MIN_GT_ZERO;
-            } else {
-                return NAN;
-            }
-        }
         let abs_bits_self = abs_bits(self);
         let mut exp_bits = exp_bits(&abs_bits_self);
-        let mut signif = u256::new(HI_FRACTION_BIAS, 0_u128);
-        let sh =
-            FRACTION_BITS.saturating_sub(exp_bits - norm_bit(&abs_bits_self));
-        exp_bits = exp_bits.saturating_sub(FRACTION_BITS + 1);
-        signif >>= sh;
-        signif.hi += (exp_bits as u128) << HI_FRACTION_BITS;
-        f256 { bits: signif }
+        if exp_bits < EXP_MAX {
+            // `self` is finite.
+            let mut bits = u256::new(HI_FRACTION_BIAS, 0_u128);
+            let sh = FRACTION_BITS
+                .saturating_sub(exp_bits - norm_bit(&abs_bits_self));
+            exp_bits = exp_bits.saturating_sub(FRACTION_BITS + 1);
+            bits >>= sh;
+            bits.hi += (exp_bits as u128) << HI_FRACTION_BITS;
+            f256 { bits }
+        } else {
+            // `self` is infinite or nan.
+            NAN
+        }
     }
 
     /// Returns the reciprocal (multiplicative inverse) of `self`.
