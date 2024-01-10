@@ -581,6 +581,12 @@ mod debug_tests {
             "(0, -262378, (0x00000000000000000000000000000000, \
              0x00000000000000000000000000000001))"
         );
+        let f = f256::MIN_POSITIVE - f256::MIN_GT_ZERO;
+        assert_eq!(
+            format!("{:?}", f),
+            "(0, -262378, (0x00000fffffffffffffffffffffffffff, \
+             0xffffffffffffffffffffffffffffffff))"
+        );
     }
 }
 
