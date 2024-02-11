@@ -33,7 +33,7 @@ mod random_math_fn_tests {
         p
     }
 
-    fn run_tests(op: fn(&f256) -> f256, file_name: &str) {
+    fn run_tests(op: fn(&f256) -> f256, err: u32, file_name: &str) {
         let mut rdr = ReaderBuilder::new()
             .has_headers(false)
             .delimiter(b'\t')
@@ -53,7 +53,21 @@ mod random_math_fn_tests {
                         rec.z.1,
                         (rec.z.2, rec.z.3),
                     );
-                    assert_eq!(op(&x), z, "\nFailed: {rec:?}");
+                    let res = op(&x);
+                    if err == 0 {
+                        assert_eq!(
+                            res, z,
+                            "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}"
+                        );
+                    } else {
+                        let d = (z - res).abs();
+                        let m = f256::from(err) * z.ulp();
+                        assert!(
+                            d <= m,
+                            "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}\nd: \
+                             {d:?}\nm: {m:?}"
+                        );
+                    }
                 }
                 Err(e) => panic!("{}", e),
             }
@@ -66,6 +80,11 @@ mod random_math_fn_tests {
 
     #[test]
     fn test_sqrt() {
-        run_tests(sqrt, "test_sqrt.txt");
+        run_tests(sqrt, 0, "test_sqrt.txt");
+    }
+
+    #[test]
+    fn test_sin_lt_2pi() {
+        run_tests(f256::sin, 1024, "test_sin_lt_2pi.txt");
     }
 }
