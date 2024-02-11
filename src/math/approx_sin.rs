@@ -237,11 +237,10 @@ const COEFFS: [f256; N] = [
 ];
 
 // Cut-off for small values
-// ≈0.00000000000000000000000000000000000210094754024801845063812748106760843
-// TODO: verify limit
+// 3.68558253444961785070440139065674798057845110897338772162344362592262659e-36
 const SMALL_CUT_OFF: f256 = f256::from_bits((
-    0x3ff8865752be2a167f0644b50757a602,
-    0x81800000000000000000000000000000,
+    0x3ff893988e1409212e7d0321914321a5,
+    0x56473db022874f7b45be0f47d91c846d,
 ));
 
 pub(crate) fn approx_sin(x: f256) -> f256 {
@@ -261,6 +260,8 @@ pub(crate) fn approx_sin(x: f256) -> f256 {
 
 #[cfg(test)]
 mod test_approx_sin {
+    use core::str::FromStr;
+
     use super::*;
     use crate::{
         consts::{FRAC_1_SQRT_2, FRAC_PI_4, FRAC_PI_6},
@@ -277,5 +278,13 @@ mod test_approx_sin {
         assert_eq!(approx_sin(x), f256::ZERO);
         let x = f256::NEG_ZERO;
         assert_eq!(approx_sin(x), f256::ZERO);
+    }
+
+    #[test]
+    fn test_small_cutoff() {
+        let mut f = SMALL_CUT_OFF;
+        assert_eq!(approx_sin(f), f);
+        f += f.ulp();
+        assert_ne!(approx_sin(f), f);
     }
 }
