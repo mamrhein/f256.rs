@@ -1059,6 +1059,12 @@ impl f256 {
         }
     }
 
+    /// Returns `self` * 2ⁿ
+    pub(crate) fn mul_pow2(&self, n: i32) -> Self {
+        let (sign, exp, signif) = split_f256_enc(self);
+        f256::encode(sign, exp + n, signif)
+    }
+
     /// Fused multiply-add.
     ///
     /// Computes `(self * f) + a` with only one rounding error, yielding a
@@ -1285,7 +1291,7 @@ pub(crate) const fn split_f256_enc(f: &f256) -> (u32, i32, u256) {
 /// Pre-condition: a >= b
 #[inline]
 pub(crate) fn fast_sum(a: &f256, b: &f256) -> (f256, f256) {
-    debug_assert!(a >= b);
+    debug_assert!(a.abs() >= b.abs());
     let s = a + b;
     let r = b - (s - a);
     (s, r)
@@ -1303,6 +1309,7 @@ pub(crate) fn sum(a: &f256, b: &f256) -> (f256, f256) {
 /// Computes the rounded product of two f256 values and the remainder.
 #[inline]
 pub(crate) fn fast_mul(a: &f256, b: &f256) -> (f256, f256) {
+    debug_assert!(a.biased_exponent() + b.biased_exponent() >= EXP_BIAS);
     let p = a * b;
     let r = a.mul_add(*b, -p);
     (p, r)
