@@ -280,18 +280,24 @@ mod round_tests {
     fn test_nan() {
         assert!(f256::NAN.round().is_nan());
         assert!((-f256::NAN).round().is_nan());
+        assert!(f256::NAN.round_tie_even().is_nan());
+        assert!((-f256::NAN).round_tie_even().is_nan());
     }
 
     #[test]
     fn test_inf() {
         assert_eq!(f256::INFINITY.round(), f256::INFINITY);
         assert_eq!(f256::NEG_INFINITY.round(), f256::NEG_INFINITY);
+        assert_eq!(f256::INFINITY.round_tie_even(), f256::INFINITY);
+        assert_eq!(f256::NEG_INFINITY.round_tie_even(), f256::NEG_INFINITY);
     }
 
     #[test]
     fn test_zero() {
         assert_eq!(f256::ZERO.round(), f256::ZERO);
         assert_eq!(f256::NEG_ZERO.round(), f256::NEG_ZERO);
+        assert_eq!(f256::ZERO.round_tie_even(), f256::ZERO);
+        assert_eq!(f256::NEG_ZERO.round_tie_even(), f256::NEG_ZERO);
     }
 
     #[test]
@@ -302,16 +308,29 @@ mod round_tests {
         assert_eq!(f.round(), f);
         assert_eq!(g.round(), f);
         assert_eq!(h.round(), -f);
+        assert_eq!(f.round_tie_even(), f);
+        assert_eq!(g.round_tie_even(), f);
+        assert_eq!(h.round_tie_even(), -f);
     }
 
     #[test]
     fn test_normal_half_up() {
-        let f = f256::from(2);
-        let g = f256::from(1.5_f64);
-        let h = f256::from(-1.5_f64);
+        let f = f256::from(3);
+        let g = f256::from(2.5_f64);
+        let h = f256::from(-2.5_f64);
         assert_eq!(f.round(), f);
         assert_eq!(g.round(), f);
         assert_eq!(h.round(), -f);
+    }
+
+    #[test]
+    fn test_normal_half_even() {
+        let f = f256::from(2);
+        let g = f256::from(2.5_f64);
+        let h = f256::from(-2.5_f64);
+        assert_eq!(f.round_tie_even(), f);
+        assert_eq!(g.round_tie_even(), f);
+        assert_eq!(h.round_tie_even(), -f);
     }
 
     #[test]
@@ -322,6 +341,9 @@ mod round_tests {
         assert_eq!(f.round(), f);
         assert_eq!(g.round(), f);
         assert_eq!(h.round(), -f);
+        assert_eq!(f.round_tie_even(), f);
+        assert_eq!(g.round_tie_even(), f);
+        assert_eq!(h.round_tie_even(), -f);
     }
 
     #[test]
@@ -332,14 +354,17 @@ mod round_tests {
         assert_eq!(e.round(), f256::ZERO);
         let g = f256::from(0.5_f64) - e;
         assert_eq!(g.round(), f256::ZERO);
+        assert_eq!(g.round_tie_even(), f256::ZERO);
         let h = f256::from(0.5_f64);
         assert_eq!(h.round(), f256::ONE);
+        assert_eq!(h.round_tie_even(), f256::ZERO);
     }
 
     #[test]
     fn test_gt_2_pow_237() {
         let f = f256::from(1.3097428e71_f64);
         assert_eq!(f.round(), f);
+        assert_eq!(f.round_tie_even(), f);
     }
 
     #[test]
