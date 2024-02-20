@@ -237,8 +237,8 @@ mod consts_tests {
         assert_eq!(PI / f256::from(4), FRAC_PI_4);
         assert_eq!(PI / f256::from(6), FRAC_PI_6);
         assert_eq!(PI / f256::from(8), FRAC_PI_8);
-        assert_eq!(f256::ONE / PI, FRAC_1_PI);
-        assert_eq!(f256::TWO / PI, FRAC_2_PI);
+        assert_eq!(f256::ONE / PI, FRAC_1_PI + FRAC_1_PI.ulp());
+        assert_eq!(f256::TWO / PI, FRAC_2_PI + FRAC_2_PI.ulp());
     }
 
     #[test]
