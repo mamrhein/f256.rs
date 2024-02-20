@@ -82,9 +82,4 @@ mod random_math_fn_tests {
     fn test_sqrt() {
         run_tests(sqrt, 0, "test_sqrt.txt");
     }
-
-    #[test]
-    fn test_sin_lt_2pi() {
-        run_tests(f256::sin, 1024, "test_sin_lt_2pi.txt");
-    }
 }

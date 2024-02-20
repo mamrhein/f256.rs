@@ -1071,7 +1071,7 @@ impl f256 {
     #[must_use]
     pub fn round_tie_even(&self) -> Self {
         let mut abs_bits = abs_bits(self);
-        if abs_bits_sticky_minus_1(&abs_bits) >= MAX_HI {
+        if abs_bits.is_special() {
             // self is special
             return *self;
         }
