@@ -1010,9 +1010,9 @@ impl f256 {
     ///
     /// ```
     /// # use f256::f256;
-    /// let f = f256::from(28);
-    /// let g = f256::from(27.704_f64);
-    /// let h = f256::from(28.5_f64);;
+    /// let f = f256::from(27);
+    /// let g = f256::from(26.704_f64);
+    /// let h = f256::from(26.5_f64);;
     /// assert_eq!(f.round(), f);
     /// assert_eq!(g.round(), f);
     /// assert_eq!(h.round(), f);
@@ -1029,19 +1029,24 @@ impl f256 {
             // |self| >= 2²³⁶, i. e. self is integral.
             return *self;
         }
-        if abs_bits.hi <= ONE_HALF.bits.hi {
-            // 0 < |self| <= ½
+        if abs_bits.hi < ONE_HALF.bits.hi {
+            // 0 < |self| < ½
             return Self::ZERO;
         }
         if abs_bits.hi <= ONE.bits.hi {
-            // ½ < |self| <= 1
+            // ½ <= |self| <= 1
             return Self {
                 bits: u256::new(ONE.bits.hi | sign_bits_hi(self), 0),
             };
         }
         // 1 < |self| < 2²³⁶
         let n_fract_bits = FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
-        abs_bits.idiv_pow2(n_fract_bits);
+        let tie = &u256::ONE << (n_fract_bits - 1);
+        let rem = abs_bits.rem_pow2(n_fract_bits);
+        abs_bits >>= n_fract_bits;
+        if rem >= tie {
+            abs_bits.incr();
+        }
         abs_bits <<= n_fract_bits;
         Self {
             bits: u256::new(abs_bits.hi | sign_bits_hi(self), abs_bits.lo),

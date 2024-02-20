@@ -305,10 +305,10 @@ mod round_tests {
     }
 
     #[test]
-    fn test_normal_half_to_even() {
-        let f = f256::from(28);
-        let g = f256::from(28.5_f64);
-        let h = f256::from(-27.5_f64);
+    fn test_normal_half_up() {
+        let f = f256::from(2);
+        let g = f256::from(1.5_f64);
+        let h = f256::from(-1.5_f64);
         assert_eq!(f.round(), f);
         assert_eq!(g.round(), f);
         assert_eq!(h.round(), -f);
@@ -330,8 +330,10 @@ mod round_tests {
         assert_eq!(f.round(), f256::NEG_ONE);
         let e = f256::EPSILON;
         assert_eq!(e.round(), f256::ZERO);
+        let g = f256::from(0.5_f64) - e;
+        assert_eq!(g.round(), f256::ZERO);
         let h = f256::from(0.5_f64);
-        assert_eq!(h.round(), f256::ZERO);
+        assert_eq!(h.round(), f256::ONE);
     }
 
     #[test]
