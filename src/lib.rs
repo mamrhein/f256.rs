@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-#![doc = include_str ! ("../README.md")]
+#![doc = include_str!("../README.md")]
 #![cfg_attr(not(feature = "std"), no_std)]
 // activate some rustc lints
 #![deny(non_ascii_idents)]
@@ -1394,7 +1394,7 @@ mod repr_tests {
             i.significand(),
             u256 {
                 hi: 1_u128 << HI_FRACTION_BITS,
-                lo: 0
+                lo: 0,
             }
         );
         assert_eq!(i.decode(), (0, 0, u256 { hi: 0, lo: 1 }));
@@ -1406,7 +1406,7 @@ mod repr_tests {
             j.significand(),
             u256 {
                 hi: 1_u128 << HI_FRACTION_BITS,
-                lo: 0
+                lo: 0,
             }
         );
         assert_eq!(j.decode(), (1, 0, u256 { hi: 0, lo: 1 }));
@@ -1422,7 +1422,7 @@ mod repr_tests {
             i.significand(),
             u256 {
                 hi: 1_u128 << HI_FRACTION_BITS,
-                lo: 0
+                lo: 0,
             }
         );
         assert_eq!(i.decode(), (0, 1, u256 { hi: 0, lo: 1 }));
@@ -1433,7 +1433,7 @@ mod repr_tests {
             f.significand(),
             u256 {
                 hi: 567907468902246771870523036008448,
-                lo: 0
+                lo: 0,
             }
         );
         assert_eq!(f.decode(), (1, -1, u256 { hi: 0, lo: 7 }));
@@ -1591,7 +1591,7 @@ mod ulp_tests {
             f256::from_sign_exp_signif(
                 0,
                 EMAX - FRACTION_BITS as i32,
-                (0, 1)
+                (0, 1),
             )
         );
     }
