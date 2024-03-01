@@ -183,11 +183,6 @@ impl BigFloat {
     }
 
     #[inline(always)]
-    pub(crate) fn sin_cos(&self) -> (Self, Self) {
-        cordic_sin_cos(&self)
-    }
-
-    #[inline(always)]
     pub(crate) fn atan(&self) -> Self {
         cordic_atan(*self)
     }
