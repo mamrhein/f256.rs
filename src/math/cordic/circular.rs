@@ -11,12 +11,12 @@ use core::{cmp::min, ops::Neg};
 
 use crate::{
     big_uint::u256,
-    math::{cordic::atan_table::ATANS, fp255::SIGNIF_ONE, FP255},
+    math::{big_float::SIGNIF_ONE, cordic::atan_table::ATANS, BigFloat},
 };
 
 // Cordic gain factor
 // ≈1.64676025812106564836605122228229843565237672570102740901240531755172816243915
-pub(crate) const K: FP255 = FP255 {
+pub(crate) const K: BigFloat = BigFloat {
     sign: 1,
     exp: 0,
     signif: u256::new(
@@ -26,7 +26,7 @@ pub(crate) const K: FP255 = FP255 {
 };
 // 1 / K
 // ≈0.607252935008881256169446752504928263112390852150089772456976013110147881208421
-pub(crate) const P: FP255 = FP255 {
+pub(crate) const P: BigFloat = BigFloat {
     sign: 1,
     exp: -1,
     signif: u256::new(
@@ -35,23 +35,23 @@ pub(crate) const P: FP255 = FP255 {
     ),
 };
 
-fn no_op(fp: &mut FP255) {}
+fn no_op(fp: &mut BigFloat) {}
 
-const OPS: [fn(&mut FP255); 2] = [no_op, FP255::flip_sign];
-const MAX_ABS_COORD: FP255 = FP255::FRAC_PI_2;
+const OPS: [fn(&mut BigFloat); 2] = [no_op, BigFloat::flip_sign];
+const MAX_ABS_COORD: BigFloat = BigFloat::FRAC_PI_2;
 
 // Circular coordinates, vector mode
 pub(crate) fn cordic_circ_vm(
-    mut x: FP255,
-    mut y: FP255,
-    mut z: FP255,
-) -> (FP255, FP255) {
+    mut x: BigFloat,
+    mut y: BigFloat,
+    mut z: BigFloat,
+) -> (BigFloat, BigFloat) {
     debug_assert!(x.sign >= 0);
     debug_assert!(y.sign >= 0);
     debug_assert!(y <= MAX_ABS_COORD);
 
-    for i in 0..=FP255::FRACTION_BITS {
-        let op = OPS[(y >= FP255::ZERO) as usize];
+    for i in 0..=BigFloat::FRACTION_BITS {
+        let op = OPS[(y >= BigFloat::ZERO) as usize];
         let mut dx = &y >> i;
         op(&mut dx);
         let mut dy = &x >> i;
@@ -90,52 +90,52 @@ pub(crate) fn cordic_circ_vm(
     (x, z)
 }
 
-pub(crate) fn cordic_atan(mut f: FP255) -> FP255 {
+pub(crate) fn cordic_atan(mut f: BigFloat) -> BigFloat {
     if f.is_zero() {
-        return FP255::ZERO;
+        return BigFloat::ZERO;
     };
     let f_sign = f.sign;
     f.sign = 1;
     // Convert f into a fraction of two values x and y, so that
     // f = y / x and y < ½π.
-    let x = FP255 {
+    let x = BigFloat {
         sign: 1,
         exp: min(-f.exp, 0) - 1,
         signif: SIGNIF_ONE,
     };
-    let y = FP255 {
+    let y = BigFloat {
         sign: 1,
         exp: min(f.exp, 0) - 1,
         signif: f.signif,
     };
-    let mut a = cordic_circ_vm(x, y, FP255::ZERO).1;
+    let mut a = cordic_circ_vm(x, y, BigFloat::ZERO).1;
     a.sign = f_sign;
     a
 }
 
-pub(crate) fn cordic_atan2(y: &FP255, x: &FP255) -> FP255 {
+pub(crate) fn cordic_atan2(y: &BigFloat, x: &BigFloat) -> BigFloat {
     let mut y_dash = y.abs();
     let mut x_dash = x.abs();
     // Assure y' < ½π.
     x_dash.exp -= y_dash.exp + 1;
     y_dash.exp = -1;
-    let mut a = cordic_circ_vm(x_dash, y_dash, FP255::ZERO).1;
+    let mut a = cordic_circ_vm(x_dash, y_dash, BigFloat::ZERO).1;
     match (y.sign, x.sign) {
         (-1, 1) => a.flip_sign(),
         (1, -1) => {
             a.flip_sign();
-            a += &FP255::PI;
+            a += &BigFloat::PI;
         }
-        (-1, -1) => a -= &FP255::PI,
+        (-1, -1) => a -= &BigFloat::PI,
         _ => {}
     }
     a
 }
 
-const MAX_ERR: FP255 = FP255 {
+const MAX_ERR: BigFloat = BigFloat {
     sign: 1,
     exp: -248,
-    signif: FP255::ONE.signif,
+    signif: BigFloat::ONE.signif,
 };
 
 #[cfg(test)]
@@ -146,7 +146,8 @@ mod vector_mode_tests {
 
     #[test]
     fn test_scale_factor() {
-        let (k, _) = cordic_circ_vm(FP255::ONE, FP255::ZERO, FP255::ZERO);
+        let (k, _) =
+            cordic_circ_vm(BigFloat::ONE, BigFloat::ZERO, BigFloat::ZERO);
         let mut d = k.clone();
         d -= &K;
         assert!(d.abs() <= MAX_ERR, "{:?}\n{:?}", d.abs(), MAX_ERR);
@@ -154,28 +155,34 @@ mod vector_mode_tests {
 
     #[test]
     fn test_atan_inf() {
-        let (_, mut a) = cordic_circ_vm(FP255::ZERO, FP255::ONE, FP255::ZERO);
-        a -= &FP255::FRAC_PI_2;
+        let (_, mut a) =
+            cordic_circ_vm(BigFloat::ZERO, BigFloat::ONE, BigFloat::ZERO);
+        a -= &BigFloat::FRAC_PI_2;
         assert!(a.abs() < MAX_ERR, "{:?}\n{:?}", a.abs(), MAX_ERR);
     }
 
     #[test]
     fn test_atan_one() {
-        let mut a = cordic_atan(FP255::ONE);
+        let mut a = cordic_atan(BigFloat::ONE);
         a -= &ATANS[0];
         assert!(a.abs() < MAX_ERR, "{:?}\n{:?}", a.abs(), MAX_ERR);
     }
 
     #[test]
     fn test_atan_max() {
-        let mut a = cordic_atan2(&FP255::ONE, &FP255::EPSILON);
-        a -= &FP255::FRAC_PI_2;
+        let mut a = cordic_atan2(&BigFloat::ONE, &BigFloat::EPSILON);
+        a -= &BigFloat::FRAC_PI_2;
         assert!(a < MAX_ERR, "{:?}\n{:?}", a, MAX_ERR);
     }
 
     #[test]
     fn test_atan_signs() {
-        for f in [FP255::ZERO, FP255::EPSILON, FP255::ONE, FP255::FRAC_PI_2] {
+        for f in [
+            BigFloat::ZERO,
+            BigFloat::EPSILON,
+            BigFloat::ONE,
+            BigFloat::FRAC_PI_2,
+        ] {
             assert_eq!(f.atan().neg(), f.neg().atan(), "f: {f:?}");
         }
     }
@@ -183,15 +190,15 @@ mod vector_mode_tests {
 
 // Circular coordinates, rotation mode
 pub(crate) fn cordic_circ_rm(
-    mut x: FP255,
-    mut y: FP255,
-    mut z: FP255,
-) -> (FP255, FP255) {
-    debug_assert!(z >= FP255::ZERO);
+    mut x: BigFloat,
+    mut y: BigFloat,
+    mut z: BigFloat,
+) -> (BigFloat, BigFloat) {
+    debug_assert!(z >= BigFloat::ZERO);
     debug_assert!(z <= MAX_ABS_COORD);
 
-    for i in 0..=FP255::FRACTION_BITS {
-        let op = OPS[(z < FP255::ZERO) as usize];
+    for i in 0..=BigFloat::FRACTION_BITS {
+        let op = OPS[(z < BigFloat::ZERO) as usize];
         let mut dx = &y >> i;
         op(&mut dx);
         let mut dy = &x >> i;
@@ -206,8 +213,8 @@ pub(crate) fn cordic_circ_rm(
 }
 
 #[inline(always)]
-pub(crate) fn cordic_sin_cos(a: &FP255) -> (FP255, FP255) {
-    cordic_circ_rm(P, FP255::ZERO, *a)
+pub(crate) fn cordic_sin_cos(a: &BigFloat) -> (BigFloat, BigFloat) {
+    cordic_circ_rm(P, BigFloat::ZERO, *a)
 }
 
 #[cfg(test)]
@@ -216,25 +223,25 @@ mod rotation_mode_tests {
 
     #[test]
     fn test_sin_cos_zero() {
-        let (sin0, cos0) = cordic_sin_cos(&FP255::ZERO);
+        let (sin0, cos0) = cordic_sin_cos(&BigFloat::ZERO);
         let mut d = cos0.clone();
-        d -= &FP255::ONE;
+        d -= &BigFloat::ONE;
         assert!(d.abs() <= MAX_ERR);
         assert!(sin0.abs() < MAX_ERR);
     }
 
     #[test]
     fn test_sin_cos_pi_half() {
-        let (sin, cos) = cordic_sin_cos(&FP255::FRAC_PI_2);
+        let (sin, cos) = cordic_sin_cos(&BigFloat::FRAC_PI_2);
         let mut d = sin.clone();
-        d -= &FP255::ONE;
+        d -= &BigFloat::ONE;
         assert!(d.abs() < MAX_ERR);
         assert!(cos.abs() < MAX_ERR);
     }
 
     #[test]
     fn test_special_values() {
-        let f = &FP255::FRAC_PI_2 >> 1;
+        let f = &BigFloat::FRAC_PI_2 >> 1;
         let (sin, cos) = cordic_sin_cos(&f);
         let mut d = cos.clone();
         d -= &sin;

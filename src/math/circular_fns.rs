@@ -12,7 +12,7 @@ use core::{
     ops::{Div, Neg, Rem, Shl, Shr},
 };
 
-use super::FP255;
+use super::BigFloat;
 use crate::{
     abs_bits, abs_bits_sticky,
     big_uint::u256,
@@ -25,7 +25,7 @@ use crate::{
 
 // Number of bits to shift left for adjusting the radix point from f256 to
 // FP255
-const PREC_ADJ: u32 = FP255::FRACTION_BITS - FRACTION_BITS;
+const PREC_ADJ: u32 = BigFloat::FRACTION_BITS - FRACTION_BITS;
 
 // Cut-off for small values
 // ≈0.00000000000000000000000000000000000210094754024801845063812748106760843
@@ -219,7 +219,7 @@ impl f256 {
             return *self;
         }
         // Now we have ε < |self| < 2²⁴⁰.
-        f256::from(&FP255::from(self).atan())
+        f256::from(&BigFloat::from(self).atan())
     }
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other`
@@ -272,8 +272,8 @@ impl f256 {
 
         // Both operands are finite and non-zero.
 
-        let y = FP255::from(self);
-        let x = FP255::from(other);
+        let y = BigFloat::from(self);
+        let x = BigFloat::from(other);
         f256::from(&y.atan2(&x))
     }
 }

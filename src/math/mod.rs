@@ -9,9 +9,9 @@
 
 mod approx_cos;
 mod approx_sin;
+mod big_float;
 mod circular_fns;
 mod cordic;
-mod fp255;
 mod sqrt;
 
-pub(crate) use fp255::FP255;
+pub(crate) use big_float::BigFloat;
