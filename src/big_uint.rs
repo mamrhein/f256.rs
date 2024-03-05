@@ -8,7 +8,6 @@
 // $Revision$
 
 use core::{
-    cmp::Ordering,
     fmt,
     mem::size_of,
     ops::{
@@ -202,6 +201,12 @@ impl u256 {
     #[inline]
     pub(crate) const fn is_zero(&self) -> bool {
         self.hi == 0 && self.lo == 0
+    }
+
+    /// Return true, if `self` is odd.
+    #[inline]
+    pub(crate) const fn is_odd(&self) -> bool {
+        (self.lo & 1_u128) == 1
     }
 
     /// Returns the number of leading zeros in the binary representation of
