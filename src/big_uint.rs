@@ -1573,6 +1573,18 @@ mod u128_widening_mul_tests {
 }
 
 #[cfg(test)]
+mod u256_widening_mul_tests {
+    use super::*;
+
+    #[test]
+    fn test_max_half() {
+        let x = &u256::MAX >> 1;
+        let z = x.widening_mul(&x);
+        assert_eq!(z, (u256::ONE, &x >> 1));
+    }
+}
+
+#[cfg(test)]
 mod u256_wrapping_mul_u512_tests {
     use super::*;
 
