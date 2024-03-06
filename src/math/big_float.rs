@@ -15,11 +15,11 @@ use core::{
 
 use crate::{
     abs_bits,
-    big_uint::{u256, BigUIntHelper},
-    exp_bits, f256,
-    math::cordic::circular::{cordic_atan, cordic_atan2, cordic_sin_cos},
-    norm_bit, signif, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
-    HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS,
+    big_uint::{BigUIntHelper, u256, u512},
+    EMAX, EMIN,
+    EXP_BIAS,
+    exp_bits, f256, FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS, HI_SIGN_SHIFT, math::cordic::circular::{cordic_atan, cordic_atan2},
+    norm_bit, signif, SIGNIFICAND_BITS,
 };
 
 fn add_signifs(x: &u256, y: &u256) -> (u256, i32) {
@@ -43,6 +43,15 @@ fn sub_signifs(x: &u256, y: &u256) -> (u256, i32) {
     (diff, -(shl as i32))
 }
 
+fn mul_signifs(x: &u256, y: &u256) -> (u512, i32) {
+    debug_assert!(x.hi.leading_zeros() == 1);
+    debug_assert!(y.hi.leading_zeros() == 1);
+    let (lo, hi) = x.widening_mul(y);
+    let nlz = hi.leading_zeros();
+    let res = &u512 { hi, lo } << (nlz - 1);
+    (res, (nlz == 2) as i32)
+}
+
 /// Representation of the number sign * signif * 2^exp.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct BigFloat {
@@ -57,6 +66,11 @@ pub(crate) struct BigFloat {
 
 pub(crate) const SIGNIF_ONE: u256 = u256 {
     hi: 1_u128 << (BigFloat::FRACTION_BITS - 128),
+    lo: 0_u128,
+};
+
+const TIE: u256 = u256 {
+    hi: 1_u128 << 127,
     lo: 0_u128,
 };
 
@@ -126,6 +140,15 @@ impl BigFloat {
     }
 
     #[inline(always)]
+    pub(crate) const fn quantum(&self) -> Self {
+        Self {
+            sign: 1,
+            exp: self.exp - Self::FRACTION_BITS as i32,
+            signif: SIGNIF_ONE,
+        }
+    }
+
+    #[inline(always)]
     pub(crate) const fn is_zero(&self) -> bool {
         self.sign == 0
     }
@@ -179,6 +202,118 @@ impl BigFloat {
             *self = BigFloat::ZERO;
         } else {
             self.iadd(&other.neg());
+        }
+    }
+
+    fn imul(&mut self, other: &Self) {
+        self.sign *= other.sign;
+        if self.sign == 0 {
+            *self = Self::ZERO;
+        } else {
+            let (mut prod_signif, exp_adj) =
+                mul_signifs(&self.signif, &other.signif);
+            // round significand of product to 255 bits
+            let rnd = prod_signif.lo > TIE
+                || (prod_signif.lo == TIE && prod_signif.hi.is_odd());
+            prod_signif.hi += rnd as u128;
+            prod_signif.hi >>= (prod_signif.hi.leading_zeros() == 0) as u32;
+            self.signif = prod_signif.hi;
+            self.exp += other.exp + exp_adj;
+        }
+    }
+
+    fn imul_add(&mut self, f: &Self, a: &Self) {
+        if self.is_zero() || f.is_zero() {
+            *self = *a;
+        }
+        if a.is_zero() {
+            self.imul(f);
+        }
+        let mut prod_exp = self.exp + f.exp;
+        let mut exp_diff = prod_exp - a.exp;
+        const UPPER_LIM_PROD_TOO_SMALL: i32 =
+            -(BigFloat::FRACTION_BITS as i32) - 2;
+        const LOWER_LIM_ADDEND_TOO_SMALL: i32 =
+            2 * BigFloat::FRACTION_BITS as i32 + 3;
+        match exp_diff {
+            i32::MIN..=UPPER_LIM_PROD_TOO_SMALL => {
+                *self = *a;
+            }
+            LOWER_LIM_ADDEND_TOO_SMALL..=i32::MAX => {
+                self.imul(f);
+            }
+            _ => {
+                // -256 < exp_diff < 511
+                let prod_sign = self.sign * f.sign;
+                let (mut prod_signif, exp_adj) =
+                    mul_signifs(&self.signif, &f.signif);
+                prod_exp += exp_adj;
+                exp_diff += exp_adj;
+                let mut addend_signif = u512 {
+                    hi: a.signif,
+                    lo: u256::ZERO,
+                };
+                let (x_sign, mut x_signif, mut x_exp, y_signif) =
+                    match exp_diff {
+                        0 => {
+                            // exponents equal => check significands
+                            if prod_signif >= addend_signif {
+                                // |prod| >= |addend|
+                                (
+                                    prod_sign,
+                                    prod_signif,
+                                    prod_exp,
+                                    addend_signif,
+                                )
+                            } else {
+                                // |addend| > |prod|
+                                (a.sign, addend_signif, a.exp, prod_signif)
+                            }
+                        }
+                        1..=i32::MAX => {
+                            // |prod| > |addend|
+                            let (q, r) =
+                                addend_signif.widening_shr(exp_diff as u32);
+                            addend_signif = q;
+                            addend_signif.lo.lo |= (r != u512::ZERO) as u128;
+                            (prod_sign, prod_signif, prod_exp, addend_signif)
+                        }
+                        i32::MIN..=-1 => {
+                            // |addend| > |prod|
+                            let (q, r) = prod_signif
+                                .widening_shr(exp_diff.unsigned_abs());
+                            prod_signif = q;
+                            prod_signif.lo.lo |= (r != u512::ZERO) as u128;
+                            (a.sign, addend_signif, a.exp, prod_signif)
+                        }
+                    };
+                if prod_sign == a.sign {
+                    x_signif += &y_signif;
+                    // addition may have overflowed
+                    let mut shr = (x_signif.leading_zeros() == 0) as u32;
+                    x_exp += shr as i32;
+                    let mut rnd = (x_signif.hi.lo & shr as u128) == 1;
+                    x_signif.hi >>= shr;
+                    rnd &= (x_signif.lo != u256::ZERO)
+                        || (x_signif.lo == u256::ZERO
+                            && x_signif.hi.is_odd());
+                    rnd |= (x_signif.lo > TIE)
+                        || (x_signif.lo == TIE && x_signif.hi.is_odd());
+                    x_signif.hi += rnd as u128;
+                    shr = (x_signif.hi.leading_zeros() == 0) as u32;
+                    x_exp += shr as i32;
+                    x_signif.hi >>= shr;
+                    self.signif = x_signif.hi;
+                } else {
+                    x_signif -= &y_signif;
+                    let shl = x_signif.leading_zeros() - 1;
+                    x_exp -= shl as i32;
+                    x_signif.idiv_pow2(u256::BITS + shl);
+                    self.signif = x_signif.lo;
+                };
+                self.sign = x_sign;
+                self.exp = x_exp;
+            }
         }
     }
 
@@ -331,8 +466,9 @@ mod from_into_f256_tests {
 
 #[cfg(test)]
 mod into_f256_tests {
-    use super::*;
     use crate::consts::PI;
+
+    use super::*;
 
     #[test]
     fn test_overflow_1() {
@@ -582,5 +718,87 @@ mod add_sub_tests {
         };
         a -= &b;
         assert_eq!(a, d);
+    }
+}
+
+#[cfg(test)]
+mod mul_tests {
+    use super::*;
+
+    #[test]
+    fn test_imul_same_sign() {
+        let mut x = BigFloat::NEG_ONE;
+        x += &BigFloat::EPSILON;
+        let y = x;
+        x.imul(&y);
+        assert_eq!(x.sign, 1);
+        assert_eq!(x.exp, -1);
+        assert_eq!(x.signif, u256::new(y.signif.hi, y.signif.lo - 2));
+    }
+
+    #[test]
+    fn test_imul_diff_sign() {
+        let mut x = BigFloat::FRAC_PI_2;
+        let y = -BigFloat::PI;
+        x.imul(&y);
+        assert_eq!(x.sign, -1);
+        assert_eq!(x.exp, 2);
+        assert_eq!(
+            x.signif,
+            u256::new(
+                0x4ef4f326f91779692b71366cc0460d63,
+                0x842b351ff06851143341108129e39b47
+            )
+        );
+    }
+
+    #[test]
+    fn test_imul_add() {
+        let mut x = BigFloat::PI;
+        let y = BigFloat {
+            sign: 1,
+            exp: -1,
+            signif: u256::new(
+                0x7fffffffffffffffffffffffffffffff,
+                0xffffffffffffffffffffffffffffc000,
+            ),
+        };
+        let mut p = x;
+        p.imul(&y);
+        assert_eq!(
+            p.signif,
+            u256::new(
+                0x6487ed5110b4611a62633145c06e0e68,
+                0x948127044533e63a0105df531d899b4d,
+            )
+        );
+        let a = BigFloat {
+            sign: 1,
+            exp: -255,
+            signif: u256::new(
+                0x7fffffffffffffffffffffffffffffff,
+                0xfffffffffffffffffffff80000000000,
+            ),
+        };
+        p.iadd(&a);
+        assert_eq!(
+            p.signif,
+            u256::new(
+                0x6487ed5110b4611a62633145c06e0e68,
+                0x948127044533e63a0105df531d899b4d,
+            )
+        );
+        x.imul_add(&y, &a);
+        assert_eq!(
+            x,
+            BigFloat {
+                sign: p.sign,
+                exp: p.exp,
+                signif: u256::new(
+                    0x6487ed5110b4611a62633145c06e0e68,
+                    0x948127044533e63a0105df531d899b4e,
+                ),
+            }
+        );
     }
 }
