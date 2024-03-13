@@ -1,0 +1,107 @@
+roundingwarnings = off;
+
+prec = 512;
+display = powers;
+
+ul1b = proc(f) { return 2^exponent(f); };
+
+ulp = proc(f) {
+    return 2^(1 - X + floor(log2(abs(mantissa(f)))) + exponent(f));
+};
+
+signum = proc(f) {
+    if (f == 0) then s = 0 else s = f / abs(f);
+    return s;
+};
+
+red = proc(C, P) {
+    R = round(1/C, P, RN);
+    c = round(1/R, 2*P, RN);
+    print("1/R:", c);
+    C1 = round(1/R, P-2, RN);
+    print("C1:", C1);
+    print("C-C1:", c - C1);
+    u = ulp(C1);
+    d = 8 * ulp(u);
+    print("u:", u);
+    print("d:", d);
+    print("(C-C1)/d:", nearestint((C - C1) / d));
+    C2 = round(nearestint((C - C1) / d) * d, P, RN);
+    M = round((2^(P-2) - 1) * C, P, RN);
+    return [|R, C1, C2, M|];
+};
+
+hex = proc(n) {
+    d = 16;
+    A = [|"0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"|];
+    s = "";
+    if (n >= 0) then
+        p = "0x"
+    else {
+        p = "-0x";
+        n = abs(n);
+    };
+    while (n != 0) do {
+        i = mod(n, d);
+        s = A[i] @ s;
+        n := div(n, d);
+    };
+    return p @ s;
+};
+
+prx = proc(f) {
+    B = 2^128;
+    m = abs(mantissa(f));
+    shl = X - ceil(log2(m));
+    m = m * 2^shl;
+    hi = div(m, B);
+    lo = mod(m, B);
+    print(hex(signum(f) * hi) @ ",", hex(lo) @ ",", exponent(f)+X-1-shl);
+};
+
+B = 256;
+P = 237;
+X = B - 1;
+EMIN = 1 - 2^(B-P)/2;
+
+C = pi/2;
+rv = red(C, X);
+R = rv[0];
+C1 = rv[1];
+C2 = rv[2];
+RND = 3 * 2^(X-2);
+M = rv[3];
+
+print("\n--- verification ---");
+u = ulp(C1);
+d = 8 * ulp(u);
+c2_div_uu8 = C2 / d;
+print("C1 >= 2ᴾ⁻¹×λ ?", C1 >= 2^(P + EMIN));
+print("C2 is an integer multiple of 8×ulp(ulp(C1)) ?",  c2_div_uu8 == floor(c2_div_uu8));
+print("|C2| <= 4×ulp(C1) ?", abs(C2) <= 4 * u);
+print("|C2| > ½ulp(C1)", abs(C2) > ulp(C1)/2);
+print("---\n");
+
+prec = X;
+display = decimal;
+print("// R = ◯₂₅₅(1/½π) =\n//", R);
+print("const R: BigFloat = BigFloat::new(");
+prx(R);
+print(");");
+print("// C = ◯₂₅₅(1/R) =\n//", round(1/R, X, RN));
+print("// C1 = ◯₂₅₃(C) =\n//", C1);
+print("const C1: BigFloat = BigFloat::new(");
+prx(C1);
+print(");");
+print("// C2 = ⌈(C - C1) / 8⋅ulp(ulp(C1))⌋ ⋅ 8⋅ulp(ulp(C1)) =\n//", C2);
+print("const C2: BigFloat = BigFloat::new(");
+prx(C2);
+print(");");
+print("// D = 3⋅2²⁵³ =\n//", RND);
+print("const D: BigFloat = BigFloat::new(");
+prx(RND);
+print(");");
+print("// M = ◯₂₅₅((2²⁵³-1)⋅C) =\n//", M);
+print("const M: BigFloat = BigFloat::new(");
+prx(M);
+print(");");

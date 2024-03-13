@@ -1,0 +1,81 @@
+roundingwarnings = off;
+display = decimal;
+
+prec = 255;
+
+signum = proc(f) {
+    if (f == 0) then s = 0 else s = f / abs(f);
+    return s;
+};
+
+hex = proc(n) {
+    d = 16;
+    A = [|"0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"|];
+    s = "";
+    if (n >= 0) then
+        p = "0x"
+    else {
+        p = "-0x";
+        n = abs(n);
+    };
+    while (n != 0) do {
+        i = mod(n, d);
+        s = A[i] @ s;
+        n := div(n, d);
+    };
+    return p @ s;
+};
+
+prx = proc(f) {
+    B = 2^128;
+    m = abs(mantissa(f));
+    shl = X - ceil(log2(m));
+    m = m * 2^shl;
+    hi = div(m, B);
+    lo = mod(m, B);
+    print(hex(signum(f) * hi) @ ",", hex(lo) @ ",", exponent(f)+X-1-shl);
+};
+
+B = 256;
+P = 237;
+X = B - 1;
+
+// --- Pi et al. -------------------------------------------------------------
+
+PI = round(pi, X, RN);
+PI_2 = round(pi/2, X, RN);
+PI_3 = round(pi/3, X, RN);
+PI_4 = round(pi/4, X, RN);
+TAU = round(2*pi, X, RN);
+SQRT_2 = round(sqrt(2), X, RN);
+FRAC_1_SQRT_2 = round(1/sqrt(2), X, RN);
+
+
+print("// PI = ◯₂₅₅(π) =\n//", PI);
+print("pub(crate) const PI: BigFloat = BigFloat::new(");
+prx(PI);
+print("),");
+print("\n// FRAC_PI_2 = ◯₂₅₅(½π) =\n//", PI_2);
+print("pub(crate) const FRAC_PI_2: BigFloat = BigFloat::new(");
+prx(PI_2);
+print("),");
+print("\n// FRAC_PI_3 = ◯₂₅₅(⅓π) =\n//", PI_3);
+print("pub(crate) const FRAC_PI_3: BigFloat = BigFloat::new(");
+prx(PI_3);
+print("),");
+print("\n// FRAC_PI_4 = ◯₂₅₅(¼π) =\n//", PI_4);
+print("pub(crate) const FRAC_PI_4: BigFloat = BigFloat::new(");
+prx(PI_4);
+print("),");
+print("// TAU = ◯₂₅₅(2⋅π) =\n//", TAU);
+print("pub(crate) const TAU: BigFloat = BigFloat::new(");
+prx(TAU);
+print("),");
+print("// SQRT_2 = ◯₂₅₅(√2) =\n//", SQRT_2);
+print("pub(crate) const SQRT_2: BigFloat = BigFloat::new(");
+prx(SQRT_2);
+print("),");
+print("// FRAC_1_SQRT_2 = ◯₂₅₅(1/√2) =\n//", FRAC_1_SQRT_2);
+print("pub(crate) const FRAC_1_SQRT_2: BigFloat = BigFloat::new(");
+prx(FRAC_1_SQRT_2);
+print("),");

@@ -1,0 +1,76 @@
+roundingwarnings = off;
+display = decimal;
+
+prec = 255;
+
+signum = proc(f) {
+    if (f == 0) then s = 0 else s = f / abs(f);
+    return s;
+};
+
+hex = proc(n) {
+    d = 16;
+    A = [|"0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"|];
+    s = "";
+    if (n >= 0) then
+        p = "0x"
+    else {
+        p = "-0x";
+        n = abs(n);
+    };
+    while (n != 0) do {
+        i = mod(n, d);
+        s = A[i] @ s;
+        n := div(n, d);
+    };
+    return p @ s;
+};
+
+prx = proc(f) {
+    B = 2^128;
+    m = abs(mantissa(f));
+    shl = X - ceil(log2(m));
+    m = m * 2^shl;
+    hi = div(m, B);
+    lo = mod(m, B);
+    print(hex(signum(f) * hi) @ ",", hex(lo) @ ",", exponent(f)+X-1-shl);
+};
+
+B = 256;
+P = 237;
+X = B - 1;
+
+// --- Polynomial approximating cosine -----------------------------------------
+
+COS = cos(x);
+N = 31;
+T = taylor(COS, 2*N+1, 0);
+print("");
+while (N >= 0) do {
+    var n, c, s;
+    n = 2 * N;
+    c = round(coeff(T, n), X, RN);
+    s = signum(c);
+    print("//", s @ " / " @ n @ "! ≈");
+    print("//", c);
+    print("BigFloat::new(");
+    prx(c);
+    print("),");
+    N = N - 1;
+};
+
+// --- Small cut-off ---------------------------------------------------------
+
+lf = round(1e-39, X, RN);
+uf = round(1e-38, X, RN);
+f = round((uf + lf) / 2, X, RN);
+while (lf < f && f < uf) do {
+    if round(T(f), X, RN) == f then lf = f else uf = f;
+    f = round((uf + lf) / 2, X, RN);
+};
+print("");
+print("\n// Cut-off for small values\n//", lf);
+print("const SMALL_CUT_OFF: BigFloat = BigFloat::new(");
+prx(lf);
+print(");");
+prx(uf);
