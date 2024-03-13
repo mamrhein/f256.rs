@@ -12,6 +12,7 @@ use core::{
     mem::swap,
     ops::{Add, AddAssign, Neg, Shr, ShrAssign, Sub, SubAssign},
 };
+use std::ops::{Mul, MulAssign};
 
 use crate::{
     abs_bits,
@@ -52,14 +53,14 @@ fn mul_signifs(x: &u256, y: &u256) -> (u512, i32) {
     (res, (nlz == 2) as i32)
 }
 
-/// Representation of the number sign * signif * 2^exp.
+/// Representation of the number sign * signif * 2^(exp-254).
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct BigFloat {
     pub(crate) sign: i32,
     pub(crate) exp: i32,
     // Layout of the 256 bits of the `signif` member: olfff…fff
     // o = reserved bit for overflow handling in addition
-    // l = 1 leading bit (always 1 except for FP255::ZERO)
+    // l = 1 leading bit (always 1 except for BigFloat::ZERO)
     // f = 254 fractional bits
     pub(crate) signif: u256,
 }
@@ -78,42 +79,72 @@ impl BigFloat {
     pub(crate) const FRACTION_BITS: u32 = 254;
     pub(crate) const ZERO: Self = Self {
         sign: 0,
-        exp: 0,
         signif: u256::ZERO,
+        exp: 0,
     };
     pub(crate) const ONE: Self = Self {
         sign: 1,
-        exp: 0,
         signif: SIGNIF_ONE,
+        exp: 0,
     };
     pub(crate) const NEG_ONE: Self = Self {
         sign: -1,
-        exp: 0,
         signif: SIGNIF_ONE,
+        exp: 0,
     };
+    pub(crate) const ONE_HALF: Self = Self {
+        sign: 1,
+        signif: SIGNIF_ONE,
+        exp: -1,
+    };
+    // 2^-254
     pub(crate) const EPSILON: Self = Self {
         sign: 1,
-        exp: -(Self::FRACTION_BITS as i32),
         signif: SIGNIF_ONE,
+        exp: -(Self::FRACTION_BITS as i32),
     };
+    // PI = ◯₂₅₅(π) =
     // 3.1415926535897932384626433832795028841971693993751058209749445923078164062862
-    pub(crate) const PI: BigFloat = BigFloat {
-        sign: 1,
-        exp: 1,
-        signif: u256::new(
-            0x6487ed5110b4611a62633145c06e0e68,
-            0x948127044533e63a0105df531d89cd91,
-        ),
-    };
+    pub(crate) const PI: BigFloat = BigFloat::new(
+        0x6487ed5110b4611a62633145c06e0e68,
+        0x948127044533e63a0105df531d89cd91,
+        1,
+    );
+    // FRAC_PI_2 = ◯₂₅₅(½π) =
     // 1.5707963267948966192313216916397514420985846996875529104874722961539082031431
-    pub(crate) const FRAC_PI_2: BigFloat = BigFloat {
-        sign: 1,
-        exp: 0,
-        signif: u256::new(
-            0x6487ed5110b4611a62633145c06e0e68,
-            0x948127044533e63a0105df531d89cd91,
-        ),
-    };
+    pub(crate) const FRAC_PI_2: BigFloat = BigFloat::new(
+        0x6487ed5110b4611a62633145c06e0e68,
+        0x948127044533e63a0105df531d89cd91,
+        0,
+    );
+    // FRAC_PI_4 = ◯₂₅₅(½π) =
+    // 1.5707963267948966192313216916397514420985846996875529104874722961539082031431
+    pub(crate) const FRAC_PI_4: BigFloat = BigFloat::new(
+        0x6487ed5110b4611a62633145c06e0e68,
+        0x948127044533e63a0105df531d89cd91,
+        -1,
+    );
+    // TAU = ◯₂₅₅(2⋅π) =
+    // 6.2831853071795864769252867665590057683943387987502116419498891846156328125724
+    pub(crate) const TAU: BigFloat = BigFloat::new(
+        0x6487ed5110b4611a62633145c06e0e68,
+        0x948127044533e63a0105df531d89cd91,
+        2,
+    );
+
+    #[inline]
+    pub(crate) const fn new(
+        signif_hi: i128,
+        signif_lo: u128,
+        exp: i32,
+    ) -> Self {
+        debug_assert!(signif_hi.abs().leading_zeros() == 1);
+        Self {
+            sign: signif_hi.signum() as i32,
+            exp,
+            signif: u256::new(signif_hi.unsigned_abs(), signif_lo),
+        }
+    }
 
     // TODO: remove (inline) this fn when trait fns can be constant!
     pub(crate) const fn from_f256(f: &f256) -> Self {
@@ -196,7 +227,6 @@ impl BigFloat {
         };
     }
 
-    #[inline(always)]
     fn isub(&mut self, other: &Self) {
         if self == other {
             *self = BigFloat::ZERO;
@@ -222,7 +252,7 @@ impl BigFloat {
         }
     }
 
-    fn imul_add(&mut self, f: &Self, a: &Self) {
+    pub(crate) fn imul_add(&mut self, f: &Self, a: &Self) {
         if self.is_zero() || f.is_zero() {
             *self = *a;
         }
@@ -287,11 +317,13 @@ impl BigFloat {
                             (a.sign, addend_signif, a.exp, prod_signif)
                         }
                     };
+                self.sign = x_sign;
+                self.exp = x_exp;
                 if prod_sign == a.sign {
                     x_signif += &y_signif;
                     // addition may have overflowed
                     let mut shr = (x_signif.leading_zeros() == 0) as u32;
-                    x_exp += shr as i32;
+                    self.exp += shr as i32;
                     let mut rnd = (x_signif.hi.lo & shr as u128) == 1;
                     x_signif.hi >>= shr;
                     rnd &= (x_signif.lo != u256::ZERO)
@@ -301,20 +333,61 @@ impl BigFloat {
                         || (x_signif.lo == TIE && x_signif.hi.is_odd());
                     x_signif.hi += rnd as u128;
                     shr = (x_signif.hi.leading_zeros() == 0) as u32;
-                    x_exp += shr as i32;
+                    self.exp += shr as i32;
                     x_signif.hi >>= shr;
                     self.signif = x_signif.hi;
                 } else {
                     x_signif -= &y_signif;
+                    // subtraction may have cancelled some or all leading bits
                     let shl = x_signif.leading_zeros() - 1;
-                    x_exp -= shl as i32;
-                    x_signif.idiv_pow2(u256::BITS + shl);
-                    self.signif = x_signif.lo;
+                    self.exp -= shl as i32;
+                    match shl {
+                        0..=256 => {
+                            // shifting left by shl bits and then rounding the
+                            // low 256 bits => shift right and round by
+                            // 256 - shl bits
+                            x_signif.idiv_pow2(u256::BITS - shl);
+                            self.signif = x_signif.lo;
+                        }
+                        257..=510 => {
+                            // less than 255 bits left => shift left, no
+                            // rounding
+                            self.signif = &x_signif.lo << shl - 256;
+                        }
+                        _ => {
+                            // all bits cancelled => result is zero
+                            *self = BigFloat::ZERO;
+                        }
+                    }
                 };
-                self.sign = x_sign;
-                self.exp = x_exp;
             }
         }
+    }
+
+    #[inline]
+    pub(crate) fn mul_add(self, f: &Self, a: &Self) -> Self {
+        let mut res = self;
+        res.imul_add(f, a);
+        res
+    }
+
+    /// Computes the rounded sum of two BigFloat values and the remainder.
+    #[inline]
+    pub(crate) fn sum_exact(&self, rhs: &Self) -> (Self, Self) {
+        let s = *self + rhs;
+        let d = s - rhs;
+        let t1 = *self - &d;
+        let t2 = *rhs - &(s - &d);
+        let r = t1 + &t2;
+        (s, r)
+    }
+
+    /// Computes the rounded product of two BigFloat values and the remainder.
+    #[inline]
+    pub(crate) fn mul_exact(&self, rhs: &Self) -> (Self, Self) {
+        let p = *self * rhs;
+        let r = self.mul_add(rhs, &p.neg());
+        (p, r)
     }
 
     #[inline(always)]
@@ -583,9 +656,47 @@ impl AddAssign<&Self> for BigFloat {
     }
 }
 
+impl Add<&Self> for BigFloat {
+    type Output = Self;
+
+    fn add(self, rhs: &Self) -> Self::Output {
+        let mut res = self;
+        res += rhs;
+        res
+    }
+}
+
 impl SubAssign<&Self> for BigFloat {
+    #[inline(always)]
     fn sub_assign(&mut self, rhs: &Self) {
         self.isub(rhs);
+    }
+}
+
+impl Sub<&Self> for BigFloat {
+    type Output = Self;
+
+    fn sub(self, rhs: &Self) -> Self::Output {
+        let mut res = self;
+        res -= rhs;
+        res
+    }
+}
+
+impl MulAssign<&Self> for BigFloat {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: &Self) {
+        self.imul(rhs);
+    }
+}
+
+impl Mul<&Self> for BigFloat {
+    type Output = Self;
+
+    fn mul(self, rhs: &Self) -> Self::Output {
+        let mut res = self;
+        res *= rhs;
+        res
     }
 }
 
