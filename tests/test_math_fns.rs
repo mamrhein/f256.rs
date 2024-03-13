@@ -12,8 +12,9 @@ mod random_math_fn_tests {
     use std::path::PathBuf;
 
     use csv::ReaderBuilder;
-    use f256::f256;
     use serde::Deserialize;
+
+    use f256::f256;
 
     #[derive(Debug, Deserialize)]
     struct Record {
@@ -64,7 +65,7 @@ mod random_math_fn_tests {
                         let m = f256::from(err) * z.ulp();
                         assert!(
                             d <= m,
-                            "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}\nd: \
+                            "\nFailed:\nx: {x:e}\nz: {z:?}\nr: {res:?}\nd: \
                              {d:?}\nm: {m:?}"
                         );
                     }
@@ -81,5 +82,25 @@ mod random_math_fn_tests {
     #[test]
     fn test_sqrt() {
         run_tests(sqrt, 0, "test_sqrt.txt");
+    }
+
+    #[test]
+    fn test_sin_lt_2pi() {
+        run_tests(f256::sin, 1, "test_sin_lt_2pi.txt");
+    }
+
+    #[test]
+    fn test_cos_lt_2pi() {
+        run_tests(f256::cos, 1, "test_cos_lt_2pi.txt");
+    }
+
+    #[test]
+    fn test_sin_ge_2pi() {
+        run_tests(f256::sin, 512, "test_sin_ge_2pi.txt");
+    }
+
+    #[test]
+    fn test_cos_ge_2pi() {
+        run_tests(f256::cos, 1024, "test_cos_ge_2pi.txt");
     }
 }
