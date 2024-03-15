@@ -199,14 +199,14 @@ impl BigFloat {
     }
 
     fn iadd(&mut self, other: &Self) {
-        if self.is_zero() {
+        let exp = max(self.exp, other.exp);
+        if self.is_zero() || (exp - self.exp) > Self::FRACTION_BITS as i32 {
             *self = *other;
             return;
         }
-        if other.is_zero() {
+        if other.is_zero() || (exp - other.exp) > Self::FRACTION_BITS as i32 {
             return;
         }
-        let exp = max(self.exp, other.exp);
         let (mut signif_self, rem_self) =
             self.signif.widening_shr((exp - self.exp) as u32);
         let (mut signif_other, rem_other) =
@@ -829,6 +829,27 @@ mod add_sub_tests {
         };
         a -= &b;
         assert_eq!(a, d);
+    }
+
+    #[test]
+    fn test_sub_very_small_value() {
+        let mut a = BigFloat {
+            sign: 1,
+            exp: 7,
+            signif: u256::new(
+                0x6487ed5110b4611a62633145c06e0e68,
+                0x033cee6a628198d4c2836363a132d844,
+            ),
+        };
+        let b = BigFloat {
+            sign: 1,
+            exp: -248,
+            signif: u256::new(
+                0x40000000000000000000000000000000,
+                0x00000000000000000000000000000000,
+            ),
+        };
+        assert_eq!(a - &b, a);
     }
 }
 
