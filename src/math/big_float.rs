@@ -10,9 +10,10 @@
 use core::{
     cmp::{max, Ordering},
     mem::swap,
-    ops::{Add, AddAssign, Neg, Shr, ShrAssign, Sub, SubAssign},
+    ops::{
+        Add, AddAssign, Mul, MulAssign, Neg, Shr, ShrAssign, Sub, SubAssign,
+    },
 };
-use std::ops::{Mul, MulAssign};
 
 use crate::{
     abs_bits,
@@ -190,11 +191,25 @@ impl BigFloat {
     }
 
     #[inline(always)]
+    pub(crate) fn copy_sign(&mut self, other: &Self) {
+        self.sign = other.sign;
+    }
+
+    #[inline(always)]
     pub(crate) const fn abs(&self) -> Self {
         Self {
             sign: self.sign.abs(),
             exp: self.exp,
             signif: self.signif,
+        }
+    }
+
+    pub(crate) fn trunc(&self) -> Self {
+        let sh = max(Self::FRACTION_BITS as i32 - self.exp, 0) as u32;
+        Self {
+            sign: self.sign,
+            exp: self.exp,
+            signif: &(&self.signif >> sh) << sh,
         }
     }
 
@@ -611,6 +626,7 @@ mod into_f256_tests {
 impl Neg for BigFloat {
     type Output = Self;
 
+    #[inline]
     fn neg(self) -> Self::Output {
         Self::Output {
             sign: self.sign * -1,
@@ -621,6 +637,7 @@ impl Neg for BigFloat {
 }
 
 impl PartialOrd for BigFloat {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some((self.sign, self.exp, self.signif).cmp(&(
             other.sign,

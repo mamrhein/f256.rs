@@ -19,7 +19,7 @@ use crate::{
     consts::{FRAC_2_PI, FRAC_PI_2, FRAC_PI_4, PI}, EXP_BIAS,
     exp_bits,
     f256, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BITS,
-    math::{approx_cos::approx_cos, approx_sin::approx_sin}, sign_bits_hi, signif,
+    math::{approx_cos::approx_cos, approx_sin::approx_sin, fp509::FP509}, sign_bits_hi, signif,
 };
 
 use super::BigFloat;
@@ -81,16 +81,18 @@ fn fast_reduce(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
         0x6605614dbe4be286e9fc26adadaa3848,
         -254,
     );
-    // D = 3⋅2²⁵³ =
-    // 43422033463993573283839119378257965444976244249615211514796594002967423614976
-    const D: BigFloat = BigFloat::new(
-        0x60000000000000000000000000000000,
-        0x00000000000000000000000000000000,
-        254,
-    );
+    // TODO: remove this constant
+    // // D = 3⋅2²⁵³ =
+    // // 43422033463993573283839119378257965444976244249615211514796594002967423614976
+    // const D: BigFloat = BigFloat::new(
+    //     0x60000000000000000000000000000000,
+    //     0x00000000000000000000000000000000,
+    //     254,
+    // );
 
-    debug_assert!(x <= &M);
-    let z = x.mul_add(&R, &D) - &D;
+    // let zz = x.mul_add(&R, &D) - &D;
+    let z = (*x * &R).trunc();
+    // debug_assert_eq!(z.abs(), zz.abs());
     let u = *x - &(z * &C1);
     let v1 = u - &(z * &C2);
     let (p1, p2) = z.mul_exact(&C2);
@@ -111,9 +113,10 @@ const M: BigFloat = BigFloat::new(
     253,
 );
 
-fn rem_frac_pi_2(x: &BigFloat) -> (u32, BigFloat) {
+fn rem_frac_pi_2(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
+    debug_assert!(x.sign >= 0);
     if x < &BigFloat::FRAC_PI_2 {
-        (0, *x)
+        (0, *x, BigFloat::ZERO)
         // } else if x < &PI {
         //     (1, x - &FRAC_PI_2)
         // } else if x < &FRAC_3_PI_2 {
@@ -122,9 +125,8 @@ fn rem_frac_pi_2(x: &BigFloat) -> (u32, BigFloat) {
         //     (3, x - &FRAC_3_PI_2)
         // } else if x <= &TAU {
         //     return fastest_reduce(x);
-    } else if x <= &M {
-        let (q, r1, r2) = fast_reduce(x);
-        (q, r1 + &r2)
+    } else if &x.abs() <= &M {
+        fast_reduce(x)
     } else {
         // M < x <= f256::MAX
         const D: u256 = BigFloat::TAU.signif;
@@ -133,7 +135,7 @@ fn rem_frac_pi_2(x: &BigFloat) -> (u32, BigFloat) {
         let mut t = x.signif;
         t = t.lshift_rem(&D, sh);
         if t.is_zero() {
-            return (0, BigFloat::ZERO);
+            return (0, BigFloat::ZERO, BigFloat::ZERO);
         }
         let shl = t.leading_zeros() - 1;
         t <<= shl;
@@ -142,8 +144,8 @@ fn rem_frac_pi_2(x: &BigFloat) -> (u32, BigFloat) {
             t.lo,
             -((BigFloat::FRACTION_BITS + shl - 2) as i32),
         );
-        debug_assert!(u < BigFloat::TAU);
-        debug_assert!(u <= *x);
+        debug_assert!(u.abs() < BigFloat::TAU);
+        debug_assert!(u.abs() <= x.abs());
         rem_frac_pi_2(&u)
     }
 }
@@ -168,47 +170,53 @@ impl f256 {
             // x = 0 => sine x = 0
             return f256::ZERO;
         }
-        // Calculate ⌊x/½π⌋ % 4 and x % ½π.
-        let x = BigFloat::from(&self.abs());
-        let (quadrant, x) = rem_frac_pi_2(&x);
-        debug_assert!(x.abs() < BigFloat::FRAC_PI_2);
-        // Map result according to quadrant
-        let mut sin = match quadrant {
-            0 => approx_sin(&x),
-            1 => approx_cos(&x),
-            2 => -approx_sin(&x),
-            3 => -approx_cos(&x),
+        // Calculate ⌊|x|/½π⌋ % 4 and x % ½π.
+        let (quadrant, x1, x2) = rem_frac_pi_2(&BigFloat::from(&self.abs()));
+        debug_assert!(x1 < BigFloat::FRAC_PI_2);
+        // Convert (x1 + x2) into a fixed-point number with 509-bit-fraction
+        // |x1| < ½π => x1.exp <= 0
+        let mut fx = FP509::from(&x1);
+        fx += &FP509::from(&x2);
+        // Map result according to quadrant and sign
+        match (quadrant, self.sign()) {
+            (0, 0) => Self::from(&approx_sin(&fx)),
+            (0, 1) => -Self::from(&approx_sin(&fx)),
+            (1, 0) => Self::from(&approx_cos(&fx)),
+            (1, 1) => -Self::from(&approx_cos(&fx)),
+            (2, 0) => -Self::from(&approx_sin(&fx)),
+            (2, 1) => Self::from(&approx_sin(&fx)),
+            (3, 0) => -Self::from(&approx_cos(&fx)),
+            (3, 1) => Self::from(&approx_cos(&fx)),
             _ => unreachable!(),
-        };
-        // sine -x = -sine x
-        sin.sign *= (-1_i32).pow(self.sign());
-        Self::from(&sin)
+        }
     }
 
     /// Computes the cosine of a number (in radians).
     #[inline(always)]
     pub fn cos(&self) -> Self {
         if self.is_special() {
-            // x is NAN or infinite => sine x is NAN
+            // x is NAN or infinite => cosine x is NAN
             if (self.bits.hi & HI_ABS_MASK) > f256::MAX.bits.hi {
                 return f256::NAN;
             }
             // x = 0 => cosine x = 1
             return f256::ONE;
         }
-        // Calculate ⌊x/½π⌋ % 4 and x % ½π.
-        let x = BigFloat::from(&self.abs());
-        let (quadrant, x) = rem_frac_pi_2(&x);
+        // Calculate ⌊|x|/½π⌋ % 4 and x % ½π.
+        let (quadrant, x1, x2) = rem_frac_pi_2(&BigFloat::from(&self.abs()));
+        debug_assert!(x1.abs() < BigFloat::FRAC_PI_2);
+        // Convert (x1 + x2) into a fixed-point number with 510-bit-fraction
+        // |x1| < ½π => x1.exp <= 0
+        let mut fx = FP509::from(&x1);
+        fx += &FP509::from(&x2);
         // Map result according to quadrant
-        let cos = match quadrant {
-            0 => approx_cos(&x),
-            1 => -approx_sin(&x),
-            2 => -approx_cos(&x),
-            3 => approx_sin(&x),
+        match quadrant {
+            0 => Self::from(&approx_cos(&fx)),
+            1 => -Self::from(&approx_sin(&fx)),
+            2 => -Self::from(&approx_cos(&fx)),
+            3 => Self::from(&approx_sin(&fx)),
             _ => unreachable!(),
-        };
-        // cosine -x = cosine x
-        Self::from(&cos)
+        }
     }
 
     /// Computes the arctangent of a number (in radians).
@@ -302,9 +310,10 @@ mod sin_cos_tests {
 
     use super::*;
 
+    //noinspection DuplicatedCode
     #[test]
     fn test_frac_pi_2_multiples() {
-        const EXPECTED: [(f256, f256); 4] = [
+        const EXACT: [(f256, f256); 4] = [
             (f256::ZERO, f256::ONE),
             (f256::ONE, f256::ZERO),
             (f256::ZERO, f256::NEG_ONE),
@@ -314,20 +323,18 @@ mod sin_cos_tests {
             let eps = f256::EPSILON.mul_pow2(i as i32 / 4);
             let f = f256::from(i) * FRAC_PI_2;
             let (sin, cos) = f.sin_cos();
-            let (real_sin, real_cos) = EXPECTED[(i % 4) as usize];
-            // println!("\n{i}\nf: {f}\nsin: {sin}\n>>>> {real_sin}");
-            if real_sin.eq_zero() {
-                let d = (real_sin - sin).abs();
-                assert!(d <= eps, "{d:?} > {eps:?}");
+            let (exact_sin, exact_cos) = EXACT[(i % 4) as usize];
+            if exact_sin.eq_zero() {
+                let d = (exact_sin - sin).abs();
+                assert!(d < eps, "{d:?} >= {eps:?}");
             } else {
-                assert_eq!(real_sin, sin);
+                assert_eq!(exact_sin, sin);
             }
-            // println!("cos: {cos}\n>>>> {real_cos}");
-            if real_cos.eq_zero() {
-                let d = (real_cos - cos).abs();
-                assert!(d <= eps, "{d:?} > {eps:?}");
+            if exact_cos.eq_zero() {
+                let d = (exact_cos - cos).abs();
+                assert!(d < eps, "{d:?} >= {eps:?}");
             } else {
-                assert_eq!(real_cos, cos);
+                assert_eq!(exact_cos, cos);
             }
         }
     }
@@ -366,8 +373,7 @@ mod sin_cos_tests {
         // sin(45°) = cos(45°)
         let f = FRAC_PI_4;
         let (sin, cos) = f.sin_cos();
-        let d = cos - sin;
-        assert!(d < f256::EPSILON);
+        assert!((sin - cos).abs() <= sin.ulp());
     }
 
     #[test]
@@ -381,8 +387,7 @@ mod sin_cos_tests {
         // sin(60°) = cos(30°)
         let sin = FRAC_PI_3.sin();
         let cos = FRAC_PI_6.cos();
-        let d = sin - cos;
-        assert!(d < f256::EPSILON);
+        assert_eq!(sin, cos);
     }
 
     #[test]
@@ -437,7 +442,7 @@ mod sin_cos_tests {
                 0xfffffffffffffffffffffffffffffffd,
             ),
         );
-        assert_eq!(f.sin(), sin_f);
+        assert_eq!(f.sin(), sin_f, "{f}\n{}\n{}", f.sin(), sin_f);
     }
 
     #[test]
@@ -555,6 +560,30 @@ mod sin_cos_tests {
             ),
         );
         assert_eq!(f.sin(), sin);
+    }
+
+    #[test]
+    fn calc_sin_small_cutoff() {
+        let mut lf = f256::from(1e-37);
+        let mut uf = f256::from(1e-35);
+        assert_eq!(&lf.sin(), &lf);
+        assert_ne!(&uf.sin(), &uf);
+        let mut f = &(lf + &uf) / f256::TWO;
+        while lf < f && f < uf {
+            if f.sin() == f {
+                lf = f;
+            } else {
+                uf = f;
+            }
+            f = &(lf + &uf) / f256::TWO;
+        }
+        println!("\n{lf:?}\n{:?}", &lf.sin());
+        println!("\n{f:?}\n{:?}", &f.sin());
+        println!("\n{uf:?}\n{:?}", &uf.sin());
+        println!("\n// {lf:e}");
+        println!("const SMALL_CUT_OFF: f256 = f256 {{");
+        println!("    bits: u256::new{:?}", lf.bits);
+        println!("}};");
     }
 }
 

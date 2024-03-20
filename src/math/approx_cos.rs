@@ -7,336 +7,340 @@
 // $Source$
 // $Revision$
 
-use crate::math::BigFloat;
+use super::fp509::FP509;
 
-const N: usize = 32;
+const N: usize = 33;
 
-const COEFFS: [BigFloat; N] = [
+const COEFFS: [FP509; N] = [
+    // 1 / 64! ≈
+    FP509::new(
+        0x00000000000000000000000000000000,
+        0x00000000000000000000000000000000,
+        0x0000000000201b9ed4641c376e304c2d,
+        0x540bb35fe7c1d6b891e808f219052511,
+    ),
     // -1 / 62! ≈
-    // -3.1776321883905940513468372928764214080592493807301120491056222651235173770199e-86
-    BigFloat::new(
-        -0x7e6cc1644a2f1a41de2bf27aee1249a0,
-        0x8b3d76be81a339428441f1cfba077d45,
-        -285,
+    FP509::new(
+        0xffffffffffffffffffffffffffffffff,
+        0xffffffffffffffffffffffffffffffff,
+        0xfffffffe064cfa6ed74396f887503614,
+        0x47b6d97dd30a2505f9731af5eef838c1,
     ),
     // 1 / 60! ≈
-    // 1.20178049364932267021937386416586257652800811579212837697174634066971427198893e-82
-    BigFloat::new(
-        0x74bbab10f9ff3dde9183d404419222bb,
-        0x9c90e08426f315fecade63a62d64aa4b,
-        -273,
+    FP509::new(
+        0x00000000000000000000000000000000,
+        0x00000000000000000000000000000000,
+        0x00001d2eeac43e7fcf77a460f5011064,
+        0x88aee724382109bcc57fb2b798e98b59,
     ),
     // -1 / 58! ≈
-    // -4.2543029475186022525765834791471535209091487299041344544799820459707885228408e-79
-    BigFloat::new(
-        -0x64e331986c0fd8389b432efcadab8c84,
-        0xa510360a36a996c274d4b39f5ebb402d,
-        -261,
+    FP509::new(
+        0xffffffffffffffffffffffffffffffff,
+        0xffffffffffffffffffffffffffffffff,
+        0xfe6c73399e4fc09f1d92f3440d4951cd,
+        0xed6bbf27d72559a4f62cad31828512ff,
     ),
     // 1 / 56! ≈
-    // 1.40647255444964990470181849820604895401256457010630685065108206439794268565115e-75
-    BigFloat::new(
-        0x516ddfe7a63849e4b05119ccb1ac964a,
-        0x8fba359dfe5ea14eb38c2d7a81d5e2ac,
-        -249,
+    FP509::new(
+        0x00000000000000000000000000000000,
+        0x00000000000000000000000000000014,
+        0x5b77f9e98e12792c1446732c6b2592a3,
+        0xee8d677f97a853ace30b5ea07578ab1a,
     ),
     // -1 / 54! ≈
-    // -4.33193546770492170648160097447463077835869887592742510000533275834566347180556e-72
-    BigFloat::new(
-        -0x7a763dbb60faa720ed29f7ccd7348e06,
-        0x22270aa29b8c50975c05d0653d42a9e5,
-        -238,
+    FP509::new(
+        0xffffffffffffffffffffffffffffffff,
+        0xffffffffffffffffffffffffffff0b13,
+        0x84893e0ab1be25ac10665196e3f3bbb1,
+        0xeabac8e75ed147f45f35857aac356f80,
     ),
     // 1 / 52! ≈
-    // 1.23979993085714859239503419889463932876625961829042906362152623543852888563075e-68
-    BigFloat::new(
-        0x55915e624d63238721b6b30540ded8bc,
-        0x891d078e5e6faacfc26c8ffcbd2df476,
-        -226,
+    FP509::new(
+        0x00000000000000000000000000000000,
+        0x0000000000000000000000000ab22bcc,
+        0x49ac6470e436d660a81bdb179123a0f1,
+        0xcbcdf559f84d91ff97a5be8ec29b74a1,
     ),
     // -1 / 50! ≈
-    // -3.2879494166331580670316306954685834998881205077062178767242875763829786046928e-65
-    BigFloat::new(
-        -0x6ecdbdb84b35e0817c2814d14d8091a8,
-        0x238d1748db4999b008439473c6f9020f,
-        -215,
+    FP509::new(
+        0xffffffffffffffffffffffffffffffff,
+        0xffffffffffffffffffffff91324247b4,
+        0xca1f7e83d7eb2eb27f6e57dc72e8b724,
+        0xb6664ff7bc6b8c3906fdf117fd93d075,
     ),
     // 1 / 48! ≈
-    // 8.0554760707512372642274952038980295747258952438802337979745045621382975814972e-62
-    BigFloat::new(
-        0x4246d01adbfc99e973637973b17b871f,
-        0xb243c48d742a660d6af16c2bc063b15b,
-        -203,
+    FP509::new(
+        0x00000000000000000000000000000000,
+        0x00000000000000000004246d01adbfc9,
+        0x9e973637973b17b871fb243c48d742a6,
+        0x60d6af16c2bc063b15b2a8672f5effa5,
     ),
     // -1 / 46! ≈
-    // -1.81731540156147912680972291799939547205816196701938074482304822921839993438576e-58
-    BigFloat::new(
-        -0x4902013d9654418b291b93c9718212d8,
-        0xea5ea683d1f6b46ac7cdf12831edd15e,
-        -192,
+    FP509::new(
+        0xffffffffffffffffffffffffffffffff,
+        0xffffffffffffffffdb7eff6134d5df3a,
+        0x6b72361b473ef6938ad0acbe1704a5ca,
+        0x9c19076be7091750c993f2ae8ad3248e,
     ),
     // 1 / 44! ≈
-    // 3.7618428812322617924961264402587486271603952717301181417837098344820878641786e-55
-    BigFloat::new(
-        0x49cac6c0ffb1a93f67cc9f9fdb7a388c,
-        0xbee32acdbc781adaed73677f60771f5e,
-        -181,
+    FP509::new(
+        0x00000000000000000000000000000000,
+        0x00000000000001272b1b03fec6a4fd9f,
+        0x327e7f6de8e232fb8cab36f1e06b6bb5,
+        0xcd9dfd81dc7d78c20db3b0a978b668e0,
     ),
     // -1 / 42! ≈
-    // -7.117406731291439311402671224969552402587467854113383524254779006840110239026e-52
-    BigFloat::new(
-        -0x442bd49d4c37a0db136489772e42693e,
-        0x658dd0b109cf4cf405d1d1d2c9e0c7b,
-        -170,
+    FP509::new(
+        0xffffffffffffffffffffffffffffffff,
+        0xfffffffffff77a856c56790be49d936e,
+        0xd11a37b2d83f34e45e9dec616617f45c,
+        0x5c5a6c3e70af85d2bbfa5b7fdbe0eb60,
     ),
     // 1 / 40! ≈
-    // 1.22561743912838584942353998493975692372556196447832464287667294497786698316025e-48
-    BigFloat::new(
-        0x72a3b50a84ab8c00681c912aeb4aadfa,
-        0xcdac6fb71b6ff1ae85bc95758f87c7fc,
-        -160,
+    FP509::new(
+        0x00000000000000000000000000000000,
+        0x000000003951da854255c600340e4895,
+        0x75a556fd66d637db8db7f8d742de4aba,
+        0xc7c3e3fe0355d47b8df485f2f910bef5,
     ),
     // -1 / 38! ≈
-    // -1.91196320504028192510072237650602080101187666458618644288760979416547249373e-45
-    BigFloat::new(
-        -0x5752b2e7030eaba44f4dc293b139e286,
-        0xaaa591879e64517efdea5d88c546d55,
-        -149,
+    FP509::new(
+        0xffffffffffffffffffffffffffffffff,
+        0xfffffea2b53463f3c5516ec2c8f5b13b,
+        0x1875e7d5569b9e1866eba04085689dce,
+        0xae4aac1bacf92f16f5efbf6241f45c00,
     ),
     // 1 / 36! ≈
-    // 2.68822026628663638669161566136746524622269859040817813869997937059665432618437e-42
-    BigFloat::new(
-        0x77e60ca430b2a4ac1ae344a9c9d6fa87,
-        0xba4e5551b5fabde5dda34b6d4adec1e,
-        -139,
+    FP509::new(
+        0x00000000000000000000000000000000,
+        0x00077e60ca430b2a4ac1ae344a9c9d6f,
+        0xa870ba4e5551b5fabde5dda34b6d4ade,
+        0xc1e2bfffff6f5fe54542e259c3eeb876,
     ),
     // -1 / 34! ≈
-    // -3.3871575355211618472314357333230062102406002239143044547619740069517844509924e-39
-    BigFloat::new(
-        -0x49c408c703f5e84fe28ad2be75adc322,
-        0x15a9f317dc575c3d4ebdbf6e7bd900c5,
-        -128,
+    FP509::new(
+        0xffffffffffffffffffffffffffffffff,
+        0xdb1dfb9c7e050bd80eba96a0c5291e6e,
+        0xf52b067411d451e158a12048c2137f9d,
+        0xb7f70002c7d4038f1acdee2fa50c1916,
     ),
     // 1 / 32! ≈
-    // 3.8003907548547435925936708927884129678899534512318495982429348357999021540133e-36
-    BigFloat::new(
-        0x50d34b9e0fd6f10b87b91be9aff0e44e,
-        0xd8bcb6dba4edb8912cc6e8408eb34557,
-        -118,
+    FP509::new(
+        0x000000000000000000000000000000a1,
+        0xa6973c1fade2170f7237d35fe1c89db1,
+        0x796db749db7122598dd0811d668aaebf,
+        0xb771f3d030c866cc8572132ea0fa0ead,
     ),
     // -1 / 30! ≈
-    // -3.7699876288159056438529215256461056641468338236219948014569913571135029367813e-33
-    BigFloat::new(
-        -0x4e4cb1411f5839832b7b530a62715d2c,
-        0x61f6d124c7c64acca360b0fe8a3dab2d,
-        -108,
+    FP509::new(
+        0xfffffffffffffffffffffffffffd8d9a,
+        0x75f7053e33e6a42567acec75169cf049,
+        0x76d9c1cda99ae4fa780bae12a69ad919,
+        0x266f3942f771a77ae5f5ab50370722c6,
     ),
     // 1 / 28! ≈
-    // 3.2798892370698379101520417273121119278077454265511354772675824806887475549997e-30
-    BigFloat::new(
-        0x42862898d42174dcf171470d52a350a9,
-        0x353b32b0bfbaf88cdccea660427364ee,
-        -98,
+    FP509::new(
+        0x0000000000000000000000000850c513,
+        0x1a842e9b9e2e28e1aa546a1526a76656,
+        0x17f75f119b99d4cc084e6c9dcdc23487,
+        0x6203666b13c0d4567f1bcd64fdbfd463,
     ),
     // -1 / 26! ≈
-    // -2.4795962632247974600749435458479566174226555424726584208142923554006931515798e-27
-    BigFloat::new(
-        -0x623a17f1a939668e3c8142e9ac052519,
-        0xd89968d8fb1a12fffe0921aa221e6308,
-        -89,
+    FP509::new(
+        0xffffffffffffffffffffffe7717a0395,
+        0xb1a65c70dfaf4594feb6b989d9a5c9c1,
+        0x397b40007db7957778673dfc5e7ce032,
+        0x8df58bc9aa8cf090a1e571c2a580cb7b,
     ),
     // 1 / 24! ≈
-    // 1.61173757109611834904871330480117180132472610260722797352929003101045054852685e-24
-    BigFloat::new(
-        0x7cb3c065cbd5df3292d019f2a7628819,
-        0xcffac21b76c81a1efd8197bcfd5093b9,
-        -80,
+    FP509::new(
+        0x000000000000000000003e59e032e5ea,
+        0xef9949680cf953b1440ce7fd610dbb64,
+        0x0d0f7ec0cbde7ea849dc9d3816eebfa3,
+        0x8e8b11f4f62530c4ef6d27c7c6fb58dd,
     ),
     // -1 / 22! ≈
-    // -8.8967913924505732867488974425024683433124880863918984138816809711776870278683e-22
-    BigFloat::new(
-        -0x4338e5b6dfe14a5143242dfcce3b1d5d,
-        0xea1d2ca2ce07de14b4a7dbcbe08d6fa2,
-        -70,
+    FP509::new(
+        0xffffffffffffffffff798e3492403d6b,
+        0x5d79b7a4066389c5442bc5a6ba63f043,
+        0xd696b048683ee520bc4cff0e8d32c754,
+        0xa42147cd3fced75bbca2393af20863a8,
     ),
     // 1 / 20! ≈
-    // 4.1103176233121648584779906184361403746103694959130570672133366086840914068751e-19
-    BigFloat::new(
-        0x7950ae900808941ea72b4afe3c2eaeff,
-        0x7c80a68dcfd232c95e06eea9ef3f3f76,
-        -62,
+    FP509::new(
+        0x0000000000000000f2a15d201011283d,
+        0x4e5695fc785d5dfef9014d1b9fa46592,
+        0xbc0ddd53de7e7eec2d0bb3bd2e5c453f,
+        0xcbf06b96d8b75871933cb79f34dc26ae,
     ),
     // -1 / 18! ≈
-    // -1.56192069685862264622163643500573334235194040844696168554106791129995473461256e-16
-    BigFloat::new(
-        -0x5a09e18ee5f65deec01221a8b0aaa5e1,
-        0x9e677b9d403e01b173c925221f90f11a,
-        -53,
+    FP509::new(
+        0xfffffffffffffe97d879c468268844ff,
+        0xb7795d3d5568798662118aff07f93a30,
+        0xdb6b7781bc3b996d22a1332f2f09354d,
+        0x47204c164fd8b76971df6fad8936960d,
     ),
     // 1 / 16! ≈
-    // 4.7794773323873852974382074911175440275969376498477027577556678085778614879144e-14
-    BigFloat::new(
-        0x6b9fcf9ccee07c476195ac3ba32bfa47,
-        0xaf57b1c1f6ca1e061c666e62c9bb4031,
-        -45,
+    FP509::new(
+        0x000000000001ae7f3e733b81f11d8656,
+        0xb0ee8cafe91ebd5ec707db2878187199,
+        0xb98b26ed00c29b8c9b50d199c6fe49a0,
+        0xfb650d548ef4c3f5e2ec8291fcc0a4dd,
     ),
     // -1 / 14! ≈
-    // -1.14707455977297247138516979786821056662326503596344866186136027405868675709947e-11
-    BigFloat::new(
-        -0x64e5d2a301f27482eb7c5177e8f93aa3,
-        0x346236a5d75d7c25baa0077c9d1f8c2e,
-        -37,
+    FP509::new(
+        0xfffffffffe6c68b573f8362df4520eba,
+        0x205c1b15732e772568a28a0f69157fe2,
+        0x0d8b81cf498e2c2e643b7fd5719af914,
+        0x514380b9fa88497b424597230b65706c,
     ),
     // 1 / 12! ≈
-    // 2.087675698786809897921009032120143231254342365453476564587675698786809897921e-9
-    BigFloat::new(
-        0x47bb63bfe3625ed5136a61eb3fa12fb0,
-        0x73dd2d9e71c7642d2adc55297b46da8,
-        -29,
+    FP509::new(
+        0x000000011eed8eff8d897b544da987ac,
+        0xfe84bec01cf74b679c71d90b4ab7154a,
+        0x5ed1b6a1b4ec9704bdb31e413bd2eb8e,
+        0x3a027bc7e31bc25ee2868d15e5e212f8,
     ),
     // -1 / 10! ≈
-    // -2.75573192239858906525573192239858906525573192239858906525573192239858906525576e-7
-    BigFloat::new(
-        -0x49f93edde27d71cbbc05b4fa999e392d,
-        0x8777c170b65559f4e943337d2c721116,
-        -22,
+    FP509::new(
+        0xffffff6c0d82443b051c6887f4960acc,
+        0xc38da4f1107d1e93554c162d799905a7,
+        0x1bddd49eb602218e2fa4665d273e8aaa,
+        0x16b82ceee5afc713329f40b5776e3850,
     ),
     // 1 / 8! ≈
-    // 2.4801587301587301587301587301587301587301587301587301587301587301587301587302e-5
-    BigFloat::new(
-        0x68068068068068068068068068068068,
-        0x6806806806806806806806806806807,
-        -16,
+    FP509::new(
+        0x00003403403403403403403403403403,
+        0x40340340340340340340340340340340,
+        0x34034034034034034034034034034034,
+        0x03403403403403403403403403403403,
     ),
     // -1 / 6! ≈
-    // -1.3888888888888888888888888888888888888888888888888888888888888888888888888889e-3
-    BigFloat::new(
-        -0x5b05b05b05b05b05b05b05b05b05b05b,
-        0x5b05b05b05b05b05b05b05b05b05b06,
-        -10,
+    FP509::new(
+        0xfff49f49f49f49f49f49f49f49f49f49,
+        0xf49f49f49f49f49f49f49f49f49f49f4,
+        0x9f49f49f49f49f49f49f49f49f49f49f,
+        0x49f49f49f49f49f49f49f49f49f49f4a,
     ),
     // 1 / 4! ≈
-    // 4.1666666666666666666666666666666666666666666666666666666666666666666666666666e-2
-    BigFloat::new(
+    FP509::new(
+        0x01555555555555555555555555555555,
         0x55555555555555555555555555555555,
         0x55555555555555555555555555555555,
-        -5,
+        0x55555555555555555555555555555555,
     ),
     // -1 / 2! ≈
-    // -0.5
-    BigFloat::new(
-        -0x40000000000000000000000000000000,
+    FP509::new(
+        0xf0000000000000000000000000000000,
         0x00000000000000000000000000000000,
-        -1,
+        0x00000000000000000000000000000000,
+        0x00000000000000000000000000000000,
     ),
-    // 1 / 0! = 1
-    BigFloat::ONE,
+    // 1 / 0! ≈
+    FP509::new(
+        0x20000000000000000000000000000000,
+        0x00000000000000000000000000000000,
+        0x00000000000000000000000000000000,
+        0x00000000000000000000000000000000,
+    ),
 ];
 
 // Cut-off for small values
 // 5.8774717541114375398436826861112283890933277838604376075437585313920862972735e-39
-const SMALL_CUT_OFF: BigFloat = BigFloat::new(
-    0x7fffffffffffffffffffffffffffffff,
-    0xffffffffffffffffffffffffffffffff,
-    -128,
-);
+// const SMALL_CUT_OFF: BigFloat = BigFloat::new(
+//     0x7fffffffffffffffffffffffffffffff,
+//     0xffffffffffffffffffffffffffffffff,
+//     -128,
+// );
 
-pub(crate) fn approx_cos(x: &BigFloat) -> BigFloat {
+pub(crate) fn approx_cos(x: &FP509) -> FP509 {
     // debug_assert!(x.abs() < FRAC_PI_2);
     // If x is zero or very small, cosine x == 1.
     // if x.abs() <= SMALL_CUT_OFF {
     if x.is_zero() {
-        return BigFloat::ONE;
+        return FP509::ONE;
     };
-    let x2 = *x * x;
-    debug_assert!(
-        x2.signif.hi.leading_zeros() == 1,
-        "Non-normalzed x^2: {:?}",
-        x2
-    );
-    let mut res = COEFFS[0];
+    let mut x2 = *x;
+    x2.imul_round(x);
+    let mut cos = COEFFS[0];
     for coeff in &COEFFS[1..N] {
-        debug_assert!(
-            coeff.signif.hi.leading_zeros() == 1,
-            "Non-normalzed coeff: {:?}",
-            coeff
-        );
-        res.imul_add(&x2, coeff);
+        cos.imul_round(&x2);
+        cos += coeff;
     }
-    res
+    cos
 }
 
-#[cfg(test)]
-mod test_approx_cos {
-    use std::ops::Neg;
-
-    use super::*;
-
-    // FRAC_PI_3 = ◯₂₅₅(⅓π) =
-    const FRAC_PI_3: BigFloat = BigFloat::new(
-        0x430548e0b5cd961196eccb83d59eb445,
-        0xb8561a02d8cd4426ab593f8cbe5bde61,
-        0,
-    );
-    // FRAC_1_SQRT_2 = ◯₂₅₅(1/√2) =
-    const FRAC_1_SQRT_2: BigFloat = BigFloat::new(
-        0x5a827999fcef32422cbec4d9baa55f4f,
-        0x8eb7b05d449dd426768bd642c199cc8b,
-        -1,
-    );
-
-    #[test]
-    fn test_approx_cos() {
-        let x = FRAC_PI_3;
-        // assert_eq!(approx_cos(&x), BigFloat::ONE_HALF);
-        assert!(
-            (approx_cos(&x) - &BigFloat::ONE_HALF).abs()
-                <= BigFloat::ONE_HALF.quantum()
-        );
-        let x = BigFloat::FRAC_PI_4.neg();
-        assert_eq!(approx_cos(&x), FRAC_1_SQRT_2);
-        let x = BigFloat::ZERO;
-        assert_eq!(approx_cos(&x), BigFloat::ONE);
-        let x = BigFloat::ZERO.neg();
-        assert_eq!(approx_cos(&x), BigFloat::ONE);
-    }
-
-    #[test]
-    fn test_small_cutoff() {
-        let mut f = SMALL_CUT_OFF;
-        println!("{:?}\n{:?}\n", f, approx_cos(&f));
-        assert_eq!(approx_cos(&f), BigFloat::ONE);
-        f += &f.quantum();
-        println!("{:?}\n{:?}\n", f, approx_cos(&f));
-        assert_ne!(approx_cos(&f), BigFloat::ONE);
-        assert_ne!(approx_cos(&f.neg()), BigFloat::ONE);
-    }
-
-    #[test]
-    fn calc_small_cutoff() {
-        let mut lf = BigFloat::new(
-            0x571cbec554b60dbbd5f64baf0506840d,
-            0x451db70d5904029b0aa6cf6bb1066de9,
-            -128,
-        );
-        let mut uf = BigFloat::new(
-            0x571cbec554b60dbbd5f64baf0506840d,
-            0x451db70d5904029b0aa6cf6bb1066de9,
-            -127,
-        );
-        assert_eq!(approx_cos(&lf), BigFloat::ONE);
-        assert_ne!(approx_cos(&uf), BigFloat::ONE);
-        let mut f = &(lf + &uf) >> 1_u32;
-        while lf < f && f < uf {
-            if approx_cos(&f) == BigFloat::ONE {
-                lf = f;
-            } else {
-                uf = f;
-            }
-            f = &(lf + &uf) >> 1_u32;
-        }
-        println!("\n{lf:?}\n{:?}", approx_cos(&lf));
-        println!("\n{f:?}\n{:?}", approx_cos(&f));
-        println!("\n{uf:?}\n{:?}", approx_cos(&uf));
-    }
-}
+// #[cfg(test)]
+// mod test_approx_cos {
+//     use core::ops::Neg;
+//
+//     use super::*;
+//
+//     // FRAC_PI_3 = ◯₂₅₅(⅓π) =
+//     const FRAC_PI_3: BigFloat = BigFloat::new(
+//         0x430548e0b5cd961196eccb83d59eb445,
+//         0xb8561a02d8cd4426ab593f8cbe5bde61,
+//         0,
+//     );
+//     // FRAC_1_SQRT_2 = ◯₂₅₅(1/√2) =
+//     const FRAC_1_SQRT_2: BigFloat = BigFloat::new(
+//         0x5a827999fcef32422cbec4d9baa55f4f,
+//         0x8eb7b05d449dd426768bd642c199cc8b,
+//         -1,
+//     );
+//
+//     #[test]
+//     fn test_approx_cos() {
+//         let x = FRAC_PI_3;
+//         // assert_eq!(approx_cos(&x), BigFloat::ONE_HALF);
+//         assert!(
+//             (approx_cos(&x) - &BigFloat::ONE_HALF).abs()
+//                 <= BigFloat::ONE_HALF.quantum()
+//         );
+//         let x = BigFloat::FRAC_PI_4.neg();
+//         assert_eq!(approx_cos(&x), FRAC_1_SQRT_2);
+//         let x = BigFloat::ZERO;
+//         assert_eq!(approx_cos(&x), BigFloat::ONE);
+//         let x = BigFloat::ZERO.neg();
+//         assert_eq!(approx_cos(&x), BigFloat::ONE);
+//     }
+//
+//     #[test]
+//     fn test_small_cutoff() {
+//         let mut f = SMALL_CUT_OFF;
+//         println!("{:?}\n{:?}\n", f, approx_cos(&f));
+//         assert_eq!(approx_cos(&f), BigFloat::ONE);
+//         f += &f.quantum();
+//         println!("{:?}\n{:?}\n", f, approx_cos(&f));
+//         assert_ne!(approx_cos(&f), BigFloat::ONE);
+//         assert_ne!(approx_cos(&f.neg()), BigFloat::ONE);
+//     }
+//
+//     #[test]
+//     fn calc_small_cutoff() {
+//         let mut lf = BigFloat::new(
+//             0x571cbec554b60dbbd5f64baf0506840d,
+//             0x451db70d5904029b0aa6cf6bb1066de9,
+//             -128,
+//         );
+//         let mut uf = BigFloat::new(
+//             0x571cbec554b60dbbd5f64baf0506840d,
+//             0x451db70d5904029b0aa6cf6bb1066de9,
+//             -127,
+//         );
+//         assert_eq!(approx_cos(&lf), BigFloat::ONE);
+//         assert_ne!(approx_cos(&uf), BigFloat::ONE);
+//         let mut f = &(lf + &uf) >> 1_u32;
+//         while lf < f && f < uf {
+//             if approx_cos(&f) == BigFloat::ONE {
+//                 lf = f;
+//             } else {
+//                 uf = f;
+//             }
+//             f = &(lf + &uf) >> 1_u32;
+//         }
+//         println!("\n{lf:?}\n{:?}", approx_cos(&lf));
+//         println!("\n{f:?}\n{:?}", approx_cos(&f));
+//         println!("\n{uf:?}\n{:?}", approx_cos(&uf));
+//     }
+// }

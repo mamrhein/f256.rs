@@ -546,6 +546,14 @@ impl u256 {
         (lo, hi)
     }
 
+    /// `self * rhs + carry` (multiply-accumulate)
+    fn carrying_mul(&self, rhs: &Self, carry: &Self) -> (Self, Self) {
+        let (rl, mut rh) = self.widening_mul(rhs);
+        let (rl, ovfl) = rl.overflowing_add(carry);
+        rh += ovfl as u128;
+        (rl, rh)
+    }
+
     /// Calculate ⌊(self * rhs) / 2²⁵⁶⌋.
     pub(crate) fn truncating_mul(&self, rhs: &Self) -> Self {
         self.widening_mul(rhs).1
@@ -1025,6 +1033,19 @@ impl u512 {
             self.hi.decr();
         }
         self.lo.decr();
+    }
+
+    /// `self * rhs` (wide multiplication).
+    pub(crate) fn widening_mul(&self, rhs: &Self) -> (Self, Self) {
+        let (ll, carry) = self.lo.widening_mul(&rhs.lo);
+        let (lh, hl) = self.lo.carrying_mul(&rhs.hi, &carry);
+        let (lh, carry) = self.hi.carrying_mul(&rhs.lo, &lh);
+        let (hl, incr) = hl.overflowing_add(&carry);
+        let (hl, mut hh) = self.hi.carrying_mul(&rhs.hi, &hl);
+        hh += incr as u128;
+        let hi = u512::new(hh, hl);
+        let lo = u512::new(lh, ll);
+        (lo, hi)
     }
 
     // Specialized version adapted from
