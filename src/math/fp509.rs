@@ -71,7 +71,7 @@ impl FP509 {
     }
 
     #[inline(always)]
-    fn iabs(&mut self) {
+    pub(crate) fn iabs(&mut self) {
         if self.signum() < 0 {
             self.ineg();
         }
