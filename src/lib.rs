@@ -59,11 +59,9 @@
 extern crate alloc;
 extern crate core;
 
-use core::{
-    cmp::{max, Ordering},
-    num::FpCategory,
-    ops::Neg,
-};
+use core::{cmp::Ordering, num::FpCategory, ops::Neg};
+
+use crate::big_uint::{u256, u512};
 
 mod big_uint;
 mod binops;
@@ -73,8 +71,6 @@ mod fused_ops;
 mod math;
 #[cfg(feature = "num-traits")]
 mod num_traits;
-
-use crate::big_uint::{u256, u512};
 
 /// Precision level in relation to single precision float (f32) = 8
 pub(crate) const PREC_LEVEL: u32 = 8;
