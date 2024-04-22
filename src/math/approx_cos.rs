@@ -245,23 +245,23 @@ const COEFFS: [FP509; N] = [
     ),
 ];
 
-// Cut-off for small values
-// 5.8774717541114375398436826861112283890933277838604376075437585313920862972735e-39
-// const SMALL_CUT_OFF: BigFloat = BigFloat::new(
-//     0x7fffffffffffffffffffffffffffffff,
-//     0xffffffffffffffffffffffffffffffff,
-//     -128,
-// );
+// 4.34011192927290911129289122290072654677560440564151412595797421911000298e-36
+const SMALL_CUT_OFF: FP509 = FP509::new(
+    0x000000000000000000000000000000b8,
+    0x9ba24891f7b2e6ef3f8b62b71933e050,
+    0xc4a624dd04ec913a3e682736b0000000,
+    0x00000000000000000000000000000000,
+);
 
 pub(crate) fn approx_cos(x: &FP509) -> FP509 {
-    // debug_assert!(x.abs() < FRAC_PI_2);
+    let mut x_abs = *x;
+    x_abs.iabs();
     // If x is zero or very small, cosine x == 1.
-    // if x.abs() <= SMALL_CUT_OFF {
-    if x.is_zero() {
+    if x_abs <= SMALL_CUT_OFF {
         return FP509::ONE;
     };
-    let mut x2 = *x;
-    x2.imul_round(x);
+    let mut x2 = x_abs;
+    x2.imul_round(&x_abs);
     let mut cos = COEFFS[0];
     for coeff in &COEFFS[1..N] {
         cos.imul_round(&x2);
@@ -270,77 +270,40 @@ pub(crate) fn approx_cos(x: &FP509) -> FP509 {
     cos
 }
 
-// #[cfg(test)]
-// mod test_approx_cos {
-//     use core::ops::Neg;
-//
-//     use super::*;
-//
-//     // FRAC_PI_3 = ◯₂₅₅(⅓π) =
-//     const FRAC_PI_3: BigFloat = BigFloat::new(
-//         0x430548e0b5cd961196eccb83d59eb445,
-//         0xb8561a02d8cd4426ab593f8cbe5bde61,
-//         0,
-//     );
-//     // FRAC_1_SQRT_2 = ◯₂₅₅(1/√2) =
-//     const FRAC_1_SQRT_2: BigFloat = BigFloat::new(
-//         0x5a827999fcef32422cbec4d9baa55f4f,
-//         0x8eb7b05d449dd426768bd642c199cc8b,
-//         -1,
-//     );
-//
-//     #[test]
-//     fn test_approx_cos() {
-//         let x = FRAC_PI_3;
-//         // assert_eq!(approx_cos(&x), BigFloat::ONE_HALF);
-//         assert!(
-//             (approx_cos(&x) - &BigFloat::ONE_HALF).abs()
-//                 <= BigFloat::ONE_HALF.quantum()
-//         );
-//         let x = BigFloat::FRAC_PI_4.neg();
-//         assert_eq!(approx_cos(&x), FRAC_1_SQRT_2);
-//         let x = BigFloat::ZERO;
-//         assert_eq!(approx_cos(&x), BigFloat::ONE);
-//         let x = BigFloat::ZERO.neg();
-//         assert_eq!(approx_cos(&x), BigFloat::ONE);
-//     }
-//
-//     #[test]
-//     fn test_small_cutoff() {
-//         let mut f = SMALL_CUT_OFF;
-//         println!("{:?}\n{:?}\n", f, approx_cos(&f));
-//         assert_eq!(approx_cos(&f), BigFloat::ONE);
-//         f += &f.quantum();
-//         println!("{:?}\n{:?}\n", f, approx_cos(&f));
-//         assert_ne!(approx_cos(&f), BigFloat::ONE);
-//         assert_ne!(approx_cos(&f.neg()), BigFloat::ONE);
-//     }
-//
-//     #[test]
-//     fn calc_small_cutoff() {
-//         let mut lf = BigFloat::new(
-//             0x571cbec554b60dbbd5f64baf0506840d,
-//             0x451db70d5904029b0aa6cf6bb1066de9,
-//             -128,
-//         );
-//         let mut uf = BigFloat::new(
-//             0x571cbec554b60dbbd5f64baf0506840d,
-//             0x451db70d5904029b0aa6cf6bb1066de9,
-//             -127,
-//         );
-//         assert_eq!(approx_cos(&lf), BigFloat::ONE);
-//         assert_ne!(approx_cos(&uf), BigFloat::ONE);
-//         let mut f = &(lf + &uf) >> 1_u32;
-//         while lf < f && f < uf {
-//             if approx_cos(&f) == BigFloat::ONE {
-//                 lf = f;
-//             } else {
-//                 uf = f;
-//             }
-//             f = &(lf + &uf) >> 1_u32;
-//         }
-//         println!("\n{lf:?}\n{:?}", approx_cos(&lf));
-//         println!("\n{f:?}\n{:?}", approx_cos(&f));
-//         println!("\n{uf:?}\n{:?}", approx_cos(&uf));
-//     }
-// }
+#[cfg(test)]
+mod test_approx_cos {
+    use crate::{
+        f256,
+        math::BigFloat,
+    };
+
+    use super::*;
+
+    #[test]
+    fn calc_small_cutoff() {
+        let mut lf = f256::from(1e-36_f64);
+        let mut uf = f256::from(1e-35_f64);
+        assert_eq!(lf.cos(), f256::ONE);
+        assert_ne!(uf.cos(), f256::ONE);
+        let mut f = (lf + uf) / f256::TWO;
+        while lf < f && f < uf {
+            if f.cos() == f256::ONE {
+                lf = f;
+            } else {
+                uf = f;
+            }
+            f = (lf + uf) / f256::TWO;
+        }
+        let cutoff = FP509::from(&BigFloat::from(&f));
+        // println!("\n{lf:?}\n{:?}", lf.cos());
+        // println!("\n{f:?}\n{:?}", f.cos());
+        // println!("\n{uf:?}\n{:?}", uf.cos());
+        // println!("\n// {f:e}");
+        // println!("{:?};", cutoff);
+
+        assert_eq!(f.cos(), f256::ONE);
+        assert_eq!(cutoff, SMALL_CUT_OFF);
+        let g = f + f.ulp();
+        assert_ne!(g.cos(), f256::ONE);
+    }
+}

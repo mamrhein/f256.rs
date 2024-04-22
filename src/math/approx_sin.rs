@@ -240,13 +240,14 @@ const SMALL_CUT_OFF: FP509 = FP509::new(
 );
 
 pub(crate) fn approx_sin(x: &FP509) -> FP509 {
-    // debug_assert!(x.abs() < FP510::FRAC_PI_2);
+    let mut x_abs = *x;
+    x_abs.iabs();
     // If x is zero or very small, sine x == x.
-    if x <= &SMALL_CUT_OFF {
+    if &x_abs <= &SMALL_CUT_OFF {
         return *x;
     };
-    let mut x2 = *x;
-    x2.imul_round(x);
+    let mut x2 = x_abs;
+    x2.imul_round(&x_abs);
     let mut sin = COEFFS[0];
     for coeff in &COEFFS[1..N] {
         sin.imul_round(&x2);
@@ -258,7 +259,9 @@ pub(crate) fn approx_sin(x: &FP509) -> FP509 {
 
 #[cfg(test)]
 mod test_approx_sin {
-    use crate::f256;
+    use crate::{f256, math::BigFloat};
+
+    use super::*;
 
     #[test]
     fn calc_small_cutoff() {
@@ -275,13 +278,15 @@ mod test_approx_sin {
             }
             f = (lf + uf) / f256::TWO;
         }
+        let cutoff = FP509::from(&BigFloat::from(&f));
         // println!("\n{lf:?}\n{:?}", lf.sin());
         // println!("\n{f:?}\n{:?}", f.sin());
         // println!("\n{uf:?}\n{:?}", uf.sin());
         // println!("\n// {f:e}");
-        // println!("{:?};", FP509::from(&BigFloat::from(&f)));
+        // println!("{:?};", cutoff);
 
         assert_eq!(f, f.sin());
+        assert_eq!(cutoff, SMALL_CUT_OFF);
         let g = f + f.ulp();
         assert_ne!(g, g.sin());
     }
