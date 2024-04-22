@@ -16,10 +16,10 @@ use crate::{
     abs_bits, abs_bits_sticky,
     big_uint::u256,
     BinEncAnySpecial,
-    consts::{FRAC_2_PI, FRAC_PI_2, FRAC_PI_4, PI}, EXP_BIAS,
-    exp_bits,
+    consts::{FRAC_PI_2, FRAC_PI_4, PI},
+    EXP_BIAS,
     f256, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BITS,
-    math::{approx_cos::approx_cos, approx_sin::approx_sin, fp509::FP509}, sign_bits_hi, signif,
+    math::{approx_cos::approx_cos, approx_sin::approx_sin, fp509::FP509}, sign_bits_hi,
 };
 
 use super::BigFloat;
@@ -43,14 +43,14 @@ const LARGE_CUT_OFF: u256 = u256::new(
     0_u128,
 );
 
-fn fastest_reduce(x: &f256) -> (u32, f256) {
-    let q = (x * FRAC_2_PI).round_tie_even();
-    let r = *x - q * FRAC_PI_2;
-    let m = signif(&q.bits);
-    let e = exp_bits(&q.bits) as i32 - EXP_BIAS as i32 - FRACTION_BITS as i32;
-    let q = (&m >> e.unsigned_abs()).lo as u32 & 0x3;
-    (q, r)
-}
+// fn fastest_reduce(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
+//     let q = (x * FRAC_2_PI).round_tie_even();
+//     let r = *x - q * FRAC_PI_2;
+//     let m = signif(&q.bits);
+//     let e = exp_bits(&q.bits) as i32 - EXP_BIAS as i32 - FRACTION_BITS as
+// i32;     let q = (&m >> e.unsigned_abs()).lo as u32 & 0x3;
+//     (q, r)
+// }
 
 // Accurate range reduction algorithm, adapted from
 // S. Boldo, M. Daumas, R.-C. Li,
@@ -81,17 +81,16 @@ fn fast_reduce(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
         0x6605614dbe4be286e9fc26adadaa3848,
         -254,
     );
-    // TODO: remove this constant
-    // // D = 3⋅2²⁵³ =
-    // // 43422033463993573283839119378257965444976244249615211514796594002967423614976
-    // const D: BigFloat = BigFloat::new(
-    //     0x60000000000000000000000000000000,
-    //     0x00000000000000000000000000000000,
-    //     254,
-    // );
+    // D = 3⋅2²⁵³ =
+    // 43422033463993573283839119378257965444976244249615211514796594002967423614976
+    const D: BigFloat = BigFloat::new(
+        0x60000000000000000000000000000000,
+        0x00000000000000000000000000000000,
+        254,
+    );
 
-    // let zz = x.mul_add(&R, &D) - &D;
-    let z = (*x * &R).trunc();
+    let z = x.mul_add(&R, &D) - &D;
+    // let z = (*x * &R).trunc();
     // debug_assert_eq!(z.abs(), zz.abs());
     let u = *x - &(z * &C1);
     let v1 = u - &(z * &C2);
@@ -114,18 +113,34 @@ const M: BigFloat = BigFloat::new(
 );
 
 fn rem_frac_pi_2(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
-    debug_assert!(x.sign >= 0);
-    if x < &BigFloat::FRAC_PI_2 {
+    let x_abs = x.abs();
+    if &x_abs <= &BigFloat::FRAC_PI_4 {
         (0, *x, BigFloat::ZERO)
-        // } else if x < &PI {
-        //     (1, x - &FRAC_PI_2)
-        // } else if x < &FRAC_3_PI_2 {
-        //     (2, x - &PI)
-        // } else if x < &TAU {
-        //     (3, x - &FRAC_3_PI_2)
-        // } else if x <= &TAU {
-        //     return fastest_reduce(x);
-    } else if &x.abs() <= &M {
+    } else if &x_abs < &BigFloat::FRAC_3_PI_4 {
+        let mut y = BigFloat::FRAC_PI_2;
+        y.copy_sign(x);
+        y.flip_sign();
+        let (hi, lo) = x.sum_exact(&y);
+        (1, hi, lo)
+    } else if &x_abs <= &BigFloat::FRAC_5_PI_4 {
+        let mut y = BigFloat::PI;
+        y.copy_sign(x);
+        y.flip_sign();
+        let (hi, lo) = x.sum_exact(&y);
+        (2, hi, lo)
+    } else if &x_abs < &BigFloat::FRAC_7_PI_4 {
+        let mut y = BigFloat::FRAC_3_PI_2;
+        y.copy_sign(x);
+        y.flip_sign();
+        let (hi, lo) = x.sum_exact(&y);
+        (3, hi, lo)
+    } else if &x_abs <= &BigFloat::FRAC_9_PI_4 {
+        let mut y = BigFloat::TAU;
+        y.copy_sign(x);
+        y.flip_sign();
+        let (hi, lo) = x.sum_exact(&y);
+        (0, hi, lo)
+    } else if &x_abs <= &M {
         fast_reduce(x)
     } else {
         // M < x <= f256::MAX
@@ -170,9 +185,9 @@ impl f256 {
             // x = 0 => sine x = 0
             return f256::ZERO;
         }
-        // Calculate ⌊|x|/½π⌋ % 4 and x % ½π.
-        let (quadrant, x1, x2) = rem_frac_pi_2(&BigFloat::from(&self.abs()));
-        debug_assert!(x1 < BigFloat::FRAC_PI_2);
+        // Calculate ⌈x/½π⌋ % 4 and x % ½π.
+        let (quadrant, x1, x2) = rem_frac_pi_2(&BigFloat::from(self));
+        debug_assert!(x1.abs() < BigFloat::FRAC_PI_4);
         // Convert (x1 + x2) into a fixed-point number with 509-bit-fraction
         // |x1| < ½π => x1.exp <= 0
         let mut fx = FP509::from(&x1);
@@ -202,9 +217,9 @@ impl f256 {
             // x = 0 => cosine x = 1
             return f256::ONE;
         }
-        // Calculate ⌊|x|/½π⌋ % 4 and x % ½π.
+        // Calculate ⌈|x|/½π⌋ % 4 and |x| % ½π.
         let (quadrant, x1, x2) = rem_frac_pi_2(&BigFloat::from(&self.abs()));
-        debug_assert!(x1.abs() < BigFloat::FRAC_PI_2);
+        debug_assert!(x1.abs() < BigFloat::FRAC_PI_4);
         // Convert (x1 + x2) into a fixed-point number with 510-bit-fraction
         // |x1| < ½π => x1.exp <= 0
         let mut fx = FP509::from(&x1);
@@ -446,6 +461,28 @@ mod sin_cos_tests {
     }
 
     #[test]
+    fn test_some_gt_2pi() {
+        let f = f256::from_sign_exp_signif(
+            0,
+            -218,
+            (
+                0x00001b88030ccdd8b7632adb619b1f1f,
+                0x0e1d0adefedbcedd03c621b5967e9c1d,
+            ),
+        );
+        let sin_f = f256::from_sign_exp_signif(
+            0,
+            -239,
+            (
+                0x00001ff3a6e68be32dc92aa6c6930521,
+                0x192865a8b728d2d42fcb7319995fc955,
+            ),
+        );
+        println!("{f}\n{sin_f}");
+        assert_eq!(f.sin(), sin_f);
+    }
+
+    #[test]
     fn test_neg_values() {
         for f in [f256::MIN, -FRAC_PI_3, f256::NEG_ONE] {
             assert_eq!(f.sin(), -f.abs().sin());
@@ -562,29 +599,9 @@ mod sin_cos_tests {
         assert_eq!(f.sin(), sin);
     }
 
-    #[test]
-    fn calc_sin_small_cutoff() {
-        let mut lf = f256::from(1e-37);
-        let mut uf = f256::from(1e-35);
-        assert_eq!(&lf.sin(), &lf);
-        assert_ne!(&uf.sin(), &uf);
-        let mut f = &(lf + &uf) / f256::TWO;
-        while lf < f && f < uf {
-            if f.sin() == f {
-                lf = f;
-            } else {
-                uf = f;
-            }
-            f = &(lf + &uf) / f256::TWO;
-        }
-        println!("\n{lf:?}\n{:?}", &lf.sin());
-        println!("\n{f:?}\n{:?}", &f.sin());
-        println!("\n{uf:?}\n{:?}", &uf.sin());
-        println!("\n// {lf:e}");
-        println!("const SMALL_CUT_OFF: f256 = f256 {{");
-        println!("    bits: u256::new{:?}", lf.bits);
-        println!("}};");
-    }
+    // f: 140844820278614289426057198173335166586563126037009815346672127671657710 * 2^185461
+    // ε: 5.769198204535869190785720230896528973489817286545990660946235357113661705e-77
+    // -log₂(ε): 253.26
 }
 
 #[cfg(test)]
