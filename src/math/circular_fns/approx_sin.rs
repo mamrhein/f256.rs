@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use super::fp509::FP509;
+use super::FP509;
 
 const N: usize = 31;
 
@@ -259,9 +259,8 @@ pub(crate) fn approx_sin(x: &FP509) -> FP509 {
 
 #[cfg(test)]
 mod test_approx_sin {
-    use crate::{f256, math::BigFloat};
-
     use super::*;
+    use crate::{f256, math::BigFloat};
 
     #[test]
     fn calc_small_cutoff() {
@@ -280,7 +279,7 @@ mod test_approx_sin {
         }
         let cutoff = FP509::from(&BigFloat::from(&f));
         // println!("\n{lf:?}\n{:?}", lf.sin());
-        // println!("\n{f:?}\n{:?}", f.sin());
+        println!("\n{f:?}\n{:?}", f.sin());
         // println!("\n{uf:?}\n{:?}", uf.sin());
         // println!("\n// {f:e}");
         // println!("{:?};", cutoff);

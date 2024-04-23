@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Copyright:   (c) 2023 ff. Michael Amrhein (michael@adrhinum.de)
+// Copyright:   (c) 2024 ff. Michael Amrhein (michael@adrhinum.de)
 // License:     This program is part of a larger application. For license
 //              details please read the file LICENSE.TXT provided together
 //              with the application.
@@ -7,12 +7,13 @@
 // $Source$
 // $Revision$
 
-mod big_float;
-mod circular_fns;
-mod fp509;
-mod sqrt;
+mod approx_cos;
+mod approx_sin;
+mod atan;
+mod cordic;
+mod cos;
+mod reduce;
+mod sin;
+mod sin_cos;
 
-use big_float::BigFloat;
-use fp509::FP509;
-
-use crate::big_uint::{u256, u512};
+use super::{u256, BigFloat, FP509};

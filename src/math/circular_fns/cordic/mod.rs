@@ -8,4 +8,8 @@
 // $Revision$
 
 mod atan_table;
-pub(crate) mod circular;
+mod circular;
+
+pub(super) use circular::{cordic_atan, cordic_atan2};
+
+use super::{u256, BigFloat};

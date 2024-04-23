@@ -9,14 +9,11 @@
 
 use core::{cmp::min, ops::Neg};
 
-use crate::{
-    big_uint::u256,
-    math::{big_float::SIGNIF_ONE, cordic::atan_table::ATANS, BigFloat},
-};
+use super::{atan_table::ATANS, u256, BigFloat};
 
 // Cordic gain factor
 // ≈1.64676025812106564836605122228229843565237672570102740901240531755172816243915
-pub(crate) const K: BigFloat = BigFloat {
+const K: BigFloat = BigFloat {
     sign: 1,
     exp: 0,
     signif: u256::new(
@@ -26,7 +23,7 @@ pub(crate) const K: BigFloat = BigFloat {
 };
 // 1 / K
 // ≈0.607252935008881256169446752504928263112390852150089772456976013110147881208421
-pub(crate) const P: BigFloat = BigFloat {
+const P: BigFloat = BigFloat {
     sign: 1,
     exp: -1,
     signif: u256::new(
@@ -41,7 +38,7 @@ const OPS: [fn(&mut BigFloat); 2] = [no_op, BigFloat::flip_sign];
 const MAX_ABS_COORD: BigFloat = BigFloat::FRAC_PI_2;
 
 // Circular coordinates, vector mode
-pub(crate) fn cordic_circ_vm(
+fn cordic_circ_vm(
     mut x: BigFloat,
     mut y: BigFloat,
     mut z: BigFloat,
@@ -90,7 +87,7 @@ pub(crate) fn cordic_circ_vm(
     (x, z)
 }
 
-pub(crate) fn cordic_atan(mut f: BigFloat) -> BigFloat {
+pub fn cordic_atan(mut f: BigFloat) -> BigFloat {
     if f.is_zero() {
         return BigFloat::ZERO;
     };
@@ -101,7 +98,7 @@ pub(crate) fn cordic_atan(mut f: BigFloat) -> BigFloat {
     let x = BigFloat {
         sign: 1,
         exp: min(-f.exp, 0) - 1,
-        signif: SIGNIF_ONE,
+        signif: BigFloat::ONE.signif,
     };
     let y = BigFloat {
         sign: 1,
@@ -113,7 +110,7 @@ pub(crate) fn cordic_atan(mut f: BigFloat) -> BigFloat {
     a
 }
 
-pub(crate) fn cordic_atan2(y: &BigFloat, x: &BigFloat) -> BigFloat {
+pub fn cordic_atan2(y: &BigFloat, x: &BigFloat) -> BigFloat {
     let mut y_dash = y.abs();
     let mut x_dash = x.abs();
     // Assure y' < ½π.
@@ -183,13 +180,14 @@ mod vector_mode_tests {
             BigFloat::ONE,
             BigFloat::FRAC_PI_2,
         ] {
-            assert_eq!(f.atan().neg(), f.neg().atan(), "f: {f:?}");
+            let self1 = &f.neg();
+            assert_eq!(cordic_atan(f).neg(), cordic_atan(*self1), "f: {f:?}");
         }
     }
 }
 
 // Circular coordinates, rotation mode
-pub(crate) fn cordic_circ_rm(
+fn cordic_circ_rm(
     mut x: BigFloat,
     mut y: BigFloat,
     mut z: BigFloat,
@@ -213,7 +211,7 @@ pub(crate) fn cordic_circ_rm(
 }
 
 #[inline(always)]
-pub(crate) fn cordic_sin_cos(a: &BigFloat) -> (BigFloat, BigFloat) {
+fn cordic_sin_cos(a: &BigFloat) -> (BigFloat, BigFloat) {
     cordic_circ_rm(P, BigFloat::ZERO, *a)
 }
 

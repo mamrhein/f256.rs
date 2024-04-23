@@ -17,11 +17,9 @@ use core::{
 
 use crate::{
     abs_bits,
-    big_uint::{BigUIntHelper, u256, u512},
-    EMAX, EMIN,
-    EXP_BIAS,
-    exp_bits, f256, FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS, HI_SIGN_SHIFT, math::cordic::circular::{cordic_atan, cordic_atan2},
-    norm_bit, signif, SIGNIFICAND_BITS,
+    big_uint::{u256, u512, BigUIntHelper},
+    exp_bits, f256, norm_bit, signif, EMAX, EMIN, EXP_BIAS, FRACTION_BITS,
+    HI_EXP_MASK, HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS,
 };
 
 fn add_signifs(x: &u256, y: &u256) -> (u256, i32) {
@@ -66,7 +64,7 @@ pub(crate) struct BigFloat {
     pub(crate) signif: u256,
 }
 
-pub(crate) const SIGNIF_ONE: u256 = u256 {
+const SIGNIF_ONE: u256 = u256 {
     hi: 1_u128 << (BigFloat::FRACTION_BITS - 128),
     lo: 0_u128,
 };
@@ -439,16 +437,6 @@ impl BigFloat {
         let r = self.mul_add(rhs, &p.neg());
         (p, r)
     }
-
-    #[inline(always)]
-    pub(crate) fn atan(&self) -> Self {
-        cordic_atan(*self)
-    }
-
-    #[inline(always)]
-    pub(crate) fn atan2(&self, other: &Self) -> Self {
-        cordic_atan2(&self, other)
-    }
 }
 
 impl From<&u256> for BigFloat {
@@ -589,9 +577,8 @@ mod from_into_f256_tests {
 
 #[cfg(test)]
 mod into_f256_tests {
-    use crate::consts::PI;
-
     use super::*;
+    use crate::consts::PI;
 
     #[test]
     fn test_overflow_1() {

@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use super::fp509::FP509;
+use super::FP509;
 
 const N: usize = 33;
 
@@ -272,12 +272,8 @@ pub(crate) fn approx_cos(x: &FP509) -> FP509 {
 
 #[cfg(test)]
 mod test_approx_cos {
-    use crate::{
-        f256,
-        math::BigFloat,
-    };
-
     use super::*;
+    use crate::{f256, math::BigFloat};
 
     #[test]
     fn calc_small_cutoff() {
