@@ -12,17 +12,16 @@ use core::{
     ops::{Div, Neg, Rem, Shl, Shr},
 };
 
+use super::BigFloat;
 use crate::{
     abs_bits, abs_bits_sticky,
     big_uint::u256,
-    BinEncAnySpecial,
     consts::{FRAC_PI_2, FRAC_PI_4, PI},
-    EXP_BIAS,
-    f256, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BITS,
-    math::{approx_cos::approx_cos, approx_sin::approx_sin, fp509::FP509}, sign_bits_hi,
+    f256,
+    math::{approx_cos::approx_cos, approx_sin::approx_sin, fp509::FP509},
+    sign_bits_hi, BinEncAnySpecial, EXP_BIAS, FRACTION_BITS, HI_ABS_MASK,
+    HI_EXP_MASK, HI_FRACTION_BITS,
 };
-
-use super::BigFloat;
 
 // Number of bits to shift left for adjusting the radix point from f256 to
 // FP255
@@ -316,14 +315,11 @@ impl f256 {
 
 #[cfg(test)]
 mod sin_cos_tests {
-    use core::str::FromStr;
-
+    use super::*;
     use crate::{
         consts::{FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
         ONE_HALF,
     };
-
-    use super::*;
 
     //noinspection DuplicatedCode
     #[test]
@@ -462,6 +458,7 @@ mod sin_cos_tests {
 
     #[test]
     fn test_some_gt_2pi() {
+        // 451072.762503992264821001752482581001682512026226517387166060002390623476
         let f = f256::from_sign_exp_signif(
             0,
             -218,
@@ -470,6 +467,7 @@ mod sin_cos_tests {
                 0x0e1d0adefedbcedd03c621b5967e9c1d,
             ),
         );
+        // 0.249623167582990240382008743809080852087294584792829298735057191909919803
         let sin_f = f256::from_sign_exp_signif(
             0,
             -239,
@@ -541,7 +539,7 @@ mod sin_cos_tests {
     #[test]
     fn test_continuity_near_pi_half() {
         let c = FRAC_PI_2;
-        let d = f256::from_str("1.5e-36").unwrap();
+        let d = f256::from(1.5e-36);
         let mut f = c + d;
         let mut g = f;
         for i in 0..10 {
@@ -599,6 +597,18 @@ mod sin_cos_tests {
         assert_eq!(f.sin(), sin);
     }
 
+    #[test]
+    fn test_nearest_to_pi_over_2() {
+        let f = FRAC_PI_2 - FRAC_PI_2.ulp();
+        assert_ne!(f, FRAC_PI_2);
+        assert_eq!(f.sin(), f256::ONE);
+        assert_eq!((f - FRAC_PI_2).cos(), f256::ONE);
+        let f = FRAC_PI_2 + FRAC_PI_2.ulp();
+        assert_ne!(f, FRAC_PI_2);
+        assert_eq!(f.sin(), f256::ONE);
+        assert_eq!((f - FRAC_PI_2).cos(), f256::ONE);
+    }
+
     // f: 140844820278614289426057198173335166586563126037009815346672127671657710 * 2^185461
     // ε: 5.769198204535869190785720230896528973489817286545990660946235357113661705e-77
     // -log₂(ε): 253.26
@@ -608,12 +618,11 @@ mod sin_cos_tests {
 mod atan_tests {
     use core::{ops::Neg, str::FromStr};
 
+    use super::*;
     use crate::{
         consts::{FRAC_1_PI, FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
         EPSILON,
     };
-
-    use super::*;
 
     #[test]
     fn test_atan_inf() {
