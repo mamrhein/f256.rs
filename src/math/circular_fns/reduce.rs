@@ -49,8 +49,6 @@ fn fast_reduce(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
     );
 
     let z = x.mul_add(&R, &D) - &D;
-    // let z = (*x * &R).trunc();
-    // debug_assert_eq!(z.abs(), zz.abs());
     let u = *x - &(z * &C1);
     let v1 = u - &(z * &C2);
     let (p1, p2) = z.mul_exact(&C2);
@@ -75,30 +73,6 @@ pub(super) fn rem_frac_pi_2(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
     let x_abs = x.abs();
     if &x_abs <= &BigFloat::FRAC_PI_4 {
         (0, *x, BigFloat::ZERO)
-    } else if &x_abs < &BigFloat::FRAC_3_PI_4 {
-        let mut y = BigFloat::FRAC_PI_2;
-        y.copy_sign(x);
-        y.flip_sign();
-        let (hi, lo) = x.sum_exact(&y);
-        (1, hi, lo)
-    } else if &x_abs <= &BigFloat::FRAC_5_PI_4 {
-        let mut y = BigFloat::PI;
-        y.copy_sign(x);
-        y.flip_sign();
-        let (hi, lo) = x.sum_exact(&y);
-        (2, hi, lo)
-    } else if &x_abs < &BigFloat::FRAC_7_PI_4 {
-        let mut y = BigFloat::FRAC_3_PI_2;
-        y.copy_sign(x);
-        y.flip_sign();
-        let (hi, lo) = x.sum_exact(&y);
-        (3, hi, lo)
-    } else if &x_abs <= &BigFloat::FRAC_9_PI_4 {
-        let mut y = BigFloat::TAU;
-        y.copy_sign(x);
-        y.flip_sign();
-        let (hi, lo) = x.sum_exact(&y);
-        (0, hi, lo)
     } else if &x_abs <= &M {
         fast_reduce(x)
     } else {
