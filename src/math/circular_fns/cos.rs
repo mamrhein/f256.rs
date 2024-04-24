@@ -42,3 +42,17 @@ impl f256 {
         }
     }
 }
+
+#[cfg(test)]
+mod cos_tests {
+    use super::*;
+    use crate::consts::FRAC_PI_3;
+
+    #[test]
+    fn test_neg_values() {
+        // cos(-x) = cos(x)
+        for f in [f256::MIN, -FRAC_PI_3, f256::NEG_ONE] {
+            assert_eq!(f.cos(), f.abs().cos());
+        }
+    }
+}
