@@ -12,12 +12,11 @@ use core::{
     ops::{AddAssign, Neg, SubAssign},
 };
 
+use super::BigFloat;
 use crate::{
     big_uint::{u256, u512},
-    EXP_BITS, f256,
+    f256, split_f256_enc, EXP_BITS, FRACTION_BITS,
 };
-
-use super::BigFloat;
 
 /// Represents fixed-point numbers with 509 fractional bit in the range
 /// [-4, 4 - 2⁻⁵⁰⁹].
@@ -112,6 +111,24 @@ impl From<&BigFloat> for FP509 {
                 >> value.exp.unsigned_abs() + 1,
         );
         if value.sign < 0 {
+            res.ineg();
+        }
+        res
+    }
+}
+
+impl From<&f256> for FP509 {
+    fn from(value: &f256) -> Self {
+        const FOUR: f256 = f256::from_u64(4);
+        const RADIX_ADJ: u32 = 509 - 256 - FRACTION_BITS;
+        debug_assert!(value < &FOUR);
+        let (sign, mut exp, signif) = split_f256_enc(value);
+        // Compensate fraction bias
+        exp += FRACTION_BITS as i32;
+        let shl = RADIX_ADJ + exp.clamp(0, 2) as u32;
+        let shr = exp.clamp(-510, 0).unsigned_abs();
+        let mut res = Self(&u512::new(&signif << shl, u256::ZERO) >> shr);
+        if value.is_sign_negative() {
             res.ineg();
         }
         res
