@@ -151,7 +151,6 @@ mod sin_tests {
                 0x192865a8b728d2d42fcb7319995fc955,
             ),
         );
-        println!("{f}\n{sin_f}");
         assert_eq!(f.sin(), sin_f);
     }
 }
