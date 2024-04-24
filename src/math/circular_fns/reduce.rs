@@ -9,14 +9,18 @@
 
 use std::ops::Neg;
 
-use super::{u256, BigFloat};
+use super::{u256, BigFloat, FP509};
+use crate::{
+    consts::{FRAC_PI_4, TAU},
+    f256, FRACTION_BITS,
+};
 
 // Accurate range reduction algorithm, adapted from
 // S. Boldo, M. Daumas, R.-C. Li,
 // Formally verified argument reduction with a fused multiply-add
 // IEEE Trans. Comput. 58(8), 1139–1145 (2009)
-// For the input value f, calculate ⌊f/½π⌋ and f%½π
-fn fast_reduce(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
+// For the input value f, calculate ⌈f/½π⌋ % 4 and f % ½π
+fn fast_reduce(f: &f256) -> (u32, FP509) {
     // R = ◯₂₅₅(1/½π) =
     // 0.6366197723675813430755350534900574481378385829618257949906693762355871905369
     const R: BigFloat = BigFloat::new(
@@ -48,8 +52,9 @@ fn fast_reduce(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
         254,
     );
 
+    let x = BigFloat::from(f);
     let z = x.mul_add(&R, &D) - &D;
-    let u = *x - &(z * &C1);
+    let u = x - &(z * &C1);
     let v1 = u - &(z * &C2);
     let (p1, p2) = z.mul_exact(&C2);
     let (t1, t2) = u.sum_exact(&p1.neg());
@@ -57,43 +62,45 @@ fn fast_reduce(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
     // x <= M => z < 2ᴾ⁻²
     let e = z.exp - BigFloat::FRACTION_BITS as i32;
     let q = (&z.signif >> e.unsigned_abs()).lo as u32 & 0x3;
-    (q, v1, v2)
+    debug_assert!(v1.abs() <= BigFloat::FRAC_PI_4);
+    // Convert (v1 + v2) into a fixed-point number with 509-bit-fraction
+    // |v1| < ½π => v1.exp <= 0
+    let mut fx = FP509::from(&v1);
+    fx += &FP509::from(&v2);
+    (q, fx)
 }
 
-// Max input value for fast_reduce
-// M = ◯₂₅₅((2²⁵³-1)⋅C) =
-// 22735723555735395267514683923608116415837086083024526872423259444871180904135
-const M: BigFloat = BigFloat::new(
-    0x6487ed5110b4611a62633145c06e0e68,
-    0x948127044533e63a0105df531d89cd8e,
-    253,
-);
+// Max exponent for fast_reduce
+const M: i32 = 253;
 
-pub(super) fn rem_frac_pi_2(x: &BigFloat) -> (u32, BigFloat, BigFloat) {
-    let x_abs = x.abs();
-    if &x_abs <= &BigFloat::FRAC_PI_4 {
-        (0, *x, BigFloat::ZERO)
-    } else if &x_abs <= &M {
+/// Calculate ⌈x/½π⌋ % 4 and x % ½π.
+pub(super) fn reduce(x: &f256) -> (u32, FP509) {
+    let x_exp = x.exponent();
+    if &x.abs() <= &FRAC_PI_4 {
+        (0, FP509::from(x))
+    } else if x_exp <= M {
         fast_reduce(x)
     } else {
+        // The following algorithm is not accurate!
+        // TODO: replace by impl of Payne-Hanek-Algorithm.
         // M < x <= f256::MAX
-        const D: u256 = BigFloat::TAU.signif;
+        const D: u256 = TAU.significand();
         // x >= TAU => exp(x) >= 2 => following expression can't be < 0
-        let sh = x.exp as u32 - 2;
-        let mut t = x.signif;
+        let sh = x.exponent() as u32 - 2;
+        let mut t = x.significand();
         t = t.lshift_rem(&D, sh);
         if t.is_zero() {
-            return (0, BigFloat::ZERO, BigFloat::ZERO);
+            return (0, FP509::ZERO);
         }
         let shl = t.leading_zeros() - 1;
         t <<= shl;
-        let u = BigFloat::new(
-            t.hi as i128,
-            t.lo,
-            -((BigFloat::FRACTION_BITS + shl - 2) as i32),
+        let u = f256::from_sign_exp_signif(
+            0,
+            -((FRACTION_BITS + shl - 2) as i32),
+            (t.hi, t.lo),
         );
-        debug_assert!(u.abs() < BigFloat::TAU);
+        debug_assert!(u.abs() < TAU);
         debug_assert!(u.abs() <= x.abs());
-        rem_frac_pi_2(&u)
+        reduce(&u)
     }
 }

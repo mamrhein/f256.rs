@@ -8,8 +8,8 @@
 // $Revision$
 
 use super::{
-    approx_cos::approx_cos, approx_sin::approx_sin, reduce::rem_frac_pi_2,
-    BigFloat, FP509,
+    approx_cos::approx_cos, approx_sin::approx_sin, reduce::reduce, BigFloat,
+    FP509,
 };
 use crate::{f256, HI_ABS_MASK};
 
@@ -26,12 +26,7 @@ impl f256 {
             return f256::ONE;
         }
         // Calculate ⌈|x|/½π⌋ % 4 and |x| % ½π.
-        let (quadrant, x1, x2) = rem_frac_pi_2(&BigFloat::from(&self.abs()));
-        debug_assert!(x1.abs() < BigFloat::FRAC_PI_4);
-        // Convert (x1 + x2) into a fixed-point number with 510-bit-fraction
-        // |x1| < ½π => x1.exp <= 0
-        let mut fx = FP509::from(&x1);
-        fx += &FP509::from(&x2);
+        let (quadrant, fx) = reduce(&self.abs());
         // Map result according to quadrant
         match quadrant {
             0 => Self::from(&approx_cos(&fx)),
