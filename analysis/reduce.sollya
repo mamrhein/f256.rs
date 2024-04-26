@@ -1,6 +1,6 @@
 roundingwarnings = off;
 
-prec = 512;
+prec = 1024;
 display = powers;
 
 ul1b = proc(f) { return 2^exponent(f); };
@@ -25,10 +25,11 @@ red = proc(C, P) {
     d = 8 * ulp(u);
     print("u:", u);
     print("d:", d);
-    print("(C-C1)/d:", nearestint((C - C1) / d));
+    print("(C-C1)/d:", nearestint((c - C1) / d));
     C2 = round(nearestint((C - C1) / d) * d, P, RN);
+    C3 = round(C - (C1 + C2), P, RN);
     M = round((2^(P-2) - 1) * C, P, RN);
-    return [|R, C1, C2, M|];
+    return [|R, C1, C2, C3, M|];
 };
 
 hex = proc(n) {
@@ -69,8 +70,9 @@ rv = red(C, X);
 R = rv[0];
 C1 = rv[1];
 C2 = rv[2];
+C3 = rv[3];
 RND = 3 * 2^(X-2);
-M = rv[3];
+M = rv[4];
 
 print("\n--- verification ---");
 u = ulp(C1);
@@ -80,6 +82,8 @@ print("C1 >= 2ᴾ⁻¹×λ ?", C1 >= 2^(P + EMIN));
 print("C2 is an integer multiple of 8×ulp(ulp(C1)) ?",  c2_div_uu8 == floor(c2_div_uu8));
 print("|C2| <= 4×ulp(C1) ?", abs(C2) <= 4 * u);
 print("|C2| > ½ulp(C1)", abs(C2) > ulp(C1)/2);
+print("|C3| < ulp(C2)", abs(C3) < ulp(C2));
+print("|C3| > ½ulp(C2)", abs(C3) > ulp(C2)/2);
 print("---\n");
 
 prec = X;
@@ -96,6 +100,10 @@ print(");");
 print("// C2 = ⌈(C - C1) / 8⋅ulp(ulp(C1))⌋ ⋅ 8⋅ulp(ulp(C1)) =\n//", C2);
 print("const C2: BigFloat = BigFloat::new(");
 prx(C2);
+print(");");
+print("// C3 = ◯₂₅₅(C - C1 - C2) =\n//", C3);
+print("const C3: BigFloat = BigFloat::new(");
+prx(C3);
 print(");");
 print("// D = 3⋅2²⁵³ =\n//", RND);
 print("const D: BigFloat = BigFloat::new(");
