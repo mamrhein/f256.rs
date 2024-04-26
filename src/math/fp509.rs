@@ -9,6 +9,7 @@
 
 use core::{
     cmp::Ordering,
+    fmt,
     ops::{AddAssign, Neg, SubAssign},
 };
 
@@ -20,7 +21,7 @@ use crate::{
 
 /// Represents fixed-point numbers with 509 fractional bit in the range
 /// [-4, 4 - 2⁻⁵⁰⁹].
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord)]
+#[derive(Clone, Copy, Default, Eq, PartialEq, Ord)]
 pub(super) struct FP509(u512);
 
 impl FP509 {
@@ -190,6 +191,14 @@ impl AddAssign<&FP509> for FP509 {
         let mut carry = false;
         (self.0.lo, carry) = self.0.lo.overflowing_add(&rhs.0.lo);
         (self.0.hi, carry) = self.0.hi.carrying_add(&rhs.0.hi, carry);
+    }
+}
+
+impl fmt::Debug for FP509 {
+    fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut f = *self;
+        f.iabs();
+        fmt::Debug::fmt(&(self.signum(), f.0), form)
     }
 }
 
