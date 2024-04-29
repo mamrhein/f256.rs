@@ -57,6 +57,16 @@ impl FP509 {
     }
 
     #[inline(always)]
+    pub(super) fn is_sign_positive(&self) -> bool {
+        self.0.hi.hi.leading_zeros() != 0
+    }
+
+    #[inline(always)]
+    pub(super) fn is_sign_negative(&self) -> bool {
+        self.0.hi.hi.leading_zeros() == 0
+    }
+
+    #[inline(always)]
     fn invert(&mut self) {
         self.0.lo.lo ^= u128::MAX;
         self.0.lo.hi ^= u128::MAX;
