@@ -26,7 +26,7 @@ impl f256 {
             return f256::ZERO;
         }
         // Calculate ⌈x/½π⌋ % 4 and x % ½π.
-        let (quadrant, fx) = reduce(self);
+        let (quadrant, fx) = reduce(&self.abs());
         // Map result according to quadrant and sign
         match (quadrant, self.sign()) {
             (0, 0) => Self::from(&approx_sin(&fx)),
