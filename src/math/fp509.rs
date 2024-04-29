@@ -194,6 +194,13 @@ impl AddAssign<&FP509> for FP509 {
     }
 }
 
+impl SubAssign<&FP509> for FP509 {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: &FP509) {
+        *self += &rhs.neg();
+    }
+}
+
 impl fmt::Debug for FP509 {
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut f = *self;
