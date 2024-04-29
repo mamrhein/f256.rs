@@ -176,8 +176,8 @@ fn round_up_fixed_point_inplace(num: &mut str) {
 pub(crate) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
     debug_assert!(f.is_finite());
     debug_assert!(f.is_sign_positive());
-    let mut exp2 = f.exponent();
-    let mut signif2 = f.significand();
+    let mut exp2 = f.quantum_exponent();
+    let mut signif2 = f.integral_significand();
     let ntz = signif2.trailing_zeros() as i32;
     let (is_less_than_one, is_int, (ip, fp)) = if exp2 >= -ntz {
         (false, true, (f, f256::ZERO))
@@ -208,8 +208,8 @@ pub(crate) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
     if is_int {
         res.push_str("0".repeat(prec).as_str());
     } else {
-        exp2 = fp.exponent();
-        signif2 = fp.significand();
+        exp2 = fp.quantum_exponent();
+        signif2 = fp.integral_significand();
         if exp2 < EMIN {
             // f is subnormal, adjust significand and exponent.
             let adj = SIGNIFICAND_BITS - signif2.msb();
@@ -595,8 +595,8 @@ pub(crate) fn bin_2_dec_scientific(
     const FAST_UPPER_BOUND: i32 = (u512::BITS - SIGNIFICAND_BITS) as i32;
     const FAST_UPPER_BOUND_PLUS_1: i32 = FAST_UPPER_BOUND + 1;
     const EXP_UPPER_BOUND: i32 = EMAX - FRACTION_BITS as i32;
-    let mut exp2 = f.exponent();
-    let mut signif2 = f.significand();
+    let mut exp2 = f.quantum_exponent();
+    let mut signif2 = f.integral_significand();
     let mut res = String::with_capacity(prec + 9);
     let mut round = Round::Down;
     let mut exp10 = 0_i32;

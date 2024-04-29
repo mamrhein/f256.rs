@@ -75,7 +75,7 @@ const M: i32 = 253;
 
 /// Calculate ⌈x/½π⌋ % 4 and x % ½π.
 pub(super) fn reduce(x: &f256) -> (u32, FP509) {
-    let x_exp = x.exponent();
+    let x_exp = x.quantum_exponent();
     if &x.abs() <= &FRAC_PI_4 {
         (0, FP509::from(x))
     } else if x_exp <= M {
@@ -84,10 +84,10 @@ pub(super) fn reduce(x: &f256) -> (u32, FP509) {
         // The following algorithm is not accurate!
         // TODO: replace by impl of Payne-Hanek-Algorithm.
         // M < x <= f256::MAX
-        const D: u256 = TAU.significand();
+        const D: u256 = TAU.integral_significand();
         // x >= TAU => exp(x) >= 2 => following expression can't be < 0
-        let sh = x.exponent() as u32 - 2;
-        let mut t = x.significand();
+        let sh = x.quantum_exponent() as u32 - 2;
+        let mut t = x.integral_significand();
         t = t.lshift_rem(&D, sh);
         if t.is_zero() {
             return (0, FP509::ZERO);

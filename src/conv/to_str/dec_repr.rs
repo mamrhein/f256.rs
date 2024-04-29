@@ -80,8 +80,8 @@ impl DecNumRepr {
 
         // Step 1: Decode the binary floating-point number.
         let sign = f.sign();
-        let exp2 = f.exponent();
-        let signif2 = f.significand();
+        let exp2 = f.quantum_exponent();
+        let signif2 = f.integral_significand();
 
         // Compute the decimal significand and exponent.
         let (signif10, exp10) = Self::shortest_from_bin_repr(signif2, exp2);

@@ -300,8 +300,8 @@ impl f256 {
         }
     }
 
-    /// Construct a finite, non-zero `f256` value f from sign s, exponent t
-    /// and significand c,
+    /// Construct a finite, non-zero `f256` value f from sign s, quantum
+    /// exponent t and integral significand c,
     ///
     /// where
     ///
@@ -395,13 +395,14 @@ impl f256 {
         ((self.bits.hi & HI_EXP_MASK) >> HI_FRACTION_BITS) as u32
     }
 
-    /// Returns the binary exponent of `self`.
+    /// Returns the quantum exponent of `self`.
+    /// Pre-condition: `self` is finite!
     #[inline]
     #[allow(clippy::cast_possible_wrap)]
-    pub(crate) const fn exponent(&self) -> i32 {
+    pub(crate) const fn quantum_exponent(&self) -> i32 {
         debug_assert!(
             self.is_finite(),
-            "Attempt to extract exponent from Infinity or NaN."
+            "Attempt to extract quantum exponent from Infinity or NaN."
         );
         const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
         let mut exp = self.biased_exponent() as i32;
@@ -418,13 +419,13 @@ impl f256 {
         }
     }
 
-    /// Returns the significand of `self`.
+    /// Returns the integral significand of `self`.
     /// Pre-condition: `self` is finite!
     #[inline]
-    pub(crate) const fn significand(&self) -> u256 {
+    pub(crate) const fn integral_significand(&self) -> u256 {
         debug_assert!(
             self.is_finite(),
-            "Attempt to extract significand from Infinity or NaN."
+            "Attempt to extract integral significand from Infinity or NaN."
         );
         let hidden_one =
             ((self.biased_exponent() != 0) as u128) << HI_FRACTION_BITS;
@@ -434,7 +435,8 @@ impl f256 {
         }
     }
 
-    /// Extract sign s, exponent t and significand c from a finite `f256` f,
+    /// Extract sign s, quantum exponent t and integral significand c from
+    /// a finite `f256` f,
     ///
     /// where
     ///
@@ -620,8 +622,8 @@ impl f256 {
             69798147688063442975655060594812004816,
         );
         const SH: i32 = 250_i32;
-        let signif = self.significand();
-        let exp = self.exponent();
+        let signif = self.integral_significand();
+        let exp = self.quantum_exponent();
         let (lo, hi) = M.widening_mul(&signif);
         let mut t = u512::new(hi, lo);
         let sh = signif.msb() + 256 - SIGNIFICAND_BITS;
@@ -642,8 +644,8 @@ impl f256 {
             953738875812114979603059177117484306,
         );
         const SH: i32 = 261_i32;
-        let signif = self.significand();
-        let exp = self.exponent();
+        let signif = self.integral_significand();
+        let exp = self.quantum_exponent();
         let (lo, hi) = M.widening_mul(&signif);
         let mut t = u512::new(hi, lo);
         let sh = signif.msb() + 256 - SIGNIFICAND_BITS;
@@ -1280,7 +1282,7 @@ pub(crate) const fn fraction(abs_bits: &u256) -> u256 {
     u256::new(abs_bits.hi & HI_FRACTION_MASK, abs_bits.lo)
 }
 
-/// Returns the significand from `abs_bits`.
+/// Returns the integral significand from `abs_bits`.
 #[inline(always)]
 pub(crate) const fn signif(abs_bits: &u256) -> u256 {
     u256::new(
@@ -1290,8 +1292,8 @@ pub(crate) const fn signif(abs_bits: &u256) -> u256 {
     )
 }
 
-/// Returns the normalized significand and the corresponding shift from
-/// `abs_bits`.
+/// Returns the normalized integral significand and the corresponding shift
+/// from `abs_bits`.
 #[inline(always)]
 pub(crate) const fn norm_signif(abs_bits: &u256) -> (u256, u32) {
     debug_assert!(!abs_bits.is_zero());
@@ -1300,8 +1302,8 @@ pub(crate) const fn norm_signif(abs_bits: &u256) -> (u256, u32) {
     (signif.shift_left(shift), shift)
 }
 
-/// Returns the left adjusted significand and the corresponding shift from
-/// `abs_bits`.
+/// Returns the left adjusted integral significand and the corresponding
+/// shift from `abs_bits`.
 #[inline(always)]
 pub(crate) const fn left_adj_signif(abs_bits: &u256) -> (u256, u32) {
     debug_assert!(!abs_bits.is_zero());
@@ -1310,7 +1312,7 @@ pub(crate) const fn left_adj_signif(abs_bits: &u256) -> (u256, u32) {
     (signif.shift_left(shift), shift)
 }
 
-/// Extract sign, exponent and significand from f
+/// Extract sign, quantum exponent and integral significand from f
 #[allow(clippy::cast_possible_wrap)]
 pub(crate) const fn split_f256_enc(f: &f256) -> (u32, i32, u256) {
     const TOTAL_BIAS: i32 = EXP_BIAS as i32 + FRACTION_BITS as i32;
@@ -1370,13 +1372,13 @@ mod repr_tests {
     fn test_zero() {
         let z = f256::ZERO;
         assert_eq!(z.sign(), 0);
-        assert_eq!(z.exponent(), 0);
-        assert_eq!(z.significand(), u256::default());
+        assert_eq!(z.quantum_exponent(), 0);
+        assert_eq!(z.integral_significand(), u256::default());
         assert_eq!(z.decode(), (0, 0, u256::default()));
         let z = f256::NEG_ZERO;
         assert_eq!(z.sign(), 1);
-        assert_eq!(z.exponent(), 0);
-        assert_eq!(z.significand(), u256::default());
+        assert_eq!(z.quantum_exponent(), 0);
+        assert_eq!(z.integral_significand(), u256::default());
         assert_eq!(z.decode(), (1, 0, u256::default()));
     }
 
@@ -1385,9 +1387,9 @@ mod repr_tests {
         let i = f256::ONE;
         assert_eq!(i.sign(), 0);
         assert_eq!(i.biased_exponent(), EXP_BIAS);
-        assert_eq!(i.exponent(), INT_EXP);
+        assert_eq!(i.quantum_exponent(), INT_EXP);
         assert_eq!(
-            i.significand(),
+            i.integral_significand(),
             u256 {
                 hi: 1_u128 << HI_FRACTION_BITS,
                 lo: 0,
@@ -1397,9 +1399,9 @@ mod repr_tests {
         let j = f256::NEG_ONE;
         assert_eq!(j.sign(), 1);
         assert_eq!(i.biased_exponent(), EXP_BIAS);
-        assert_eq!(j.exponent(), INT_EXP);
+        assert_eq!(j.quantum_exponent(), INT_EXP);
         assert_eq!(
-            j.significand(),
+            j.integral_significand(),
             u256 {
                 hi: 1_u128 << HI_FRACTION_BITS,
                 lo: 0,
@@ -1413,9 +1415,9 @@ mod repr_tests {
         let i = f256::TWO;
         assert_eq!(i.sign(), 0);
         assert_eq!(i.biased_exponent(), EXP_BIAS + 1);
-        assert_eq!(i.exponent(), INT_EXP + 1);
+        assert_eq!(i.quantum_exponent(), INT_EXP + 1);
         assert_eq!(
-            i.significand(),
+            i.integral_significand(),
             u256 {
                 hi: 1_u128 << HI_FRACTION_BITS,
                 lo: 0,
@@ -1424,9 +1426,9 @@ mod repr_tests {
         assert_eq!(i.decode(), (0, 1, u256 { hi: 0, lo: 1 }));
         let f = f256::from(-3.5_f64);
         assert_eq!(f.sign(), 1);
-        assert_eq!(f.exponent(), -235);
+        assert_eq!(f.quantum_exponent(), -235);
         assert_eq!(
-            f.significand(),
+            f.integral_significand(),
             u256 {
                 hi: 567907468902246771870523036008448,
                 lo: 0,
@@ -1440,8 +1442,8 @@ mod repr_tests {
     fn test_subnormal() {
         let f = f256::MIN_GT_ZERO;
         assert_eq!(f.sign(), 0);
-        assert_eq!(f.exponent(), EMIN - FRACTION_BITS as i32);
-        assert_eq!(f.significand(), u256 { hi: 0, lo: 1 });
+        assert_eq!(f.quantum_exponent(), EMIN - FRACTION_BITS as i32);
+        assert_eq!(f.integral_significand(), u256 { hi: 0, lo: 1 });
         assert_eq!(
             f.decode(),
             (0, EMIN - FRACTION_BITS as i32, u256 { hi: 0, lo: 1 })
@@ -1537,11 +1539,11 @@ mod split_tests {
         let h = -g;
         let (fi, ff) = f.split();
         assert_eq!(fi, f);
-        assert_eq!(fi.exponent(), f.exponent());
+        assert_eq!(fi.quantum_exponent(), f.quantum_exponent());
         assert_eq!(ff, f256::ZERO);
         let (gi, gf) = g.split();
         assert_eq!(gi, f);
-        assert_eq!(gi.exponent(), g.exponent());
+        assert_eq!(gi.quantum_exponent(), g.quantum_exponent());
         assert_eq!(gf, g - f);
         assert_eq!(h.split(), (-f, (f - g)));
     }
@@ -1551,9 +1553,9 @@ mod split_tests {
         let f = f256::from(0.99999_f64);
         let (fi, ff) = f.split();
         assert_eq!(fi, f256::ZERO);
-        assert_eq!(fi.exponent(), 0);
+        assert_eq!(fi.quantum_exponent(), 0);
         assert_eq!(ff, f);
-        assert_eq!(ff.exponent(), f.exponent());
+        assert_eq!(ff.quantum_exponent(), f.quantum_exponent());
     }
 
     #[test]

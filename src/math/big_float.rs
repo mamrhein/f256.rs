@@ -504,8 +504,8 @@ mod from_into_f256_tests {
         const PREC_DIFF: u32 = BigFloat::FRACTION_BITS - FRACTION_BITS;
         debug_assert!(f.is_normal());
         assert_eq!((-1_i32).pow(f.sign()), g.sign);
-        assert_eq!(f.exponent() + FRACTION_BITS as i32, g.exp);
-        assert_eq!(&f.significand() << PREC_DIFF, g.signif)
+        assert_eq!(f.quantum_exponent() + FRACTION_BITS as i32, g.exp);
+        assert_eq!(&f.integral_significand() << PREC_DIFF, g.signif)
     }
 
     #[test]
@@ -566,12 +566,18 @@ mod from_into_f256_tests {
         let f = f256::MIN_GT_ZERO;
         let fp = BigFloat::from(&f);
         assert_eq!((-1_i32).pow(f.sign()), fp.sign);
-        assert_eq!(f.exponent(), fp.exp);
-        assert_eq!(&f.significand() << BigFloat::FRACTION_BITS, fp.signif);
+        assert_eq!(f.quantum_exponent(), fp.exp);
+        assert_eq!(
+            &f.integral_significand() << BigFloat::FRACTION_BITS,
+            fp.signif
+        );
         let f = f256::from(&fp);
         assert_eq!((-1_i32).pow(f.sign()), fp.sign);
-        assert_eq!(f.exponent(), fp.exp);
-        assert_eq!(&f.significand() << BigFloat::FRACTION_BITS, fp.signif)
+        assert_eq!(f.quantum_exponent(), fp.exp);
+        assert_eq!(
+            &f.integral_significand() << BigFloat::FRACTION_BITS,
+            fp.signif
+        )
     }
 }
 
