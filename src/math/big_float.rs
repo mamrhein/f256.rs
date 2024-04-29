@@ -303,9 +303,11 @@ impl BigFloat {
     pub(crate) fn imul_add(&mut self, f: &Self, a: &Self) {
         if self.is_zero() || f.is_zero() {
             *self = *a;
+            return;
         }
         if a.is_zero() {
             self.imul(f);
+            return;
         }
         let mut prod_exp = self.exp + f.exp;
         let mut exp_diff = prod_exp - a.exp;
