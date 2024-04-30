@@ -117,10 +117,11 @@ impl From<&BigFloat> for FP509 {
     #[inline(always)]
     fn from(value: &BigFloat) -> Self {
         debug_assert!(value.exp <= 1);
-        let mut res = Self(
-            &u512::new(value.signif, u256::ZERO)
-                >> value.exp.unsigned_abs() + 1,
-        );
+        let sh = value.exp.unsigned_abs() + 1;
+        if sh >= u512::BITS {
+            return FP509::ZERO;
+        }
+        let mut res = Self(&u512::new(value.signif, u256::ZERO) >> sh);
         if value.sign < 0 {
             res.ineg();
         }
