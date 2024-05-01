@@ -28,6 +28,8 @@ impl FP509 {
     pub(super) const ZERO: Self = Self(u512::ZERO);
     pub(super) const ONE: Self =
         Self::new(1_u128 << 125, 0_u128, 0_u128, 0_u128);
+    pub(super) const TWO: Self =
+        Self::new(1_u128 << 126, 0_u128, 0_u128, 0_u128);
     pub(super) const ONE_HALF: Self =
         Self::new(1_u128 << 124, 0_u128, 0_u128, 0_u128);
     pub(super) const EPSILON: Self =
