@@ -1,0 +1,61 @@
+roundingwarnings = off;
+display = decimal;
+
+prec = 520;
+
+hex = proc(m) {
+    var d, s, p, n, i;
+    d = 16;
+    A = [|"0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"|];
+    s = "";
+    p = "0x";
+    n = 1;
+    while (n <= 32) do {
+        i = mod(m, d);
+        s = A[i] @ s;
+        m = div(m, d);
+        n = n + 1;
+    };
+    return p @ s;
+};
+
+repr = proc(s, m) {
+    var z, n, r;
+    B = 2^128;
+    if (s < 0) then m = 2^512 - m;
+    z = "";
+    n = 1;
+    while (n <= 4) do {
+        r = hex(mod(m, B));
+        z = r @ ",\n" @ z;
+        m = div(m, B);
+        n = n + 1;
+    };
+    return z;
+};
+
+prx = proc(v, f) {
+    e = exponent(f);
+    m = mantissa(f) * 2^(P+e);
+    print("const " @ v @ ": FP509 = FP509::new(");
+    print(repr(0, m), ");");
+};
+
+P = 509;
+
+// --- Several multiples of ¼π -----------------------------------------
+
+f = round(pi/4, P, RN);
+prx("FP_FRAC_PI_4", f);
+f = round(pi/2, P+1, RN);
+prx("FP_FRAC_PI_2", f);
+f = round(3*pi/4, P+2, RN);
+prx("FP_FRAC_3_PI_4", f);
+f = round(pi, P+2, RN);
+prx("FP_PI", f);
+f = round(5*pi/4, P+2, RN);
+prx("FP_FRAC_5_PI_4", f);
+f = round(7*pi/4 - 4, P+1, RN);
+prx("FP_FRAC_7_PI_4_M4", f);
+f = round(9*pi/4 - 4, P+2, RN);
+prx("FP_FRAC_9_PI_4_M4", f);
