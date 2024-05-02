@@ -12,9 +12,8 @@ mod random_math_fn_tests {
     use std::path::PathBuf;
 
     use csv::ReaderBuilder;
-    use serde::Deserialize;
-
     use f256::f256;
+    use serde::Deserialize;
 
     #[derive(Debug, Deserialize)]
     struct Record {
@@ -65,7 +64,7 @@ mod random_math_fn_tests {
                         let m = f256::from(err) * z.ulp();
                         assert!(
                             d <= m,
-                            "\nFailed:\nx: {x:e}\nz: {z:?}\nr: {res:?}\nd: \
+                            "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}\nd: \
                              {d:?}\nm: {m:?}"
                         );
                     }
