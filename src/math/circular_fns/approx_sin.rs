@@ -279,7 +279,7 @@ mod test_approx_sin {
         }
         let cutoff = FP509::from(&BigFloat::from(&f));
         // println!("\n{lf:?}\n{:?}", lf.sin());
-        println!("\n{f:?}\n{:?}", f.sin());
+        // println!("\n{f:?}\n{:?}", f.sin());
         // println!("\n{uf:?}\n{:?}", uf.sin());
         // println!("\n// {f:e}");
         // println!("{:?};", cutoff);
