@@ -14,7 +14,7 @@ use super::{atan_table::ATANS, u256, BigFloat};
 // Cordic gain factor
 // ≈1.64676025812106564836605122228229843565237672570102740901240531755172816243915
 const K: BigFloat = BigFloat {
-    sign: 1,
+    signum: 1,
     exp: 0,
     signif: u256::new(
         0x696485233ee13440f04d9b77cec48780,
@@ -24,7 +24,7 @@ const K: BigFloat = BigFloat {
 // 1 / K
 // ≈0.607252935008881256169446752504928263112390852150089772456976013110147881208421
 const P: BigFloat = BigFloat {
-    sign: 1,
+    signum: 1,
     exp: -1,
     signif: u256::new(
         0x4dba76d421af2d33fafc8495ebfea074,
@@ -43,8 +43,8 @@ fn cordic_circ_vm(
     mut y: BigFloat,
     mut z: BigFloat,
 ) -> (BigFloat, BigFloat) {
-    debug_assert!(x.sign >= 0);
-    debug_assert!(y.sign >= 0);
+    debug_assert!(x.signum >= 0);
+    debug_assert!(y.signum >= 0);
     debug_assert!(y <= MAX_ABS_COORD);
 
     for i in 0..=BigFloat::FRACTION_BITS {
@@ -91,22 +91,22 @@ pub fn cordic_atan(mut f: BigFloat) -> BigFloat {
     if f.is_zero() {
         return BigFloat::ZERO;
     };
-    let f_sign = f.sign;
-    f.sign = 1;
+    let f_sign = f.signum;
+    f.signum = 1;
     // Convert f into a fraction of two values x and y, so that
     // f = y / x and y < ½π.
     let x = BigFloat {
-        sign: 1,
+        signum: 1,
         exp: min(-f.exp, 0) - 1,
         signif: BigFloat::ONE.signif,
     };
     let y = BigFloat {
-        sign: 1,
+        signum: 1,
         exp: min(f.exp, 0) - 1,
         signif: f.signif,
     };
     let mut a = cordic_circ_vm(x, y, BigFloat::ZERO).1;
-    a.sign = f_sign;
+    a.signum = f_sign;
     a
 }
 
@@ -117,7 +117,7 @@ pub fn cordic_atan2(y: &BigFloat, x: &BigFloat) -> BigFloat {
     x_dash.exp -= y_dash.exp + 1;
     y_dash.exp = -1;
     let mut a = cordic_circ_vm(x_dash, y_dash, BigFloat::ZERO).1;
-    match (y.sign, x.sign) {
+    match (y.signum, x.signum) {
         (-1, 1) => a.flip_sign(),
         (1, -1) => {
             a.flip_sign();
@@ -130,7 +130,7 @@ pub fn cordic_atan2(y: &BigFloat, x: &BigFloat) -> BigFloat {
 }
 
 const MAX_ERR: BigFloat = BigFloat {
-    sign: 1,
+    signum: 1,
     exp: -248,
     signif: BigFloat::ONE.signif,
 };

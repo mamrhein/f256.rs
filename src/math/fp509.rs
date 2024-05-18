@@ -124,7 +124,7 @@ impl From<&BigFloat> for FP509 {
             return FP509::ZERO;
         }
         let mut res = Self(&u512::new(value.signif, u256::ZERO) >> sh);
-        if value.sign < 0 {
+        if value.signum < 0 {
             res.ineg();
         }
         res
