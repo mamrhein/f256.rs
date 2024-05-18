@@ -18,8 +18,10 @@ use core::{
 use crate::{
     abs_bits,
     big_uint::{u256, u512, BigUIntHelper},
-    exp_bits, f256, norm_bit, signif, EMAX, EMIN, EXP_BIAS, FRACTION_BITS,
-    HI_EXP_MASK, HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS,
+    exp_bits, f256,
+    math::fp509::FP509,
+    norm_bit, signif, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
+    HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS,
 };
 
 fn add_signifs(x: &u256, y: &u256) -> (u256, i32) {
@@ -105,78 +107,105 @@ impl BigFloat {
     // PI = ◯₂₅₅(π) =
     // 3.1415926535897932384626433832795028841971693993751058209749445923078164062862
     pub(crate) const PI: BigFloat = BigFloat::new(
-        0x6487ed5110b4611a62633145c06e0e68,
-        0x948127044533e63a0105df531d89cd91,
         1,
+        1,
+        (
+            0x6487ed5110b4611a62633145c06e0e68,
+            0x948127044533e63a0105df531d89cd91,
+        ),
     );
     // FRAC_PI_2 = ◯₂₅₅(½π) =
     // 1.5707963267948966192313216916397514420985846996875529104874722961539082031431
     pub(crate) const FRAC_PI_2: BigFloat = BigFloat::new(
-        0x6487ed5110b4611a62633145c06e0e68,
-        0x948127044533e63a0105df531d89cd91,
+        1,
         0,
+        (
+            0x6487ed5110b4611a62633145c06e0e68,
+            0x948127044533e63a0105df531d89cd91,
+        ),
     );
     // FRAC_PI_4 = ◯₂₅₅(½π) =
     // 1.5707963267948966192313216916397514420985846996875529104874722961539082031431
     pub(crate) const FRAC_PI_4: BigFloat = BigFloat::new(
-        0x6487ed5110b4611a62633145c06e0e68,
-        0x948127044533e63a0105df531d89cd91,
+        1,
         -1,
+        (
+            0x6487ed5110b4611a62633145c06e0e68,
+            0x948127044533e63a0105df531d89cd91,
+        ),
     );
     // FRAC_3_PI_2 = ◯₂₅₅(3⋅½π) =
     // 4.7123889803846898576939650749192543262957540990626587314624168884617246094293
     pub(crate) const FRAC_3_PI_2: BigFloat = BigFloat::new(
-        0x4b65f1fccc8748d3c9ca64f450528ace,
-        0x6f60dd4333e6ecab80c4677e56275a2d,
+        1,
         2,
+        (
+            0x4b65f1fccc8748d3c9ca64f450528ace,
+            0x6f60dd4333e6ecab80c4677e56275a2d,
+        ),
     );
     // TAU = ◯₂₅₅(2⋅π) =
     // 6.2831853071795864769252867665590057683943387987502116419498891846156328125724
     pub(crate) const TAU: BigFloat = BigFloat::new(
-        0x6487ed5110b4611a62633145c06e0e68,
-        0x948127044533e63a0105df531d89cd91,
+        1,
         2,
+        (
+            0x6487ed5110b4611a62633145c06e0e68,
+            0x948127044533e63a0105df531d89cd91,
+        ),
     );
     // FRAC_3_PI_4 = ◯₂₅₅(3⋅¼π) =
     // 2.3561944901923449288469825374596271631478770495313293657312084442308623047147
     pub(crate) const FRAC_3_PI_4: BigFloat = BigFloat::new(
-        0x4b65f1fccc8748d3c9ca64f450528ace,
-        0x6f60dd4333e6ecab80c4677e56275a2d,
         1,
+        1,
+        (
+            0x4b65f1fccc8748d3c9ca64f450528ace,
+            0x6f60dd4333e6ecab80c4677e56275a2d,
+        ),
     );
     // FRAC_5_PI_4 = ◯₂₅₅(5⋅¼π) =
     // 3.9269908169872415480783042290993786052464617492188822762186807403847705078577
     pub(crate) const FRAC_5_PI_4: BigFloat = BigFloat::new(
-        0x7da9e8a554e17960fafbfd9730899202,
-        0xb9a170c55680dfc881475727e4ec40f5,
         1,
+        1,
+        (
+            0x7da9e8a554e17960fafbfd9730899202,
+            0xb9a170c55680dfc881475727e4ec40f5,
+        ),
     );
     // FRAC_7_PI_4 = ◯₂₅₅(7⋅¼π) =
     // 5.4977871437821381673096259207391300473450464489064351867061530365386787110009
     pub(crate) const FRAC_7_PI_4: BigFloat = BigFloat::new(
-        0x57f6efa6ee9dd4f71616cb1d08604c9b,
-        0x81f10223bc8d6972c0e52368b9d893df,
+        1,
         2,
+        (
+            0x57f6efa6ee9dd4f71616cb1d08604c9b,
+            0x81f10223bc8d6972c0e52368b9d893df,
+        ),
     );
     // FRAC_9_PI_4 = ◯₂₅₅(9⋅¼π) =
     // 7.0685834705770347865409476123788814894436311485939880971936253326925869141439
     pub(crate) const FRAC_9_PI_4: BigFloat = BigFloat::new(
-        0x7118eafb32caed3daeaf976e787bd035,
-        0xa7114be4cdda630141269b3d813b0743,
+        1,
         2,
+        (
+            0x7118eafb32caed3daeaf976e787bd035,
+            0xa7114be4cdda630141269b3d813b0743,
+        ),
     );
 
     #[inline]
     pub(crate) const fn new(
-        signif_hi: i128,
-        signif_lo: u128,
+        sign: i32,
         exp: i32,
+        signif: (u128, u128),
     ) -> Self {
-        debug_assert!(signif_hi.abs().leading_zeros() == 1);
+        debug_assert!(signif.0.leading_zeros() == 1);
         Self {
-            sign: signif_hi.signum() as i32,
+            sign,
             exp,
-            signif: u256::new(signif_hi.unsigned_abs(), signif_lo),
+            signif: u256::new(signif.0, signif.1),
         }
     }
 

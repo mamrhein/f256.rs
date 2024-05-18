@@ -131,6 +131,38 @@ impl From<&BigFloat> for FP509 {
     }
 }
 
+impl From<&FP509> for BigFloat {
+    fn from(value: &FP509) -> Self {
+        let signum = value.signum();
+        let mut fp_abs_signif = if signum >= 0 {
+            value.0
+        } else {
+            let mut t = *value;
+            t.ineg();
+            t.0
+        };
+        let nlz = fp_abs_signif.leading_zeros();
+        let mut exp = 2 - nlz as i32;
+        const N: u32 = u512::BITS - BigFloat::FRACTION_BITS - 1;
+        match nlz {
+            // nlz < N = 257 => shift right and round
+            0..=256 => {
+                let n = N - nlz;
+                fp_abs_signif.idiv_pow2(n);
+                // shift left 1 bit in case rounding overflowed to the
+                // reserved bit
+                let sh = 1 - fp_abs_signif.lo.leading_zeros();
+                fp_abs_signif.lo >>= sh;
+                exp += sh as i32;
+            }
+            // nlz > N = 257 => shift left
+            258..=511 => fp_abs_signif <<= nlz - N,
+            _ => {}
+        };
+        Self::new(signum, exp, (fp_abs_signif.lo.hi, fp_abs_signif.lo.lo))
+    }
+}
+
 impl From<&f256> for FP509 {
     fn from(value: &f256) -> Self {
         const FOUR: f256 = f256::from_u64(4);
@@ -176,6 +208,13 @@ impl From<&FP509> for f256 {
             _ => {}
         };
         Self::new(sign, exp, fp_abs_signif.lo)
+    }
+}
+
+impl From<u512> for FP509 {
+    #[inline(always)]
+    fn from(value: u512) -> Self {
+        Self(value)
     }
 }
 
@@ -271,5 +310,20 @@ mod test_fp509 {
         y.ineg();
         y.ineg();
         assert_eq!(x, y);
+    }
+}
+
+#[cfg(test)]
+mod test_fp509_conv {
+    use super::*;
+
+    #[test]
+    fn test_one() {
+        let x = FP509::ONE;
+        let y = -x;
+        assert_eq!(f256::from(&x), f256::ONE);
+        assert_eq!(f256::from(&y), f256::NEG_ONE);
+        assert_eq!(BigFloat::from(&x), BigFloat::ONE);
+        assert_eq!(BigFloat::from(&y), BigFloat::NEG_ONE);
     }
 }
