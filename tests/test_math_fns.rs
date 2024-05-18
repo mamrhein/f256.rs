@@ -95,11 +95,11 @@ mod random_math_fn_tests {
 
     #[test]
     fn test_sin_ge_2pi() {
-        run_tests(f256::sin, 512, "test_sin_ge_2pi.txt");
+        run_tests(f256::sin, 0, "test_sin_ge_2pi.txt");
     }
 
     #[test]
     fn test_cos_ge_2pi() {
-        run_tests(f256::cos, 512, "test_cos_ge_2pi.txt");
+        run_tests(f256::cos, 0, "test_cos_ge_2pi.txt");
     }
 }
