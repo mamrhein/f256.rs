@@ -11,7 +11,6 @@ const P: u32 = 237;
 const EXP_MAX: u32 = 2_u32.pow(18) - 1;
 const LZ_MAX: u32 = 253;
 const N: u32 = EXP_MAX + LZ_MAX + P + 7;
-const L: u32 = N / 8;
 
 use rug::{float::Constant::Pi, integer::Order, Float, Integer};
 
