@@ -337,17 +337,17 @@ mod reduce_tests {
             ),
         );
         // -4.081838735141263582281490600494564033380656130039804322382899197982948856e-72
-        let r = f256::from_sign_exp_signif(
+        let r = BigFloat::from_sign_exp_signif(
             1,
-            -474,
+            -492,
             (
-                0x00001cd9128a5043cc71a026ef7ca8cd,
-                0x9e69d218d98158536f92f8a1ba7f09ab,
+                0x73644a29410f31c6809bbdf2a33679a7,
+                0x48636605614dbe4be286e9fc26adadaa,
             ),
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
-        assert_eq!(f256::from(&fx), r);
+        assert_eq!(BigFloat::from(&fx), r);
     }
 
     #[test]
@@ -362,17 +362,17 @@ mod reduce_tests {
             ),
         );
         // -2.297835518052893176389214420697236605538218253920745232749266210043741685e-72
-        let r = f256::from_sign_exp_signif(
+        let r = BigFloat::from_sign_exp_signif(
             1,
-            -474,
+            -492,
             (
-                0x0000103d5cb39152fe3820c2ad6f4c04,
-                0x18111a7c3f86b9a12ddedb28a47b3059,
+                0x40f572ce454bf8e0830ab5bd30106044,
+                0x69f0fe1ae684b77b6ca291ecc1646453,
             ),
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
-        assert_eq!(f256::from(&fx), r);
+        assert_eq!(BigFloat::from(&fx), r);
     }
 
     #[test]
@@ -382,22 +382,22 @@ mod reduce_tests {
             0,
             -218,
             (
-                558401033334757190931105923669791,
-                18759989041509371038882973050122181661,
+                0x00001b88030ccdd8b7632adb619b1f1f,
+                0x0e1d0adefedbcedd03c621b5967e9c1d,
             ),
         );
         // -0.252291083838150703047132073301933401753305159681715343517117525111538028
-        let r = f256::from_sign_exp_signif(
+        let r = BigFloat::from_sign_exp_signif(
             1,
-            -235,
+            -256,
             (
-                40936568814036772438458176887655,
-                243968839912839697982605558556793863273,
+                0x409626022841a126f489297b6cf6f156,
+                0x0fcc794939dca5183515d3af8d1ff9c8,
             ),
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 2);
-        assert_eq!(f256::from(&fx), r);
+        assert_eq!(BigFloat::from(&fx), r);
     }
 
     #[test]
@@ -407,14 +407,14 @@ mod reduce_tests {
             0,
             -144,
             (
-                637979223658812755503006773292533,
-                179734367594601023673460503048988831334,
+                0x00001f746e0d05af04132a3438e62df5,
+                0x8737947eb8551f3f8b6fed06643aae66,
             ),
         );
         // -2.6902318393958948138169491581374663396316393610919104502987401460736171854647e-72
-        let r = BigFloat::new(
-            -1,
-            -238,
+        let r = BigFloat::from_sign_exp_signif(
+            1,
+            -492,
             (
                 0x4c0d390b2059bc41923ce8f474398c88,
                 0xf76daed66808d34acd2c658eaa8f6acc,
@@ -437,9 +437,9 @@ mod reduce_tests {
             ),
         );
         // 4.766543275114000144936176176450192810718081377608351404051118669257945354e-74
-        let r = BigFloat::new(
-            1,
-            -244,
+        let r = BigFloat::from_sign_exp_signif(
+            0,
+            -498,
             (
                 0x563d1ec38077f1810a728c57851aba2b,
                 0x71bc78f95015c84078d6591b6b74a571,
@@ -460,9 +460,9 @@ mod reduce_tests {
                 0x00000000000000000000000000000000,
             ),
         );
-        let r = BigFloat::new(
-            -1,
-            -3,
+        let r = BigFloat::from_sign_exp_signif(
+            1,
+            -257,
             (
                 0x6d6426ef8f5dd348fe6e5056a1746784,
                 0x2274a7eb9c97d04b267a41e0d1898945,
@@ -484,12 +484,37 @@ mod reduce_tests {
             ),
         );
         // 0.3742030203459253563266600098797338765224469432914356135160726857543409513358
-        let r = BigFloat::new(
-            1,
-            -2,
+        let r = BigFloat::from_sign_exp_signif(
+            0,
+            -256,
             (
                 0x5fcbc4e6733e79165158c5a8465bd4af,
                 0x02ee033f64e42764159bba795550da8e,
+            ),
+        );
+        let (q, fx) = reduce(&f);
+        assert_eq!(q, 1);
+        assert_eq!(BigFloat::from(&fx), r);
+    }
+
+    #[test]
+    fn test_near_2_pow_18000() {
+        // 7.582517070609212928957499986973212108309265475257712926501597865796309235e5417
+        let f = f256::from_sign_exp_signif(
+            0,
+            17752,
+            (
+                0x00001d9463f76c4f2696e286975e9b65,
+                0x0692f172657c2336a9c05b3c6e9f7000,
+            ),
+        );
+        // -2.527328175159062957858376845625879143718591676321917217167170433107217977e-72
+        let r = BigFloat::from_sign_exp_signif(
+            0,
+            -493,
+            (
+                0x5030bf58f636c72767c3068b481c87cc,
+                0xd0cea195ed9945d314dc05006dd04c7e,
             ),
         );
         let (q, fx) = reduce(&f);
@@ -504,26 +529,51 @@ mod reduce_tests {
             0,
             174764,
             (
-                0x000010f258e66993bcca1cccec6818d0,
-                0x53e47fc6c26e2ed5626a9c63a353cf87,
+                0x00001b64aca7e15ce86415e576d50cf4,
+                0xf70831f00da91dab3929bf7e63e8dac3,
             ),
         );
         // -3.593598548722686367734065727968384533432676656819918617957851704757758941e-72
-        let r = f256::from_sign_exp_signif(
+        let r = BigFloat::from_sign_exp_signif(
             1,
-            -474,
+            -491,
             (
-                0x00001965b922a61c5aef27c2f900f9ef,
-                0x860efa16a7027421c5949f98ac80caea,
+                0x5603de2d595503eed8ae0f6e6c6caa7e,
+                0x2471192da9945586acc5a97224089d08,
             ),
         );
         let (q, fx) = reduce(&f);
-        assert_eq!(q, 3);
-        assert_eq!(f256::from(&fx), r);
+        assert_eq!(q, 0);
+        assert_eq!(BigFloat::from(&fx), r);
     }
 
     #[test]
     fn test_nearest_to_multible_of_pi_over_2() {
+        // 6.662454187299314666799247444396908101815741162990142648603179838565345223e54599
+        let f = f256::from_sign_exp_signif(
+            0,
+            181140,
+            (
+                0x000019c7578b391b557200c5e4ce28e5,
+                0xc22dec43ae3fb9be14b646a87afdf78e,
+            ),
+        );
+        // 1.282737695342710736362054776460251633047745905692069344578841449121727160e-76
+        let r = BigFloat::from_sign_exp_signif(
+            0,
+            -507,
+            (
+                0x76d31fae1a225dd56b205f183b805391,
+                0x5e8fceff6cdab4a1f14fa390a2f822a5,
+            ),
+        );
+        let (q, fx) = reduce(&f);
+        assert_eq!(q, 1);
+        assert_eq!(BigFloat::from(&fx), r);
+    }
+
+    #[test]
+    fn test_near_2_pow_185697() {
         // 2.970070222171535186122403750332127410373506874041943887689128979638136212e55900
         let f = f256::from_sign_exp_signif(
             0,
@@ -533,17 +583,35 @@ mod reduce_tests {
                 0xf1c2d085d2933836d205e79e8f61e4ee,
             ),
         );
-        // -5.769198204535869190785720230896528973489817286545990660946235357113661705e-77
-        let r = f256::from_sign_exp_signif(
-            1,
-            -490,
+        // 5.3000082033723996815145259318245602730807565681733856260129980134004324e-1
+        let r = BigFloat::from_sign_exp_signif(
+            0,
+            -255,
             (
-                0x00001ab89a0b66c5b89c0aa9c372047b,
-                0xfa9e02e32987ffbf9bd44278301166fd,
+                0x43d7111f19ce98f31d3366fdc96c7efe,
+                0x219f8b5ce7e14d94046bfc6f65b2661a,
             ),
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 0);
-        assert_eq!(f256::from(&fx), r);
+        assert_eq!(BigFloat::from(&fx), r);
+    }
+
+    #[test]
+    fn test_f256_max() {
+        // 1.61132571748576047361957211845200501064402387454966951747637125049607183e78913
+        let f = f256::MAX;
+        // -6.86138758120745087463500856749052818411548780495917644493902245327224695e-1
+        let r = BigFloat::from_sign_exp_signif(
+            1,
+            -255,
+            (
+                0x57d3651352c593b29168bcc8d9c32c6c,
+                0x5c5a1000debd782e141a40fc3db6c9be,
+            ),
+        );
+        let (q, fx) = reduce(&f);
+        assert_eq!(q, 1);
+        assert_eq!(BigFloat::from(&fx), r);
     }
 }
