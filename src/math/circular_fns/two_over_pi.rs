@@ -16,6 +16,73 @@ const LZ_MAX: u32 = 253;
 const N: u32 = EMAX as u32 + LZ_MAX + SIGNIFICAND_BITS + 7;
 const L: usize = N as usize / 8;
 
+pub(super) fn get_511_bits(offset: u32) -> u512 {
+    const N_BYTES: usize = (u128::BITS / u8::BITS) as usize;
+    const HI_MASK: u128 = (1_u128 << 127) - 1;
+    debug_assert!(offset <= N - u256::BITS + 1);
+    let idx = (offset / u8::BITS) as usize;
+    let sh = offset % u8::BITS;
+    let (th, tail) = TWO_OVER_PI[idx..].split_at(N_BYTES);
+    let (tl, tail) = tail.split_at(N_BYTES);
+    let hi = u256::new(
+        u128::from_be_bytes(th.try_into().unwrap()),
+        u128::from_be_bytes(tl.try_into().unwrap()),
+    );
+    let (th, tail) = tail.split_at(N_BYTES);
+    let (tl, tail) = tail.split_at(N_BYTES);
+    let lo = u256::new(
+        u128::from_be_bytes(th.try_into().unwrap()),
+        u128::from_be_bytes(tl.try_into().unwrap()),
+    );
+    let mut res = u512::new(hi, lo);
+    if sh > 1 {
+        res <<= sh - 1;
+        res.lo += (TWO_OVER_PI[idx + (u512::BITS / u8::BITS) as usize]
+            >> (u8::BITS + 1 - sh)) as u128;
+        res.hi.hi &= HI_MASK;
+    } else if sh == 1 {
+        res.hi.hi &= HI_MASK
+    } else {
+        res >>= 1;
+    }
+    res
+}
+
+#[cfg(test)]
+mod two_over_pi_tests {
+    use super::*;
+
+    #[test]
+    fn test_get_511_bits() {
+        assert_eq!(
+            get_511_bits(0),
+            u512::new(
+                u256::new(
+                    0x517cc1b727220a94fe13abe8fa9a6ee0_u128,
+                    0x6db14acc9e21c820ff28b1d5ef5de2b0_u128,
+                ),
+                u256::new(
+                    0xdb92371d2126e9700324977504e8c90e_u128,
+                    0x7f0ef58e5894d39f74411afa975da242_u128,
+                ),
+            )
+        );
+        assert_eq!(
+            get_511_bits(N - u512::BITS - 5),
+            u512::new(
+                u256::new(
+                    0x4d2b6248446b4ec496a9cbccef34e387_u128,
+                    0x31070200b796bcc07d86cd88c3dfd625_u128,
+                ),
+                u256::new(
+                    0xf05e80360b666cf497745fe553316518_u128,
+                    0x3047df389d753cae12633bf470ec9874_u128,
+                ),
+            )
+        );
+    }
+}
+
 pub(super) const TWO_OVER_PI: [u8; L + 1] = [
     0xa2, 0xf9, 0x83, 0x6e, 0x4e, 0x44, 0x15, 0x29, 0xfc, 0x27, 0x57, 0xd1,
     0xf5, 0x34, 0xdd, 0xc0, 0xdb, 0x62, 0x95, 0x99, 0x3c, 0x43, 0x90, 0x41,
@@ -2754,70 +2821,3 @@ pub(super) const TWO_OVER_PI: [u8; L + 1] = [
     0xf9, 0x54, 0xcc, 0x59, 0x46, 0x0c, 0x11, 0xf7, 0xce, 0x27, 0x5d, 0x4f,
     0x2b, 0x84, 0x98, 0xce, 0xfd, 0x1c, 0x3b, 0x26, 0x1d, 0x0c, 0x00,
 ];
-
-pub(super) fn get_511_bits(offset: u32) -> u512 {
-    const N_BYTES: usize = (u128::BITS / u8::BITS) as usize;
-    const HI_MASK: u128 = (1_u128 << 127) - 1;
-    debug_assert!(offset <= N - u256::BITS + 1);
-    let idx = (offset / u8::BITS) as usize;
-    let sh = offset % u8::BITS;
-    let (th, tail) = TWO_OVER_PI[idx..].split_at(N_BYTES);
-    let (tl, tail) = tail.split_at(N_BYTES);
-    let hi = u256::new(
-        u128::from_be_bytes(th.try_into().unwrap()),
-        u128::from_be_bytes(tl.try_into().unwrap()),
-    );
-    let (th, tail) = tail.split_at(N_BYTES);
-    let (tl, tail) = tail.split_at(N_BYTES);
-    let lo = u256::new(
-        u128::from_be_bytes(th.try_into().unwrap()),
-        u128::from_be_bytes(tl.try_into().unwrap()),
-    );
-    let mut res = u512::new(hi, lo);
-    if sh > 1 {
-        res <<= sh - 1;
-        res.lo += (TWO_OVER_PI[idx + (u512::BITS / u8::BITS) as usize]
-            >> (u8::BITS + 1 - sh)) as u128;
-        res.hi.hi &= HI_MASK;
-    } else if sh == 1 {
-        res.hi.hi &= HI_MASK
-    } else {
-        res >>= 1;
-    }
-    res
-}
-
-#[cfg(test)]
-mod two_over_pi_tests {
-    use super::*;
-
-    #[test]
-    fn test_get_511_bits() {
-        assert_eq!(
-            get_511_bits(0),
-            u512::new(
-                u256::new(
-                    0x517cc1b727220a94fe13abe8fa9a6ee0_u128,
-                    0x6db14acc9e21c820ff28b1d5ef5de2b0_u128,
-                ),
-                u256::new(
-                    0xdb92371d2126e9700324977504e8c90e_u128,
-                    0x7f0ef58e5894d39f74411afa975da242_u128,
-                ),
-            )
-        );
-        assert_eq!(
-            get_511_bits(N - u512::BITS - 5),
-            u512::new(
-                u256::new(
-                    0x4d2b6248446b4ec496a9cbccef34e387_u128,
-                    0x31070200b796bcc07d86cd88c3dfd625_u128,
-                ),
-                u256::new(
-                    0xf05e80360b666cf497745fe553316518_u128,
-                    0x3047df389d753cae12633bf470ec9874_u128,
-                ),
-            )
-        );
-    }
-}
