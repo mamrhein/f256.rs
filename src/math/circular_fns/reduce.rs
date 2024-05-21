@@ -9,10 +9,7 @@
 
 use std::ops::Neg;
 
-use super::{
-    two_over_pi::{get_511_bits, TWO_OVER_PI},
-    u256, BigFloat, FP509,
-};
+use super::{two_over_pi::get_256_bits, u256, BigFloat, FP509};
 use crate::{
     big_uint::u512, consts::TAU, f256, FRACTION_BITS, SIGNIFICAND_BITS, TWO,
 };
@@ -247,10 +244,11 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP509) {
     // The first part will - when multiplied by C - become a multiple of 2π
     // and thus can be ignored for trigonometric functions.
     // The last part is too small to have a relevant influence in the result.
-    let i = e as u32 - SIGNIFICAND_BITS;
-    let r1 = get_511_bits(i - 1);
-    let (tl, th1) = m.widening_mul(&r1.lo);
-    let (th2, _) = m.widening_mul(&r1.hi);
+    let idx = e as u32 - SIGNIFICAND_BITS - 1;
+    let mut r1_hi = &get_256_bits(idx) >> 1;
+    let mut r1_lo = get_256_bits(idx + 255);
+    let (tl, th1) = m.widening_mul(&r1_lo);
+    let (th2, _) = m.widening_mul(&r1_hi);
     let (mut th, _) = th1.overflowing_add(&th2);
     let mut f = u512::new(th, tl);
     let mut k = (th.hi >> u128::BITS - 3) as u32;
