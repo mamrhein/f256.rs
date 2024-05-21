@@ -58,7 +58,7 @@ mod two_over_pi_tests {
                 0x7f0ef58e5894d39f74411afa975da242_u128,
             )
         );
-        let idx = N - u512::BITS - 5;
+        let idx = N - u512::BITS - FRACTION_BITS - 1;
         let mut hi = &get_256_bits(idx) >> 1;
         let lo = get_256_bits(idx + 255);
         assert_eq!(
