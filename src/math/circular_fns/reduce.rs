@@ -246,8 +246,12 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP509) {
     // The last part is too small to have a relevant influence in the result.
     let idx = e as u32 - SIGNIFICAND_BITS - 1;
     let mut r1_hi = &get_256_bits(idx) >> 1;
-    let mut r1_lo = get_256_bits(idx + 255);
-    let (tl, th1) = m.widening_mul(&r1_lo);
+    let mut r1_mi = get_256_bits(idx + 255);
+    let mut r1_lo = get_256_bits(idx + 511);
+    let (_, tl1) = m.widening_mul(&r1_lo);
+    let (tl2, mut th1) = m.widening_mul(&r1_mi);
+    let (tl, ovl) = tl1.overflowing_add(&tl2);
+    th1 += ovl as u128;
     let (th2, _) = m.widening_mul(&r1_hi);
     let (mut th, _) = th1.overflowing_add(&th2);
     let mut f = u512::new(th, tl);
