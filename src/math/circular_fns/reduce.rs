@@ -180,7 +180,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP509) {
         ),
     );
     // Max exponent for fast_reduce
-    const M: i32 = 253;
+    const M: i32 = 240;
     // Number of significant bits in C1 + C2
     const C1_C2_PREC: u32 = 2 * BigFloat::FRACTION_BITS - 2;
 
