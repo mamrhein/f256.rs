@@ -89,6 +89,14 @@ impl FP509 {
         }
     }
 
+    #[inline(always)]
+    pub(crate) fn abs(mut self) -> Self {
+        if self.signum() < 0 {
+            self.ineg();
+        }
+        self
+    }
+
     /// self =  ◯(self * rhs)
     pub(super) fn imul_round(&mut self, rhs: &Self) {
         let signum = self.signum() * rhs.signum();
