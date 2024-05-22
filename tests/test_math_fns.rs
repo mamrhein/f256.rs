@@ -94,12 +94,22 @@ mod random_math_fn_tests {
     }
 
     #[test]
-    fn test_sin_ge_2pi() {
-        run_tests(f256::sin, 0, "test_sin_ge_2pi.txt");
+    fn test_sin_fma_range() {
+        run_tests(f256::sin, 0, "test_sin_fma_range.txt");
     }
 
     #[test]
-    fn test_cos_ge_2pi() {
-        run_tests(f256::cos, 0, "test_cos_ge_2pi.txt");
+    fn test_cos_fma_range() {
+        run_tests(f256::cos, 0, "test_cos_fma_range.txt");
+    }
+
+    #[test]
+    fn test_sin_large_values() {
+        run_tests(f256::sin, 0, "test_sin_large_values.txt");
+    }
+
+    #[test]
+    fn test_cos_large_values() {
+        run_tests(f256::cos, 0, "test_cos_large_values.txt");
     }
 }
