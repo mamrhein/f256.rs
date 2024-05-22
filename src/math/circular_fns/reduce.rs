@@ -204,11 +204,11 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP509) {
         // x <= M => z < 2ᴾ⁻²
         let e = z.exp - BigFloat::FRACTION_BITS as i32;
         let q = (&z.signif >> e.unsigned_abs()).lo as u32 & 0x3;
-        debug_assert!(v1.abs() <= BigFloat::FRAC_PI_4);
         // Convert (v1 + v2) into a fixed-point number with 509-bit-fraction
         // |v1| <= ½π => v1.exp <= 0
         let mut fx = FP509::from(&v1);
         fx += &FP509::from(&v2);
+        debug_assert!(fx < FP_FRAC_PI_4);
         return (q, fx);
     }
     large_val_reduce(exp, x)
