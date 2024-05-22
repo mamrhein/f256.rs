@@ -235,15 +235,21 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP509) {
     // Then x⋅R = m⋅2ᵉ⁻ᴾ⁺¹⋅R = m⋅2ⁱ⁺¹⋅R.
     // Let 0.d₋₁d₋₂d₋₃... be the infinite binary expansion of R.
     // Split R so that
-    // R = R₀⋅2¹⁻ⁱ + (R₁ + R₂)⋅2⁻ⁱ⁻⁵¹⁰, where
+    // R = R₀⋅2¹⁻ⁱ + (R₁ + R₂)⋅2⁻ⁱ⁻ⁿ, where
     // R₀ = 0 if e <= P + 1, else
     // R₀ = 0d₋₁...d₁₋ᵢ
-    // R₁ = d₋ᵢd₋ᵢ₋₁...d₋ᵢ₋₅₁₀
-    // R₂ = 0.d₋ᵢ₋₅₁₁...
-    // Then x⋅R = m⋅4⋅R₀ + m⋅2⁻⁵⁰⁹⋅R₁ + m⋅2⁻⁵⁰⁹⋅R₂.
+    // R₁ = d₋ᵢd₋ᵢ₋₁...d₋ᵢ₋ₙ
+    // R₂ = 0.d₋ᵢ₋ₙ₋₁...
+    // Then x⋅R = m⋅4⋅R₀ + m⋅2¹⁻ⁿ⋅R₁ + m⋅2¹⁻ⁿ⋅R₂.
     // The first part will - when multiplied by C - become a multiple of 2π
     // and thus can be ignored for trigonometric functions.
-    // The last part is too small to have a relevant influence in the result.
+    // The last part can be made too small to have a relevant influence in the
+    // result by choosing an appropriate n.
+    // The smallest value y can take is ≅ 1.28273769534271073636205477646e-76
+    // and has l = 253 leading zero bits after the radix point.
+    // So - in the worst - case we need atleast n = l + 2 * P - 1 = 726 bits
+    // for R₁. We use n = 767 and discard the last 256 bits of m⋅R₁ to get a
+    // value with 509 fractional bits.
     let idx = e as u32 - SIGNIFICAND_BITS - 1;
     let mut r1_hi = &get_256_bits(idx) >> 1;
     let mut r1_mi = get_256_bits(idx + 255);
