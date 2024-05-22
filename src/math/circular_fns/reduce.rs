@@ -208,7 +208,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP509) {
         // |v1| <= ½π => v1.exp <= 0
         let mut fx = FP509::from(&v1);
         fx += &FP509::from(&v2);
-        debug_assert!(fx < FP_FRAC_PI_4);
+        debug_assert!(fx.abs() < FP_FRAC_PI_4);
         return (q, fx);
     }
     large_val_reduce(exp, x)
