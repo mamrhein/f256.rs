@@ -11,13 +11,13 @@
 * Multiplication by 2 (mul2)
 * Multiplication by 1/2 (div2)
 * Multiplication by an integer power of 2 (scaleb)
-* Squaring (square)
+* ~~Squaring (square)~~
 
 ### Fused operators
 
-* Fused multiply-add (mul_add)
-* Fused square-add (square-add)
-* Sum of two sqares (sos)
+* ~~Fused multiply-add (mul_add)~~
+* ~~Fused square-add (square-add)~~
+* ~~Sum of two sqares (sos)~~
 
 ### Helper functions
 
