@@ -16,6 +16,7 @@ mod cos;
 mod reduce;
 mod sin;
 mod sin_cos;
+mod tan;
 mod two_over_pi;
 
 use super::{u256, BigFloat, FP509};
