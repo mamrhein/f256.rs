@@ -8,7 +8,15 @@
 // $Revision$
 
 use super::u256;
-use crate::{consts::FRAC_PI_2, f256};
+use crate::{
+    consts::FRAC_PI_2,
+    f256,
+    math::circular_fns::{
+        approx_cos::approx_cos, approx_sin::approx_sin,
+        approx_sin_cos::approx_sin_cos, reduce::reduce,
+    },
+    HI_ABS_MASK,
+};
 
 impl f256 {
     /// Simultaneously computes the sine and cosine of the number x
@@ -16,7 +24,30 @@ impl f256 {
     ///
     /// Returns (sin(x), cos(x)).
     pub fn sin_cos(&self) -> (Self, Self) {
-        (self.sin(), self.cos())
+        if self.is_special() {
+            // x is NAN or infinite => sine x and cosine x are NAN
+            if (self.bits.hi & HI_ABS_MASK) > f256::MAX.bits.hi {
+                return (f256::NAN, f256::NAN);
+            }
+            // x = 0 => sine x = 0 and cosine x = 1
+            return (f256::ZERO, f256::ONE);
+        }
+        // Calculate ⌈|x|/½π⌋ % 4 and |x| % ½π.
+        let (quadrant, fx) = reduce(&self.abs());
+        // Approximate sine and cosine
+        let (sin, cos) = approx_sin_cos(&fx);
+        // Map result according to quadrant and sign
+        match (quadrant, self.sign()) {
+            (0, 0) => (Self::from(&sin), Self::from(&cos)),
+            (0, 1) => (-Self::from(&sin), Self::from(&cos)),
+            (1, 0) => (Self::from(&cos), -Self::from(&sin)),
+            (1, 1) => (-Self::from(&cos), -Self::from(&sin)),
+            (2, 0) => (-Self::from(&sin), -Self::from(&cos)),
+            (2, 1) => (Self::from(&sin), -Self::from(&cos)),
+            (3, 0) => (-Self::from(&cos), Self::from(&sin)),
+            (3, 1) => (Self::from(&cos), Self::from(&sin)),
+            _ => unreachable!(),
+        }
     }
 }
 

@@ -7,15 +7,18 @@
 // $Source$
 // $Revision$
 
-mod approx_cos;
-mod approx_sin;
-mod approx_sin_cos;
-mod atan;
-mod cordic;
-mod cos;
-mod reduce;
-mod sin;
-mod sin_cos;
-mod two_over_pi;
+use super::{
+    approx_cos::{approx_cos, SMALL_CUT_OFF},
+    approx_sin::approx_sin,
+    FP509,
+};
 
-use super::{u256, BigFloat, FP509};
+pub(crate) fn approx_sin_cos(x: &FP509) -> (FP509, FP509) {
+    let mut x_abs = *x;
+    x_abs.iabs();
+    // If x is zero or very small, cosine x == 1 and sine x == x.
+    if x_abs <= SMALL_CUT_OFF {
+        return (*x, FP509::ONE);
+    };
+    (approx_sin(x), approx_cos(x))
+}
