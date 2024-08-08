@@ -7,10 +7,10 @@ lint:
   cargo clippy
 
 test-fast:
-  cargo nextest run -r -E '!test(slowtest)'
+  cargo nextest run -r --no-default-features -E '!test(slowtest)'
 
 test-slow:
-  cargo nextest run -r -E 'test(slowtest)'
+  cargo nextest run -r --no-default-features -E 'test(slowtest)'
 
 test-all:
   cargo hack test --release --feature-powerset --optional-deps num-traits

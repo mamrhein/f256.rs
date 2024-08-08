@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use std::ops::Neg;
+use core::ops::Neg;
 
 use super::{two_over_pi::get_256_bits, u256, BigFloat, FP509};
 use crate::{

@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use std::cmp::max;
+use core::cmp::max;
 
 use super::{
     cordic::{cordic_atan, cordic_atan2},
