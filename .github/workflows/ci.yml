@@ -8,11 +8,11 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: ⬇️ checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 🛠 setup cargo toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: ♻️ cache Rust dependencies
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ⬇️ checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 🛠 setup cargo toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: 🛠 install cargo-hack
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ⬇️ checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 🛠 setup cargo toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: ♻️ cache Rust dependencies
