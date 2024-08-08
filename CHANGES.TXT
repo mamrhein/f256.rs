@@ -1,5 +1,7 @@
 Version   Changes
 --------  --------------------------------------------------------------------
+ 0.3.0    Added trigonometric functions sin, cos and tan.
+
  0.2.0    Added some basic mathematical constants.
           Implemented fns f256::sqrt, f256::to_degrees and f256::to_radians.
           Implemented traits Rem, RemAssign.

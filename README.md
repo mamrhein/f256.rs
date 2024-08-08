@@ -11,6 +11,7 @@ among the interchange formats (it is not a basic format), as having:
     Exponent width: 19 bits
     Significand precision: 237 bits (236 explicitly stored)
 ```
+
 The format is written with an implicit lead bit with value 1 unless the
 exponent is all zeros. Thus only 236 bits of the significand appear in the
 memory format, but the total precision is 237 bits (approximately 71 decimal
@@ -29,6 +30,7 @@ exponent bias in the IEEE 754 standard.
     Eₘₐₓ = 262143
     Exponent bias = 3FFFF₁₆ = 262143
 ```
+
 Thus, as defined by the offset binary representation, in order to get the true
 exponent the offset of 262143 has to be subtracted from the stored exponent.
 
@@ -36,7 +38,7 @@ The stored exponents 00000₁₆ and 7FFFF₁₆ are interpreted specially.
 
 | Exponent          | Significand zero | Significand non-zero    | Equation                                                                 |
 |-------------------|------------------|-------------------------|--------------------------------------------------------------------------|
-| 00000₁₆           | 0, −0            | subnormal numbers       | (-1)<sup>signbit</sup> × 2⁻²⁶²¹⁴² × 0.significandbits₂        |
+| 00000₁₆           | 0, −0            | subnormal numbers       | (-1)<sup>signbit</sup> × 2⁻²⁶²¹⁴² × 0.significandbits₂                   |
 | 00001₁₆ … 7FFFE₁₆ | normalized value | normalized value        | (-1)<sup>signbit</sup> × 2<sup>exponent bits₂</sup> × 1.significandbits₂ |
 | 7FFFF₁₆           | ±∞               | NaN (quiet, signalling) |
 
@@ -54,7 +56,7 @@ Add `f256` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-f256 = "0.2"
+f256 = "0.3"
 ```
 
 ### Crate features
@@ -64,7 +66,7 @@ By default, only the feature `std` is enabled.
 #### Ecosystem
 
 * **std** - Printing and some tests depend on this feature. Besides that, support
-  for conversion to string and formatting is provided by using crate `alloc` so 
+  for conversion to string and formatting is provided by using crate `alloc` so
   that this functionality is also available in non-standard environments.
 
 #### Optional dependencies
