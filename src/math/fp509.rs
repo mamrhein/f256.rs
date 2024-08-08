@@ -21,7 +21,7 @@ use crate::{
 
 /// Represents fixed-point numbers with 509 fractional bit in the range
 /// [-4, 4 - 2⁻⁵⁰⁹].
-#[derive(Clone, Copy, Default, Eq, PartialEq, Ord)]
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub(super) struct FP509(u512);
 
 impl FP509 {
@@ -242,6 +242,12 @@ impl PartialOrd for FP509 {
         let mut rhs = other.0;
         rhs.hi.hi ^= 1_u128 << 127;
         lhs.partial_cmp(&rhs)
+    }
+}
+
+impl Ord for FP509 {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 
