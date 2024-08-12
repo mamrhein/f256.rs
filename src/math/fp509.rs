@@ -110,8 +110,8 @@ impl FP509 {
         const TIE: u128 = 1_u128 << 127;
         carry += ((rem_hi > TIE)
             || (rem_hi == TIE && ((carry & 1_u128) == 1_u128)
-                || lo.hi.lo != 0
-                || !lo.lo.is_zero())) as u128;
+            || lo.hi.lo != 0
+            || !lo.lo.is_zero())) as u128;
         hi <<= 3;
         let mut ovl = false;
         (hi.lo, ovl) = hi.lo.overflowing_add(&u256::new(0_u128, carry));
@@ -213,7 +213,9 @@ impl From<&FP509> for f256 {
             }
             // nlz > u256::BITS + EXP_BITS = 275 => shift left
             276..=511 => fp_abs_signif <<= nlz - u256::BITS - EXP_BITS,
-            _ => {}
+            _ => {
+                return f256::ZERO;
+            }
         };
         Self::new(sign, exp, fp_abs_signif.lo)
     }
