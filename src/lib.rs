@@ -288,6 +288,7 @@ impl f256 {
     ) -> Self {
         debug_assert!(sign == 0 || sign == 1);
         debug_assert!(exponent >= EMIN - 1 && exponent <= EMAX);
+        debug_assert!(!significand.is_zero());
         debug_assert!((significand.hi >> HI_FRACTION_BITS) <= 1_u128);
         let biased_exp = (exponent + EXP_BIAS as i32) as u128;
         Self {
