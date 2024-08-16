@@ -97,6 +97,21 @@ impl FP509 {
         self
     }
 
+    pub(super) fn mul2(&self) -> Self {
+        if self.signum() < 0 {
+            let mut res = self.abs();
+            assert!(res < FP509::TWO);
+            res.0 <<= 1;
+            res.ineg();
+            res
+        } else {
+            let mut res = *self;
+            assert!(res < FP509::TWO);
+            res.0 <<= 1;
+            res
+        }
+    }
+
     /// self =  ◯(self * rhs)
     pub(super) fn imul_round(&mut self, rhs: &Self) {
         let signum = self.signum() * rhs.signum();
