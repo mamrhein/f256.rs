@@ -17,7 +17,7 @@ use core::{
 
 use crate::{
     abs_bits,
-    big_uint::{u256, u512, BigUIntHelper},
+    big_uint::{u256, u512, BigUIntHelper, DivRem},
     exp_bits, f256,
     math::fp509::FP509,
     norm_bit, signif, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
@@ -51,7 +51,30 @@ fn mul_signifs(x: &u256, y: &u256) -> (u512, i32) {
     let (lo, hi) = x.widening_mul(y);
     let nlz = hi.leading_zeros();
     let res = &u512 { hi, lo } << (nlz - 1);
+    // TODO: do rounding here
     (res, (nlz == 2) as i32)
+}
+
+fn div_signifs(x: &u256, y: &u256) -> (u256, i32) {
+    debug_assert!(x.hi.leading_zeros() == 1);
+    debug_assert!(y.hi.leading_zeros() == 1);
+    // 2²⁵⁴ <= x < 2²⁵⁵ and 2²⁵⁴ <= y < 2²⁵⁵
+    // => ½ < x/y < 2
+    // => 2²⁵³ < (x/y⋅2²⁵⁴) < 2²⁵⁵
+    const N: u32 = BigFloat::FRACTION_BITS - u128::BITS;
+    let exp_adj = (x < y) as i32;
+    let mut quot = u256::new(((exp_adj == 0) as u128) << N, 0);
+    debug_assert!(quot.hi.leading_zeros() == 1 || quot.is_zero());
+    let mut x_hat = &u512::new(u256::ZERO, x % y) << BigFloat::FRACTION_BITS;
+    let (q, r) = x_hat.div_rem_u256_special(&y);
+    debug_assert_eq!(q.hi, u256::ZERO);
+    debug_assert!(q.lo.leading_zeros() >= 2);
+    quot += &q.lo;
+    let rnd = r > (y >> 1);
+    quot += rnd as u128;
+    let nlz = quot.hi.leading_zeros();
+    quot <<= nlz - 1;
+    (quot, exp_adj)
 }
 
 /// Representation of the number signum * signif * 2^(exp-254).
@@ -332,6 +355,7 @@ impl BigFloat {
             let (mut prod_signif, exp_adj) =
                 mul_signifs(&self.signif, &other.signif);
             // round significand of product to 255 bits
+            // TODO: do rounding in fn mul_signifs
             let rnd = prod_signif.lo > TIE
                 || (prod_signif.lo == TIE && prod_signif.hi.is_odd());
             prod_signif.hi += rnd as u128;
@@ -339,6 +363,18 @@ impl BigFloat {
             self.signif = prod_signif.hi;
             self.exp += other.exp + exp_adj;
         }
+    }
+
+    pub(crate) fn idiv(&mut self, other: &Self) {
+        assert!(!other.is_zero(), "Division by zero.");
+        if self.signum == 0 {
+            return;
+        }
+        self.signum *= other.signum;
+        let (mut quot_signif, exp_adj) =
+            div_signifs(&self.signif, &other.signif);
+        self.signif = quot_signif;
+        self.exp -= other.exp + exp_adj;
     }
 
     pub(crate) fn imul_add(&mut self, f: &Self, a: &Self) {
@@ -419,7 +455,7 @@ impl BigFloat {
                     x_signif.hi >>= shr;
                     rnd &= (x_signif.lo != u256::ZERO)
                         || (x_signif.lo == u256::ZERO
-                            && x_signif.hi.is_odd());
+                        && x_signif.hi.is_odd());
                     rnd |= (x_signif.lo > TIE)
                         || (x_signif.lo == TIE && x_signif.hi.is_odd());
                     x_signif.hi += rnd as u128;
@@ -1020,5 +1056,58 @@ mod mul_tests {
                 ),
             }
         );
+    }
+}
+
+#[cfg(test)]
+mod div_tests {
+    use super::*;
+
+    #[test]
+    fn test_idiv_by_one() {
+        let mut x = BigFloat::ONE;
+        x.idiv(&BigFloat::ONE);
+        assert_eq!(x, BigFloat::ONE);
+        let mut x = -BigFloat::ONE_HALF;
+        x.idiv(&BigFloat::NEG_ONE);
+        assert_eq!(x, BigFloat::ONE_HALF);
+    }
+
+    #[test]
+    fn test_idiv_by_one_half() {
+        let mut x = BigFloat::PI;
+        x.idiv(&BigFloat::ONE_HALF);
+        assert_eq!(x, BigFloat::TAU);
+        let mut x = -BigFloat::FRAC_PI_4;
+        x.idiv(&BigFloat::ONE_HALF);
+        assert_eq!(x, -BigFloat::FRAC_PI_2);
+    }
+
+    #[test]
+    fn test_idiv_by_pi() {
+        let mut x = BigFloat::FRAC_3_PI_4;
+        let three = BigFloat::from(&f256::from(3_f64));
+        let four = BigFloat::from(&f256::from(4_f64));
+        let mut q = three;
+        q.idiv(&four);
+        x.idiv(&BigFloat::PI);
+        assert_eq!(x, q);
+    }
+
+    #[test]
+    fn test_idiv_with_rounding() {
+        let x = BigFloat::from(&f256::from(5.99999_f64));
+        let y = BigFloat::from(&f256::from(6_f64));
+        let z = BigFloat::new(
+            1,
+            -1,
+            (
+                0x7ffff204dc4f6aaaaaaaaaaaaaaaaaaa,
+                0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+            ),
+        );
+        let mut q = x;
+        q.idiv(&y);
+        assert_eq!(q, z);
     }
 }
