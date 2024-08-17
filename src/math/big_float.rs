@@ -365,7 +365,7 @@ impl BigFloat {
         }
     }
 
-    pub(crate) fn idiv(&mut self, other: &Self) {
+    fn idiv(&mut self, other: &Self) {
         assert!(!other.is_zero(), "Division by zero.");
         if self.signum == 0 {
             return;
@@ -377,7 +377,13 @@ impl BigFloat {
         self.exp -= other.exp + exp_adj;
     }
 
-    pub(crate) fn imul_add(&mut self, f: &Self, a: &Self) {
+    pub(crate) fn recip(&self) -> Self {
+        let mut recip = Self::ONE;
+        recip.idiv(self);
+        recip
+    }
+
+    fn imul_add(&mut self, f: &Self, a: &Self) {
         if self.is_zero() || f.is_zero() {
             *self = *a;
             return;
@@ -1095,7 +1101,7 @@ mod div_tests {
     }
 
     #[test]
-    fn test_idiv_with_rounding() {
+    fn test_idiv_and_recip() {
         let x = BigFloat::from(&f256::from(5.99999_f64));
         let y = BigFloat::from(&f256::from(6_f64));
         let z = BigFloat::new(
@@ -1109,5 +1115,9 @@ mod div_tests {
         let mut q = x;
         q.idiv(&y);
         assert_eq!(q, z);
+        let mut q = y;
+        q.idiv(&x);
+        let d = (q - &z.recip()).abs();
+        assert!(d <= BigFloat::EPSILON);
     }
 }
