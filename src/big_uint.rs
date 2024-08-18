@@ -1058,7 +1058,7 @@ impl u512 {
     // found at https://github.com/hcs0/Hackers-Delight/blob/master/divlu.c.txt.
     /// Returns `self` / rhs, `self` % rhs
     //noinspection DuplicatedCode
-    fn div_rem_u256_special(&self, rhs: &u256) -> (Self, u256) {
+    pub(crate) fn div_rem_u256_special(&self, rhs: &u256) -> (Self, u256) {
         debug_assert!(self.hi < *rhs);
         const B: u256 = u256::new(1, 0);
         // Normalize dividend and divisor, so that the divisor has its highest
