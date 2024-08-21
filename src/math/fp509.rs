@@ -84,14 +84,14 @@ impl FP509 {
 
     #[inline(always)]
     pub(crate) fn iabs(&mut self) {
-        if self.signum() < 0 {
+        if self.is_sign_negative() {
             self.ineg();
         }
     }
 
     #[inline(always)]
     pub(crate) fn abs(mut self) -> Self {
-        if self.signum() < 0 {
+        if self.is_sign_negative() {
             self.ineg();
         }
         self
