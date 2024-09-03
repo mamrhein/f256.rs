@@ -33,8 +33,8 @@ use super::{
     powers_of_five::{get_power_of_five, is_multiple_of_pow5},
 };
 use crate::{
-    big_uint::DivRem, f256, u256, u512, EMAX, EMIN, FRACTION_BITS,
-    SIGNIFICAND_BITS,
+    big_uint::{div_pow10_rounded, DivRem},
+    f256, u256, u512, EMAX, EMIN, FRACTION_BITS, SIGNIFICAND_BITS,
 };
 
 #[derive(PartialEq)]
@@ -220,7 +220,7 @@ pub(crate) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
     }
     if round == Round::Up
         || (round == Round::ToEven
-            && res.ends_with(['1', '3', '5', '7', '9']))
+        && res.ends_with(['1', '3', '5', '7', '9']))
     {
         round_up_fixed_point_inplace(&mut res);
     }
@@ -318,7 +318,7 @@ fn bin_small_int_2_scientific(
         // signif10 = ⌊signif2 × 2ⁿ / 10ᵏ⌋
         let mut t = u512::new(u256::ZERO, signif2);
         t <<= exp2 as u32;
-        t.div_pow10_rounded(k as u32)
+        div_pow10_rounded(&t, k as u32)
     } else {
         // signif10 = ⌊signif2 × 2ⁿ × 10⁻ᵏ⌋ = ⌊signif2 × (5⁻ᵏ × 2ⁿ⁻ᵏ)⌋
         let t = &get_power_of_five(-k as u32) << (exp2 - k) as u32;
@@ -642,7 +642,7 @@ pub(crate) fn bin_2_dec_scientific(
     }
     if round == Round::Up
         || (round == Round::ToEven
-            && res.ends_with(['1', '3', '5', '7', '9']))
+        && res.ends_with(['1', '3', '5', '7', '9']))
     {
         exp10 += round_up_scientific_inplace(&mut res);
     }

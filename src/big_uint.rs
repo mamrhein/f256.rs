@@ -1104,40 +1104,6 @@ impl u512 {
             self.incr();
         }
     }
-
-    /// Returns `self` / 10ⁿ, rounded tie to even.
-    #[allow(clippy::integer_division)]
-    pub(crate) fn div_pow10_rounded(&self, n: u32) -> Self {
-        const CHUNK_SIZE: u32 = 38;
-        const CHUNK_BASE: u128 = 10_u128.pow(CHUNK_SIZE);
-        debug_assert_ne!(n, 0);
-        let mut q = *self;
-        let mut r = 0_u128;
-        if n <= CHUNK_SIZE {
-            let d = 10_u128.pow(n);
-            (q, r) = q.div_rem(d);
-            let tie = d >> 1;
-            if r > tie || (r == tie && (q.lo.lo & 1) == 1) {
-                q.incr();
-            }
-        } else {
-            let n_chunks = (n - 1) / CHUNK_SIZE;
-            let mut all_chunks_zero = true;
-            for _ in 0..n_chunks {
-                (q, r) = q.div_rem(CHUNK_BASE);
-                all_chunks_zero = all_chunks_zero && r == 0;
-            }
-            let d = 10_u128.pow(n - n_chunks * CHUNK_SIZE);
-            (q, r) = q.div_rem(d);
-            let tie = d >> 1;
-            if r > tie
-                || (r == tie && ((q.lo.lo & 1) == 1 || !all_chunks_zero))
-            {
-                q.incr();
-            }
-        }
-        q
-    }
 }
 
 impl fmt::Debug for u512 {
@@ -1402,6 +1368,38 @@ pub(crate) fn imul10_add(x: &mut u256, d: u8) {
     x.hi = u128_lo(t);
     t = hh * 10 + u128_hi(t);
     x.hi += t << 64;
+}
+
+/// Returns x / 10ⁿ, rounded tie to even.
+#[allow(clippy::integer_division)]
+pub(crate) fn div_pow10_rounded(x: &u512, n: u32) -> u512 {
+    const CHUNK_SIZE: u32 = 38;
+    const CHUNK_BASE: u128 = 10_u128.pow(CHUNK_SIZE);
+    debug_assert_ne!(n, 0);
+    let mut q = *x;
+    let mut r = 0_u128;
+    if n <= CHUNK_SIZE {
+        let d = 10_u128.pow(n);
+        (q, r) = q.div_rem(d);
+        let tie = d >> 1;
+        if r > tie || (r == tie && (q.lo.lo & 1) == 1) {
+            q.incr();
+        }
+    } else {
+        let n_chunks = (n - 1) / CHUNK_SIZE;
+        let mut all_chunks_zero = true;
+        for _ in 0..n_chunks {
+            (q, r) = q.div_rem(CHUNK_BASE);
+            all_chunks_zero = all_chunks_zero && r == 0;
+        }
+        let d = 10_u128.pow(n - n_chunks * CHUNK_SIZE);
+        (q, r) = q.div_rem(d);
+        let tie = d >> 1;
+        if r > tie || (r == tie && ((q.lo.lo & 1) == 1 || !all_chunks_zero)) {
+            q.incr();
+        }
+    }
+    q
 }
 
 #[cfg(test)]
