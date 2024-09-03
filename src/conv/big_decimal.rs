@@ -14,7 +14,10 @@
 /// adopted for `f256`.
 use core::cmp::{min, Ordering};
 
-use crate::{big_uint::DivRem, f256, u256};
+use crate::{
+    big_uint::{imul10_add, DivRem},
+    f256, u256,
+};
 
 /// The maximum number of digits required to unambiguously round a `f256`,
 /// calculated by the formula:
@@ -475,11 +478,11 @@ impl Decimal {
         let dp = self.decimal_point as usize;
         let mut n = u256::ZERO;
         for i in 0..dp {
-            n.imul10_add(self.digits[i]);
+            imul10_add(&mut n, self.digits[i]);
         }
         if self.digits[dp] > 5
             || self.digits[dp] == 5
-                && (dp < self.n_digits - 1 || self.truncated)
+            && (dp < self.n_digits - 1 || self.truncated)
         {
             n += 1;
         }

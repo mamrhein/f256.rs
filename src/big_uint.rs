@@ -244,30 +244,6 @@ impl u256 {
         self.lo = self.lo.wrapping_sub(1);
     }
 
-    /// Multiply by 10 and add decimal digit (inplace).
-    pub(crate) fn imul10_add(&mut self, d: u8) {
-        debug_assert!(
-            *self
-                <= Self::new(
-                    0x19999999999999999999999999999999_u128,
-                    0x99999999999999999999999999999999_u128
-                )
-        );
-        debug_assert!(d < 10);
-        let ll = u128_lo(self.lo);
-        let lh = u128_hi(self.lo);
-        let hl = u128_lo(self.hi);
-        let hh = u128_hi(self.hi);
-        let mut t = ll * 10 + d as u128;
-        self.lo = u128_lo(t);
-        t = lh * 10 + u128_hi(t);
-        self.lo += t << 64;
-        t = hl * 10 + u128_hi(t);
-        self.hi = u128_lo(t);
-        t = hh * 10 + u128_hi(t);
-        self.hi += t << 64;
-    }
-
     /// Divide `self` by 2ⁿ and round (tie to even).
     pub(crate) fn div_pow2(&self, mut n: u32) -> Self {
         const TIE: u256 = u256::new(1_u128 << 127, 0);
@@ -1403,6 +1379,29 @@ impl fmt::Display for u512 {
         }
         Ok(())
     }
+}
+
+/// Multiply x by 10 and add decimal digit (inplace).
+pub(crate) fn imul10_add(x: &mut u256, d: u8) {
+    debug_assert!(
+        *x <= u256::new(
+            0x19999999999999999999999999999999_u128,
+            0x99999999999999999999999999999999_u128
+        )
+    );
+    debug_assert!(d < 10);
+    let ll = u128_lo(x.lo);
+    let lh = u128_hi(x.lo);
+    let hl = u128_lo(x.hi);
+    let hh = u128_hi(x.hi);
+    let mut t = ll * 10 + d as u128;
+    x.lo = u128_lo(t);
+    t = lh * 10 + u128_hi(t);
+    x.lo += t << 64;
+    t = hl * 10 + u128_hi(t);
+    x.hi = u128_lo(t);
+    t = hh * 10 + u128_hi(t);
+    x.hi += t << 64;
 }
 
 #[cfg(test)]
