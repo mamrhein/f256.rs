@@ -256,7 +256,7 @@ impl u256 {
 
     /// Divide `self` inplace by 2ⁿ and round (tie to even).
     #[inline(always)]
-    pub(crate) fn idiv_pow2(&mut self, mut n: u32) {
+    pub(crate) fn div_pow2_assign(&mut self, mut n: u32) {
         *self = self.div_pow2(n);
     }
 
@@ -1547,10 +1547,10 @@ mod u256_div_pow2_tests {
             0x6480ae685c3155a037f22051d5c9f93a,
         );
         let mut v = u.clone();
-        v.idiv_pow2(12);
+        v.div_pow2_assign(12);
         assert_eq!(v, &(&u >> 12) + &u256::ONE);
         let mut v = u.clone();
-        v.idiv_pow2(137);
+        v.div_pow2_assign(137);
         assert_eq!(v, (&u >> 137));
     }
 }

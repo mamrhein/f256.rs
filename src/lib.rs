@@ -350,7 +350,7 @@ impl f256 {
                 // Shift right and round.
                 let shift = (EXP_BITS - nlz);
                 t += shift as i32;
-                c.idiv_pow2(shift);
+                c.div_pow2_assign(shift);
                 // Rounding may have caused significand to overflow.
                 if (c.hi >> (HI_FRACTION_BITS + 1)) != 0 {
                     t += 1;
@@ -1130,7 +1130,7 @@ impl f256 {
         }
         // 1 < |self| < 2²³⁶
         let n_fract_bits = FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
-        abs_bits.idiv_pow2(n_fract_bits);
+        abs_bits.div_pow2_assign(n_fract_bits);
         abs_bits <<= n_fract_bits;
         Self {
             bits: u256::new(abs_bits.hi | sign_bits_hi(self), abs_bits.lo),
