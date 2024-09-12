@@ -461,7 +461,7 @@ impl BigFloat {
                     x_signif.hi >>= shr;
                     rnd &= (x_signif.lo != u256::ZERO)
                         || (x_signif.lo == u256::ZERO
-                        && x_signif.hi.is_odd());
+                            && x_signif.hi.is_odd());
                     rnd |= (x_signif.lo > TIE)
                         || (x_signif.lo == TIE && x_signif.hi.is_odd());
                     x_signif.hi += rnd as u128;
@@ -556,9 +556,11 @@ impl From<&BigFloat> for f256 {
         const EXP_OVERFLOW: i32 = f256::MAX_EXP;
         let mut f256_bits = match fp.exp {
             ..=EXP_UNDERFLOW => u256::ZERO,
-            EXP_LOWER_SUBNORMAL..=EXP_UPPER_SUBNORMAL => fp
-                .signif
-                .div_pow2(PREC_ADJ.saturating_add_signed(EMIN - fp.exp)),
+            EXP_LOWER_SUBNORMAL..=EXP_UPPER_SUBNORMAL => {
+                fp.signif.rounding_div_pow2(
+                    PREC_ADJ.saturating_add_signed(EMIN - fp.exp),
+                )
+            }
             EMIN..=EMAX => {
                 const TIE: u256 = u256::new(1_u128 << 127, 0);
                 let (mut bits, rem) = fp.signif.widening_shr(PREC_ADJ);

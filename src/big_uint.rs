@@ -244,22 +244,6 @@ impl u256 {
         self.lo = self.lo.wrapping_sub(1);
     }
 
-    /// Divide `self` by 2ⁿ and round (tie to even).
-    pub(crate) fn div_pow2(&self, mut n: u32) -> Self {
-        const TIE: u256 = u256::new(1_u128 << 127, 0);
-        let (mut quot, rem) = self.widening_shr(n);
-        if rem > TIE || (rem == TIE && (quot.lo & 1) == 1) {
-            quot.incr();
-        }
-        quot
-    }
-
-    /// Divide `self` inplace by 2ⁿ and round (tie to even).
-    #[inline(always)]
-    pub(crate) fn div_pow2_assign(&mut self, mut n: u32) {
-        *self = self.div_pow2(n);
-    }
-
     // Specialized version adapted from
     // Henry S. Warren, Hacker’s Delight,
     // originally found at http://www.hackersdelight.org/HDcode/divlu.c.txt.
@@ -538,6 +522,16 @@ impl u256 {
         let (mut quot, rem) = self.div_rem(rhs);
         let tie = rhs >> 1;
         if rem > tie || (rem == tie && (quot.lo & 1) == 1) {
+            quot.incr();
+        }
+        quot
+    }
+
+    /// Returns `self` / `2ⁿ`, rounded tie to even.
+    pub(crate) fn rounding_div_pow2(&self, mut n: u32) -> Self {
+        const TIE: u256 = u256::new(1_u128 << 127, 0);
+        let (mut quot, rem) = self.widening_shr(n);
+        if rem > TIE || (rem == TIE && (quot.lo & 1) == 1) {
             quot.incr();
         }
         quot
@@ -1523,34 +1517,32 @@ mod u256_div_rem_tests {
 }
 
 #[cfg(test)]
-mod u256_div_pow2_tests {
+mod u256_rounding_div_pow2_tests {
     use super::*;
 
     #[test]
-    fn test_div_pow2() {
+    fn test_rounding_div_pow2() {
         let u = u256::new(
             0x00001000000000000000000000000003,
             0x00001000000000000000000000000002,
         );
-        let v = u.div_pow2(2);
+        let v = u.rounding_div_pow2(2);
         assert_eq!(v, (&u >> 2));
-        let v = u.div_pow2(17);
+        let v = u.rounding_div_pow2(17);
         assert_eq!(v, (&u >> 17));
-        let v = u.div_pow2(129);
+        let v = u.rounding_div_pow2(129);
         assert_eq!(v, &(&u >> 129) + &u256::ONE);
-    }
-
-    #[test]
-    fn test_idiv_pow2() {
         let u = u256::new(
             0x00001f6a7a2955385e583ebeff65cc22,
             0x6480ae685c3155a037f22051d5c9f93a,
         );
         let mut v = u.clone();
-        v.div_pow2_assign(12);
+        let mut n = 12;
+        v = v.rounding_div_pow2(n);
         assert_eq!(v, &(&u >> 12) + &u256::ONE);
         let mut v = u.clone();
-        v.div_pow2_assign(137);
+        let mut n = 137;
+        v = v.rounding_div_pow2(n);
         assert_eq!(v, (&u >> 137));
     }
 }
