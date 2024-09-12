@@ -528,7 +528,7 @@ impl u256 {
     }
 
     /// Returns `self` / `2ⁿ`, rounded tie to even.
-    pub(crate) fn rounding_div_pow2(&self, mut n: u32) -> Self {
+    pub(crate) fn rounding_div_pow2(&self, n: u32) -> Self {
         const TIE: u256 = u256::new(1_u128 << 127, 0);
         let (mut quot, rem) = self.widening_shr(n);
         if rem > TIE || (rem == TIE && (quot.lo & 1) == 1) {
