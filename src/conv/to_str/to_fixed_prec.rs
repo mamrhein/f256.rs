@@ -220,7 +220,7 @@ pub(crate) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
     }
     if round == Round::Up
         || (round == Round::ToEven
-        && res.ends_with(['1', '3', '5', '7', '9']))
+            && res.ends_with(['1', '3', '5', '7', '9']))
     {
         round_up_fixed_point_inplace(&mut res);
     }
@@ -277,7 +277,7 @@ fn bin_small_float_2_scientific(
         // As signif2 < 2²³⁷ the same must hold for the divisor. Thus the
         // following shift can't overflow.
         let d = &get_power_of_five(-k as u32) << (n - k) as u32;
-        let mut t = signif2.div_rounded(&d);
+        let mut t = signif2.rounding_div(&d);
         u512::new(u256::ZERO, t)
     };
     let mut s = signif10.to_string();
@@ -642,7 +642,7 @@ pub(crate) fn bin_2_dec_scientific(
     }
     if round == Round::Up
         || (round == Round::ToEven
-        && res.ends_with(['1', '3', '5', '7', '9']))
+            && res.ends_with(['1', '3', '5', '7', '9']))
     {
         exp10 += round_up_scientific_inplace(&mut res);
     }

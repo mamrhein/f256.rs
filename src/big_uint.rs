@@ -325,16 +325,6 @@ impl u256 {
         (Self::new(0_u128, q), r)
     }
 
-    /// Returns `self` / `rhs`, rounded tie to even.
-    pub(crate) fn div_rounded(&self, rhs: &Self) -> Self {
-        let (mut quot, rem) = self.div_rem(rhs);
-        let tie = rhs >> 1;
-        if rem > tie || (rem == tie && (quot.lo & 1) == 1) {
-            quot.incr();
-        }
-        quot
-    }
-
     /// Returns `self` / 10ⁿ, rounded tie to even.
     #[allow(clippy::integer_division)]
     pub(crate) fn div_pow10_rounded(&self, n: u32) -> Self {
@@ -541,6 +531,16 @@ impl u256 {
         rh = rh.wrapping_add(self.lo.wrapping_mul(rhs.hi));
         rh = rh.wrapping_add(self.hi.wrapping_mul(rhs.lo));
         Self::new(rh, rl)
+    }
+
+    /// Returns `self` / `rhs`, rounded tie to even.
+    pub(crate) fn rounding_div(&self, rhs: &Self) -> Self {
+        let (mut quot, rem) = self.div_rem(rhs);
+        let tie = rhs >> 1;
+        if rem > tie || (rem == tie && (quot.lo & 1) == 1) {
+            quot.incr();
+        }
+        quot
     }
 }
 
