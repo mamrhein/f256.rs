@@ -80,10 +80,10 @@ pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
     // difference of the squares exponents, setting a sticky bit in case of a
     // right shift.
     signif_x <<= 10;
-    let mut signif_z =
-        u512::from_little_endian_tuple(signif_x.widening_mul(&(&signif_x)));
-    let mut signif_y2 =
-        u512::from_little_endian_tuple(signif_y.widening_mul(&(&signif_y)));
+    let t = signif_x.widening_mul(&(&signif_x));
+    let mut signif_z = u512 { hi: t.1, lo: t.0 };
+    let t = signif_y.widening_mul(&(&signif_y));
+    let mut signif_y2 = u512 { hi: t.1, lo: t.0 };
     // |x| >= |y| => exp(x) >= exp(y), so the following can not overflow.
     let d = (2 * (exp_bits_x - norm_bit_x) - 2 * (exp_bits_y - norm_bit_y))
         as u32;
