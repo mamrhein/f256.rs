@@ -369,22 +369,6 @@ impl u256 {
         }
     }
 
-    /// Compute (self * 2ⁿ) % other.
-    pub(crate) fn lshift_rem(&self, other: &u256, n: u32) -> u256 {
-        let sh = n % u256::BITS;
-        let mut t = u512::new(u256::ZERO, *self);
-        t <<= sh;
-        let mut r = &t % other;
-        for _ in 0..n >> 8 {
-            t = u512::new(r, u256::ZERO);
-            r = &t % other;
-            if r.is_zero() {
-                break;
-            }
-        }
-        r
-    }
-
     #[cfg(target_endian = "big")]
     #[allow(clippy::cast_possible_truncation)]
     #[inline]

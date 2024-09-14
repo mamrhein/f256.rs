@@ -70,7 +70,17 @@ pub(crate) fn rem(x: f256, y: f256) -> f256 {
     }
 
     let n_bits = exp_bits_x + norm_bit_y - exp_bits_y - norm_bit_x;
-    let mut abs_bits_z = signif_x.lshift_rem(&signif_y, n_bits);
+    let sh = n_bits % u256::BITS;
+    let mut t = u512::new(u256::ZERO, signif_x);
+    t <<= sh;
+    let mut abs_bits_z = &t % &signif_y;
+    for _ in 0..n_bits >> 8 {
+        t = u512::new(abs_bits_z, u256::ZERO);
+        abs_bits_z = &t % &signif_y;
+        if abs_bits_z.is_zero() {
+            break;
+        }
+    }
     if abs_bits_z.is_zero() {
         return f256::ZERO;
     }
