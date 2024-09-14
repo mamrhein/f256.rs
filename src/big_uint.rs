@@ -1366,7 +1366,7 @@ pub(crate) fn imul10_add(x: &mut u256, d: u8) {
 
 /// Returns x / 10ⁿ, rounded tie to even.
 #[allow(clippy::integer_division)]
-pub(crate) fn div_pow10_rounded(x: &u512, n: u32) -> u512 {
+pub(crate) fn rounding_div_pow10(x: &u512, n: u32) -> u512 {
     const CHUNK_SIZE: u32 = 38;
     const CHUNK_BASE: u128 = 10_u128.pow(CHUNK_SIZE);
     debug_assert_ne!(n, 0);

@@ -33,7 +33,7 @@ use super::{
     powers_of_five::{get_power_of_five, is_multiple_of_pow5},
 };
 use crate::{
-    big_uint::{div_pow10_rounded, DivRem},
+    big_uint::{rounding_div_pow10, DivRem},
     f256, u256, u512, EMAX, EMIN, FRACTION_BITS, SIGNIFICAND_BITS,
 };
 
@@ -318,7 +318,7 @@ fn bin_small_int_2_scientific(
         // signif10 = ⌊signif2 × 2ⁿ / 10ᵏ⌋
         let mut t = u512::new(u256::ZERO, signif2);
         t <<= exp2 as u32;
-        div_pow10_rounded(&t, k as u32)
+        rounding_div_pow10(&t, k as u32)
     } else {
         // signif10 = ⌊signif2 × 2ⁿ × 10⁻ᵏ⌋ = ⌊signif2 × (5⁻ᵏ × 2ⁿ⁻ᵏ)⌋
         let t = &get_power_of_five(-k as u32) << (exp2 - k) as u32;
