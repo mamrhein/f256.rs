@@ -479,7 +479,8 @@ impl BigFloat {
                             // shifting left by shl bits and then rounding the
                             // low 256 bits => shift right and round by
                             // 256 - shl bits
-                            x_signif.idiv_pow2(u256::BITS - shl);
+                            x_signif =
+                                x_signif.rounding_div_pow2(u256::BITS - shl);
                             self.signif = x_signif.lo;
                         }
                         257..=510 => {

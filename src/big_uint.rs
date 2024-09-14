@@ -1030,14 +1030,14 @@ impl u512 {
     }
 
     /// Divide `self` inplace by 2ⁿ and round (tie to even).
-    pub(crate) fn idiv_pow2(&mut self, mut n: u32) {
+    pub(crate) fn rounding_div_pow2(&self, mut n: u32) -> Self {
         const TIE: u512 =
             u512::new(u256::new(1_u128 << 127, 0_u128), u256::ZERO);
-        let (quot, rem) = self.widening_shr(n);
-        *self = quot;
-        if rem > TIE || (rem == TIE && (self.lo.lo & 1) == 1) {
-            self.incr();
+        let (mut quot, rem) = self.widening_shr(n);
+        if rem > TIE || (rem == TIE && (quot.lo.lo & 1) == 1) {
+            quot.incr();
         }
+        quot
     }
 }
 

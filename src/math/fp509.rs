@@ -125,8 +125,8 @@ impl FP509 {
         const TIE: u128 = 1_u128 << 127;
         carry += ((rem_hi > TIE)
             || (rem_hi == TIE && ((carry & 1_u128) == 1_u128)
-            || lo.hi.lo != 0
-            || !lo.lo.is_zero())) as u128;
+                || lo.hi.lo != 0
+                || !lo.lo.is_zero())) as u128;
         hi <<= 3;
         let mut ovl = false;
         (hi.lo, ovl) = hi.lo.overflowing_add(&u256::new(0_u128, carry));
@@ -171,7 +171,7 @@ impl From<&FP509> for BigFloat {
             // nlz < N = 257 => shift right and round
             0..=256 => {
                 let n = N - nlz;
-                fp_abs_signif.idiv_pow2(n);
+                fp_abs_signif = fp_abs_signif.rounding_div_pow2(n);
                 // shift left 1 bit in case rounding overflowed to the
                 // reserved bit
                 let sh = 1 - fp_abs_signif.lo.leading_zeros();
@@ -220,7 +220,7 @@ impl From<&FP509> for f256 {
             // nlz < u256::BITS + EXP_BITS = 275 => shift right and round
             0..=274 => {
                 let n = u256::BITS + EXP_BITS - nlz;
-                fp_abs_signif.idiv_pow2(n);
+                fp_abs_signif = fp_abs_signif.rounding_div_pow2(n);
                 // shift left 1 bit in case rounding overflowed the hidden bit
                 let sh = EXP_BITS - fp_abs_signif.lo.leading_zeros();
                 fp_abs_signif.lo >>= sh;

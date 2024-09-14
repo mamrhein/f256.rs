@@ -262,7 +262,7 @@ fn bin_small_float_2_scientific(
         if k < n {
             // k < n => ⌊signif2 × 5ᵏ × 2ᵏ⁻ⁿ⌋ = ⌊signif2 × 5ᵏ / 2ⁿ⁻ᵏ⌋
             // 0 < n < 237 and 0 <= k < n => 0 < (n - k) < 237
-            t.idiv_pow2((n - k) as u32);
+            t = t.rounding_div_pow2((n - k) as u32);
         } else {
             // 0 < n < 237 and n <= k <= 99 => 0 < (k - n) < 99
             t <<= (k - n) as u32;
