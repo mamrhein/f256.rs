@@ -16,8 +16,8 @@ use super::{
     powers_of_five::is_multiple_of_pow5,
 };
 use crate::{
-    big_uint::{u256_truncating_mul_u512, u512, DivRem},
-    f256, u256,
+    big_uint::{u256_truncating_mul_u512, DivRem, U512},
+    f256, U256,
 };
 
 /// Returns ⌊log₁₀(5ⁱ)⌋ for 0 <= i <= 262380.
@@ -46,20 +46,20 @@ fn ceil_log2_pow5(i: i32) -> i32 {
 }
 
 #[inline(always)]
-fn lookup_pow2_div_pow5(idx: usize) -> u512 {
+fn lookup_pow2_div_pow5(idx: usize) -> U512 {
     let t = f256_pow2_div_pow5_lut::lookup_pow2_div_pow5(idx);
-    u512 {
-        hi: u256::new(t.0, t.1),
-        lo: u256::new(t.2, t.3),
+    U512 {
+        hi: U256::new(t.0, t.1),
+        lo: U256::new(t.2, t.3),
     }
 }
 
 #[inline(always)]
-fn lookup_pow5_div_pow2(idx: usize) -> u512 {
+fn lookup_pow5_div_pow2(idx: usize) -> U512 {
     let t = f256_pow5_div_pow2_lut::lookup_pow5_div_pow2(idx);
-    u512 {
-        hi: u256::new(t.0, t.1),
-        lo: u256::new(t.2, t.3),
+    U512 {
+        hi: U256::new(t.0, t.1),
+        lo: U256::new(t.2, t.3),
     }
 }
 
@@ -69,7 +69,7 @@ fn lookup_pow5_div_pow2(idx: usize) -> u512 {
 pub(crate) struct DecNumRepr {
     pub(crate) sign: u32,
     pub(crate) exp10: i32,
-    pub(crate) signif10: u256,
+    pub(crate) signif10: U256,
 }
 
 impl DecNumRepr {
@@ -99,9 +99,9 @@ impl DecNumRepr {
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cognitive_complexity)]
     pub(crate) fn shortest_from_bin_repr(
-        mut signif2: u256,
+        mut signif2: U256,
         mut exp2: i32,
-    ) -> (u256, i32) {
+    ) -> (U256, i32) {
         // This is an implementation of the algorithm presented by Ulf Adams
         // in his PLDI'18 paper `Ryū: Fast Float-to-String
         // Conversion`, available at [https://dl.acm.org/doi/pdf/10.1145/3296979.3192369], adapted to
@@ -124,9 +124,9 @@ impl DecNumRepr {
 
         // Step 3: Convert the interval to a decimal power base.
         let mut exp10: i32;
-        let mut signif10 = u256::default();
-        let mut lower_signif10 = u256::default();
-        let mut upper_signif10 = u256::default();
+        let mut signif10 = U256::default();
+        let mut lower_signif10 = U256::default();
+        let mut upper_signif10 = U256::default();
         let mut rem_zero = false;
         let mut lower_rem_zero = false;
         if exp2 >= 0 {
@@ -397,7 +397,7 @@ mod tests {
             DecNumRepr {
                 sign: 0,
                 exp10: 0,
-                signif10: u256::new(0, 1)
+                signif10: U256::new(0, 1)
             }
         );
     }
@@ -411,14 +411,14 @@ mod tests {
             DecNumRepr {
                 sign: 0,
                 exp10: 73,
-                signif10: u256::new(0, 1)
+                signif10: U256::new(0, 1)
             }
         );
     }
 
     #[test]
     fn test_2_pow_251() {
-        let i = u256::new(1_u128 << 123, 0);
+        let i = U256::new(1_u128 << 123, 0);
         let f = f256::encode(0, 0, i);
         let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
@@ -426,7 +426,7 @@ mod tests {
             DecNumRepr {
                 sign: 0,
                 exp10: 5,
-                signif10: u256::new(
+                signif10: U256::new(
                     106338239662793269832304564822427,
                     192627042266604845397347097774975349141
                 )
@@ -443,42 +443,42 @@ mod tests {
             DecNumRepr {
                 sign: 0,
                 exp10: 28,
-                signif10: u256::new(0, 7)
+                signif10: U256::new(0, 7)
             }
         );
     }
 
     #[test]
     fn test_one_half() {
-        let f = f256::encode(0, -1, u256::new(0, 1));
+        let f = f256::encode(0, -1, U256::new(0, 1));
         let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
                 sign: 0,
                 exp10: -1,
-                signif10: u256::new(0, 5)
+                signif10: U256::new(0, 5)
             }
         );
     }
 
     #[test]
     fn test_one_sixteenth() {
-        let f = f256::encode(0, -4, u256::new(0, 1));
+        let f = f256::encode(0, -4, U256::new(0, 1));
         let r = DecNumRepr::shortest_from_f256(&f);
         assert_eq!(
             r,
             DecNumRepr {
                 sign: 0,
                 exp10: -4,
-                signif10: u256::new(0, 625)
+                signif10: U256::new(0, 625)
             }
         );
     }
 
     #[test]
     fn test_2_pow_237_minus_1() {
-        let i = u256::new(
+        let i = U256::new(
             649037107316853453566312041152511,
             340282366920938463463374607431768211455,
         );
@@ -503,7 +503,7 @@ mod tests {
             DecNumRepr {
                 sign: 0,
                 exp10: 78842,
-                signif10: u256::new(
+                signif10: U256::new(
                     473526069559795162737608364600986,
                     168794288209602616731974382256735511567
                 )

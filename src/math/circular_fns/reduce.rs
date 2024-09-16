@@ -9,9 +9,9 @@
 
 use core::ops::Neg;
 
-use super::{two_over_pi::get_256_bits, u256, BigFloat, FP509};
+use super::{two_over_pi::get_256_bits, BigFloat, FP509, U256};
 use crate::{
-    big_uint::u512, consts::TAU, f256, FRACTION_BITS, SIGNIFICAND_BITS, TWO,
+    big_uint::U512, consts::TAU, f256, FRACTION_BITS, SIGNIFICAND_BITS, TWO,
 };
 
 const FP_FRAC_PI_4: FP509 = FP509::new(
@@ -260,10 +260,10 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP509) {
     th1 += ovl as u128;
     let (th2, _) = m.widening_mul(&r1_hi);
     let (mut th, _) = th1.overflowing_add(&th2);
-    let mut f = u512::new(th, tl);
+    let mut f = U512::new(th, tl);
     let mut k = (th.hi >> u128::BITS - 3) as u32;
     th.hi &= (1 << (u128::BITS - 3)) - 1;
-    let mut y = FP509::from(u512::new(th, tl));
+    let mut y = FP509::from(U512::new(th, tl));
     if y > FP509::ONE_HALF || (y == FP509::ONE_HALF && (k & 1) == 1) {
         k += 1;
         y -= &FP509::ONE;

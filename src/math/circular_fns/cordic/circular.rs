@@ -9,14 +9,14 @@
 
 use core::{cmp::min, ops::Neg};
 
-use super::{atan_table::ATANS, u256, BigFloat};
+use super::{atan_table::ATANS, BigFloat, U256};
 
 // Cordic gain factor
 // ≈1.64676025812106564836605122228229843565237672570102740901240531755172816243915
 const K: BigFloat = BigFloat {
     signum: 1,
     exp: 0,
-    signif: u256::new(
+    signif: U256::new(
         0x696485233ee13440f04d9b77cec48780,
         0x192cfbb73a9222fe2b92fafe0d59ae2a,
     ),
@@ -26,7 +26,7 @@ const K: BigFloat = BigFloat {
 const P: BigFloat = BigFloat {
     signum: 1,
     exp: -1,
-    signif: u256::new(
+    signif: U256::new(
         0x4dba76d421af2d33fafc8495ebfea074,
         0xe144628d1decfa24da40026b571d5faf,
     ),

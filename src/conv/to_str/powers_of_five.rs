@@ -7,19 +7,19 @@
 // $Source$
 // $Revision$
 
-use crate::{big_uint::DivRem, u256};
+use crate::{big_uint::DivRem, U256};
 
 pub(crate) const MAX_EXP: u32 = 102;
 
 #[inline(always)]
-pub(crate) fn get_power_of_five(n: u32) -> u256 {
+pub(crate) fn get_power_of_five(n: u32) -> U256 {
     debug_assert!(n <= MAX_EXP);
     let (hi, lo) = POWERS_OF_FIVE[n as usize];
-    u256::new(hi, lo)
+    U256::new(hi, lo)
 }
 
 #[inline]
-pub(crate) fn is_multiple_of_pow5(x: &u256, e: u32) -> bool {
+pub(crate) fn is_multiple_of_pow5(x: &U256, e: u32) -> bool {
     if e == 0 {
         return true;
     }

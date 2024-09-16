@@ -14,18 +14,18 @@ use core::{
 
 use crate::{
     abs_bits, abs_bits_sticky,
-    big_uint::{u512, DivRem},
-    exp_bits, f256, norm_bit, norm_signif, u256, BinEncAnySpecial, EMIN,
-    EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK,
+    big_uint::{DivRem, U512},
+    exp_bits, f256, norm_bit, norm_signif, BinEncAnySpecial, EMIN, EXP_BIAS,
+    EXP_BITS, EXP_MAX, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK,
     HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
-    INF_HI, MAX_HI, SIGNIFICAND_BITS,
+    INF_HI, MAX_HI, SIGNIFICAND_BITS, U256,
 };
 
 #[inline]
-fn div_signifs(x: &u256, y: &u256) -> (u256, u32) {
+fn div_signifs(x: &U256, y: &U256) -> (U256, u32) {
     debug_assert_eq!(x.hi.leading_zeros(), EXP_BITS);
     debug_assert_eq!(y.hi.leading_zeros(), EXP_BITS);
-    let mut t = u512::new(u256::ZERO, *x);
+    let mut t = U512::new(U256::ZERO, *x);
     t <<= SIGNIFICAND_BITS + (x < y) as u32;
     let (mut q, r) = t.div_rem(y);
     let c = ((q.lo.lo & 1) as u32) << 1 | (!r.is_zero() as u32);
@@ -61,12 +61,12 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
         if abs_bits_sticky_x < abs_bits_sticky_y {
             // ±0 / ±Inf or ±0 / ±finite or ±finite / ±Inf.
             return f256 {
-                bits: u256::new(sign_bits_hi_z, 0),
+                bits: U256::new(sign_bits_hi_z, 0),
             };
         }
         // ±Inf / ±0 or ±finite / ±0 or ±Inf / ±finite.
         return f256 {
-            bits: u256::new(sign_bits_hi_z | INF_HI, 0),
+            bits: U256::new(sign_bits_hi_z | INF_HI, 0),
         };
     }
 
@@ -90,7 +90,7 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
     // return +/- Infinity.
     if exp_bits_z_minus_1 >= EXP_MAX as i32 - 1 {
         return f256 {
-            bits: u256::new(sign_bits_hi_z | INF_HI, 0),
+            bits: U256::new(sign_bits_hi_z | INF_HI, 0),
         };
     }
     let (mut signif_z, mut rnd_bits) =
@@ -103,7 +103,7 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
         if shift > SIGNIFICAND_BITS + 1 {
             // Result underflows to zero.
             return f256 {
-                bits: u256::new(sign_bits_hi_z, 0),
+                bits: U256::new(sign_bits_hi_z, 0),
             };
         }
         if shift > 0 {
@@ -126,7 +126,7 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
                 _ => {
                     let rem = signif_z.rem_pow2(shift);
                     rnd_bits = (&rem >> (shift - 2)).lo as u32
-                        | (rem > (&u256::ONE << (shift - 1))) as u32
+                        | (rem > (&U256::ONE << (shift - 1))) as u32
                         | (rnd_bits != 0) as u32;
                 }
             }
@@ -136,7 +136,7 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
     }
 
     // Assemble the result.
-    let mut bits_z = u256::new(
+    let mut bits_z = U256::new(
         signif_z.hi + ((exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS),
         signif_z.lo,
     );

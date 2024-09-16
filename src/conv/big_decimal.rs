@@ -16,7 +16,7 @@ use core::cmp::{min, Ordering};
 
 use crate::{
     big_uint::{imul10_add, DivRem},
-    f256, u256,
+    f256, U256,
 };
 
 /// The maximum number of digits required to unambiguously round a `f256`,
@@ -252,11 +252,11 @@ impl PartialOrd<&[u8]> for Decimal {
     }
 }
 
-impl From<u256> for Decimal {
+impl From<U256> for Decimal {
     /// Create new Decimal from an u256 value.
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cast_possible_truncation)]
-    fn from(mut value: u256) -> Self {
+    fn from(mut value: U256) -> Self {
         const SEGMENT_BASE: u64 = 1_000_000_000_000_000_000;
         let mut res = Self::default();
         let mut segments: [u64; 5] = [0, 0, 0, 0, 0];
@@ -469,20 +469,20 @@ impl Decimal {
     // Round to nearest integer (half-to-even).
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cast_sign_loss)]
-    pub(crate) fn round(&mut self) -> u256 {
+    pub(crate) fn round(&mut self) -> U256 {
         if self.n_digits == 0 || self.decimal_point < 0 {
-            return u256::ZERO;
-        } else if self.decimal_point > u256::MAX_N_DECIMAL_DIGITS as i32 {
-            return u256::MAX;
+            return U256::ZERO;
+        } else if self.decimal_point > U256::MAX_N_DECIMAL_DIGITS as i32 {
+            return U256::MAX;
         }
         let dp = self.decimal_point as usize;
-        let mut n = u256::ZERO;
+        let mut n = U256::ZERO;
         for i in 0..dp {
             imul10_add(&mut n, self.digits[i]);
         }
         if self.digits[dp] > 5
             || self.digits[dp] == 5
-            && (dp < self.n_digits - 1 || self.truncated)
+                && (dp < self.n_digits - 1 || self.truncated)
         {
             n += 1;
         }
@@ -518,7 +518,7 @@ mod tests {
     #[allow(clippy::cast_possible_truncation)]
     #[allow(clippy::cast_possible_wrap)]
     fn test_from_u256() {
-        let val = u256::new(
+        let val = U256::new(
             401609310945955079118279405485910,
             168709353958551391248113314710179390005,
         );
@@ -536,7 +536,7 @@ mod tests {
 
     #[test]
     fn test_shift_right() {
-        let mut dec = Decimal::from(u256::new(0, 299792458));
+        let mut dec = Decimal::from(U256::new(0, 299792458));
         dec.imul_10_pow(-6);
         let digits: [u8; 42] = [
             5, 5, 8, 4, 0, 6, 9, 6, 7, 6, 6, 9, 7, 2, 5, 4, 1, 8, 0, 9, 0, 8,
@@ -551,7 +551,7 @@ mod tests {
 
     #[test]
     fn test_shift_left() {
-        let mut dec = Decimal::from(u256::new(0, 4768371582));
+        let mut dec = Decimal::from(U256::new(0, 4768371582));
         dec.imul_10_pow(-9);
         let digits: [u8; 42] = [
             9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 3, 4, 4, 6, 4, 0, 0, 0, 0, 0, 0,

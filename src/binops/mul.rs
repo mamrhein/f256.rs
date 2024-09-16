@@ -13,16 +13,16 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky, big_uint::u512, exp_bits, f256,
-    left_adj_signif, norm_bit, signif, u256, BinEncAnySpecial, EMAX, EMIN,
+    abs_bits, abs_bits_sticky, big_uint::U512, exp_bits, f256,
+    left_adj_signif, norm_bit, signif, BinEncAnySpecial, EMAX, EMIN,
     EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS, HI_ABS_MASK,
     HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
-    INF_HI, MAX_HI, SIGNIFICAND_BITS, TOTAL_BITS,
+    INF_HI, MAX_HI, SIGNIFICAND_BITS, TOTAL_BITS, U256,
 };
 
 #[inline]
 #[allow(clippy::cast_possible_truncation)]
-fn mul_signifs(x: &u256, y: &u256) -> (u256, u32, u32) {
+fn mul_signifs(x: &U256, y: &U256) -> (U256, u32, u32) {
     debug_assert!(x.hi >= HI_SIGN_MASK);
     debug_assert!(y.hi >= HI_SIGN_MASK);
     let (lo, mut hi) = x.widening_mul(y);
@@ -37,9 +37,9 @@ fn mul_signifs(x: &u256, y: &u256) -> (u256, u32, u32) {
 }
 
 pub(crate) fn mul_abs_finite(
-    abs_bits_x: &u256,
-    abs_bits_y: &u256,
-) -> (u256, u32) {
+    abs_bits_x: &U256,
+    abs_bits_y: &U256,
+) -> (U256, u32) {
     // Extract biased exponents and normalized significands.
     let mut exp_bits_x = exp_bits(abs_bits_x) as i32;
     let norm_bit_x = norm_bit(abs_bits_x) as i32;
@@ -61,7 +61,7 @@ pub(crate) fn mul_abs_finite(
     // If the result overflows the range of values representable as `f256`,
     // return +/- Infinity.
     if exp_bits_z_minus_1 >= (EXP_MAX - 1) as i32 {
-        return (u256::new(INF_HI, 0), 0_u32);
+        return (U256::new(INF_HI, 0), 0_u32);
     }
 
     // If the calculated biased exponent <= 0, the result may be subnormal or
@@ -70,7 +70,7 @@ pub(crate) fn mul_abs_finite(
         let shift = exp_bits_z_minus_1.unsigned_abs();
         if shift > SIGNIFICAND_BITS + 1 {
             // Result underflows to zero.
-            return (u256::ZERO, 0_u32);
+            return (U256::ZERO, 0_u32);
         }
         if shift > 0 {
             // Adjust the rounding bits for correct final rounding.
@@ -92,7 +92,7 @@ pub(crate) fn mul_abs_finite(
                 _ => {
                     let rem = signif_z.rem_pow2(shift);
                     rnd_bits = (&rem >> (shift - 2)).lo as u32
-                        | (rem > (&u256::ONE << (shift - 1))) as u32
+                        | (rem > (&U256::ONE << (shift - 1))) as u32
                         | (rnd_bits != 0) as u32;
                 }
             }
@@ -102,7 +102,7 @@ pub(crate) fn mul_abs_finite(
     }
 
     // Assemble the result.
-    let abs_bits_z = u256::new(
+    let abs_bits_z = U256::new(
         signif_z.hi + ((exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS),
         signif_z.lo,
     );
@@ -133,7 +133,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
             if max_abs_bits_sticky < INF_HI {
                 // ±0 × ±finite or ±finite × ±0
                 return f256 {
-                    bits: u256::new(sign_bits_hi_z, 0),
+                    bits: U256::new(sign_bits_hi_z, 0),
                 };
             };
             if max_abs_bits_sticky == INF_HI {
@@ -147,7 +147,7 @@ pub(crate) fn mul(x: f256, y: f256) -> f256 {
         }
         // Atleast one operand is infinite and the other non-zero.
         return f256 {
-            bits: u256::new(sign_bits_hi_z | INF_HI, 0),
+            bits: U256::new(sign_bits_hi_z | INF_HI, 0),
         };
     }
 

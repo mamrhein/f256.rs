@@ -21,7 +21,7 @@ use float_repr::FloatRepr;
 use slow_exact::f256_exact;
 
 use super::big_decimal::{Decimal, MAX_DIGITS};
-use crate::{f256, u256, HI_FRACTION_BIAS, MIN_GT_ZERO_10_EXP};
+use crate::{f256, HI_FRACTION_BIAS, MIN_GT_ZERO_10_EXP, U256};
 
 /// Minimum possible subnormal power of 10 exponent - adjustment of
 /// significand: ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋ - ⌈p × log₁₀(2)⌉.
@@ -43,7 +43,7 @@ fn calc_normal_f256(
     lit: &str,
     sign: u32,
     exp10: i32,
-    signif10: u256,
+    signif10: U256,
     signif_truncated: bool,
 ) -> f256 {
     // The transformation of the decimal representation is implemented as a

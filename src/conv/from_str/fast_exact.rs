@@ -9,8 +9,8 @@
 
 use super::{fast_approx::fast_approx, slow_exact::f256_exact};
 use crate::{
-    f256, u256, FIVE, HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK,
-    HI_SIGN_SHIFT,
+    f256, FIVE, HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK,
+    HI_SIGN_SHIFT, U256,
 };
 
 const MAX_SIGNIF_HI: u128 = HI_FRACTION_BIAS + HI_FRACTION_MASK;
@@ -21,7 +21,7 @@ pub(super) fn fast_exact(
     lit: &str,
     sign: u32,
     exp10: i32,
-    mut signif10: u256,
+    mut signif10: U256,
     signif_truncated: bool,
 ) -> f256 {
     // We have a number with a canonical decimal representation (-1)ˢ × w ×

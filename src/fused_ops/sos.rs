@@ -15,7 +15,7 @@ use core::{
 
 use crate::{
     abs_bits, abs_bits_sticky,
-    big_uint::{u256, u512, BigUIntHelper},
+    big_uint::{BigUIntHelper, U256, U512},
     exp_bits, f256, norm_bit, signif, BinEncAnySpecial, EMAX, EMIN, EXP_BITS,
     EXP_MAX, FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS, HI_FRACTION_MASK,
     INF_HI,
@@ -81,9 +81,9 @@ pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
     // right shift.
     signif_x <<= 10;
     let t = signif_x.widening_mul(&(&signif_x));
-    let mut signif_z = u512 { hi: t.1, lo: t.0 };
+    let mut signif_z = U512 { hi: t.1, lo: t.0 };
     let t = signif_y.widening_mul(&(&signif_y));
-    let mut signif_y2 = u512 { hi: t.1, lo: t.0 };
+    let mut signif_y2 = U512 { hi: t.1, lo: t.0 };
     // |x| >= |y| => exp(x) >= exp(y), so the following can not overflow.
     let d = (2 * (exp_bits_x - norm_bit_x) - 2 * (exp_bits_y - norm_bit_y))
         as u32;
@@ -93,13 +93,13 @@ pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
         }
         20 => {}
         21..=494 => {
-            let mut t = u512::default();
+            let mut t = U512::default();
             let shr = d - 20;
             (signif_y2, t) = signif_y2.widening_shr(shr);
             signif_y2.lo.lo |= (!t.is_zero()) as u128;
         }
         _ => {
-            signif_y2 = u512::new(u256::ZERO, u256::ONE);
+            signif_y2 = U512::new(U256::ZERO, U256::ONE);
         }
     }
     signif_z += &signif_y2;

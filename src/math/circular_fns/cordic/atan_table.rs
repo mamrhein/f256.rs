@@ -7,14 +7,14 @@
 // $Source$
 // $Revision$
 
-use crate::{big_uint::u256, math::BigFloat};
+use crate::{big_uint::U256, math::BigFloat};
 
 pub(crate) const ATANS: [BigFloat; 255] = [
     // 7.85398163397448309615660845819875721049292349843776455243736148076954101571550e-1
     BigFloat {
         signum: 1,
         exp: -1,
-        signif: u256::new(
+        signif: U256::new(
             0x6487ed5110b4611a62633145c06e0e68,
             0x948127044533e63a0105df531d89cd91,
         ),
@@ -23,7 +23,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -2,
-        signif: u256::new(
+        signif: U256::new(
             0x76b19c1586ed3da2b7f222f65e1d4681,
             0xb70a0ac3930e6f8071678b7374b12385,
         ),
@@ -32,7 +32,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -3,
-        signif: u256::new(
+        signif: U256::new(
             0x7d6dd7e4b203758ab6e3cf7afbd10bf2,
             0xd53fd481c459c1b5bd1d3b3e4a24d3b3,
         ),
@@ -41,7 +41,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -4,
-        signif: u256::new(
+        signif: U256::new(
             0x7f56ea6ab0bdb719644bcc4f9f44477b,
             0xc59cabecaecd6c917649abbefdb60bb4,
         ),
@@ -50,7 +50,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -5,
-        signif: u256::new(
+        signif: U256::new(
             0x7fd56edcb3f7a71b6593c96e071706a8,
             0x98ce0967acea596e1c3d4fc01e25c577,
         ),
@@ -59,7 +59,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -6,
-        signif: u256::new(
+        signif: U256::new(
             0x7ff556eea5d892a13bcebbb6ed463109,
             0xc036814a606dc40b2380beda26b08304,
         ),
@@ -68,7 +68,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -7,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffd556eedca6addf3c62b200afbb024,
             0x1077b2e086f77a3034afc0193ab0e5d4,
         ),
@@ -77,7 +77,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -8,
-        signif: u256::new(
+        signif: U256::new(
             0x7fff5556eeea5cb40311a8fddf3057a3,
             0xb42b500b8d17800d41e8abb3f7672848,
         ),
@@ -86,7 +86,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -9,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffd5556eeedca5d8957db5b6a7bf0b,
             0x3e0c5d75cde4abc491245693415f7b37,
         ),
@@ -95,7 +95,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -10,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffff55556eeeea5ca6adeab02251ce8,
             0xf2409fee23880bec67783a2d83ee2689,
         ),
@@ -104,7 +104,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -11,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffd55556eeeedca5cb4033f79d4be,
             0x69b7875594262279d06b22bac1dcd381,
         ),
@@ -113,7 +113,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -12,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffff555556eeeeea5ca5d895892a09,
             0xe70d6531485a5ea15620c615b21160f9,
         ),
@@ -122,7 +122,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -13,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffd555556eeeeedca5ca6adeaddf,
             0x3bc53a88bfc94608c52aa7843f7a3f03,
         ),
@@ -131,7 +131,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -14,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffff5555556eeeeeea5ca5cb40340,
             0x311a8606152723c4795ee346b7d5f4a7,
         ),
@@ -140,7 +140,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -15,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffd5555556eeeeeedca5ca5d895,
             0x8957db5accfc793bf04dcaae26c692be,
         ),
@@ -149,7 +149,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -16,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffff55555556eeeeeeea5ca5ca6a,
             0xdeadeab02247f691462ba669daface7a,
         ),
@@ -158,7 +158,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -17,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffd55555556eeeeeeedca5ca5c,
             0xb4034033f79d4b491b80fde149e9b5e1,
         ),
@@ -167,7 +167,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -18,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffff555555556eeeeeeeea5ca5c,
             0xa5d895895892a09e66fe5336a7c7719d,
         ),
@@ -176,7 +176,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -19,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffd555555556eeeeeeeedca5c,
             0xa5ca6adeadeaddf3bc530b0bfd1ce914,
         ),
@@ -185,7 +185,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -20,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffff5555555556eeeeeeeeea5c,
             0xa5ca5cb40340340311a860577a723e6a,
         ),
@@ -194,7 +194,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -21,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffd5555555556eeeeeeeeedc,
             0xa5ca5ca5d8958958957db5accf2a13bf,
         ),
@@ -203,7 +203,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -22,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffff55555555556eeeeeeeeee,
             0xa5ca5ca5ca6adeadeadeab02247f5f3c,
         ),
@@ -212,7 +212,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -23,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffd55555555556eeeeeeeee,
             0xedca5ca5ca5cb4034034033f79d4b491,
         ),
@@ -221,7 +221,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -24,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffff555555555556eeeeeeee,
             0xeeea5ca5ca5ca5d895895895892a09e6,
         ),
@@ -230,7 +230,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -25,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffd555555555556eeeeeee,
             0xeeeedca5ca5ca5ca6adeadeadeaddf3c,
         ),
@@ -239,7 +239,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -26,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffff5555555555556eeeeee,
             0xeeeeeea5ca5ca5ca5cb4034034034031,
         ),
@@ -248,7 +248,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -27,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffd5555555555556eeeee,
             0xeeeeeeedca5ca5ca5ca5d89589589589,
         ),
@@ -257,7 +257,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -28,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffff55555555555556eeee,
             0xeeeeeeeeea5ca5ca5ca5ca6adeadeadf,
         ),
@@ -266,7 +266,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -29,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffd55555555555556eee,
             0xeeeeeeeeeedca5ca5ca5ca5cb4034034,
         ),
@@ -275,7 +275,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -30,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffff555555555555556ee,
             0xeeeeeeeeeeeea5ca5ca5ca5ca5d89589,
         ),
@@ -284,7 +284,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -31,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffd555555555555556e,
             0xeeeeeeeeeeeeedca5ca5ca5ca5ca6adf,
         ),
@@ -293,7 +293,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -32,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffff5555555555555556,
             0xeeeeeeeeeeeeeeea5ca5ca5ca5ca5cb4,
         ),
@@ -302,7 +302,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -33,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffd555555555555555,
             0x6eeeeeeeeeeeeeeedca5ca5ca5ca5ca6,
         ),
@@ -311,7 +311,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -34,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffff555555555555555,
             0x56eeeeeeeeeeeeeeeea5ca5ca5ca5ca6,
         ),
@@ -320,7 +320,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -35,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffd55555555555555,
             0x556eeeeeeeeeeeeeeeedca5ca5ca5ca6,
         ),
@@ -329,7 +329,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -36,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffff55555555555555,
             0x5556eeeeeeeeeeeeeeeeea5ca5ca5ca6,
         ),
@@ -338,7 +338,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -37,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffd5555555555555,
             0x55556eeeeeeeeeeeeeeeeedca5ca5ca6,
         ),
@@ -347,7 +347,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -38,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffff5555555555555,
             0x555556eeeeeeeeeeeeeeeeeea5ca5ca6,
         ),
@@ -356,7 +356,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -39,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffd555555555555,
             0x5555556eeeeeeeeeeeeeeeeeedca5ca6,
         ),
@@ -365,7 +365,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -40,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffff555555555555,
             0x55555556eeeeeeeeeeeeeeeeeeea5ca6,
         ),
@@ -374,7 +374,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -41,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffd55555555555,
             0x555555556eeeeeeeeeeeeeeeeeeedca6,
         ),
@@ -383,7 +383,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -42,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffff55555555555,
             0x5555555556eeeeeeeeeeeeeeeeeeeea6,
         ),
@@ -392,7 +392,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -43,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffd5555555555,
             0x55555555556eeeeeeeeeeeeeeeeeeeee,
         ),
@@ -401,7 +401,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -44,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffff5555555555,
             0x555555555556eeeeeeeeeeeeeeeeeeef,
         ),
@@ -410,7 +410,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -45,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffd555555555,
             0x5555555555556eeeeeeeeeeeeeeeeeef,
         ),
@@ -419,7 +419,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -46,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffff555555555,
             0x55555555555556eeeeeeeeeeeeeeeeef,
         ),
@@ -428,7 +428,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -47,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffffd55555555,
             0x555555555555556eeeeeeeeeeeeeeeef,
         ),
@@ -437,7 +437,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -48,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffff55555555,
             0x5555555555555556eeeeeeeeeeeeeeef,
         ),
@@ -446,7 +446,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -49,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffd5555555,
             0x55555555555555556eeeeeeeeeeeeeef,
         ),
@@ -455,7 +455,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -50,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffffff5555555,
             0x555555555555555556eeeeeeeeeeeeef,
         ),
@@ -464,7 +464,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -51,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffffffd555555,
             0x5555555555555555556eeeeeeeeeeeef,
         ),
@@ -473,7 +473,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -52,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffff555555,
             0x55555555555555555556eeeeeeeeeeef,
         ),
@@ -482,7 +482,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -53,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffd55555,
             0x555555555555555555556eeeeeeeeeef,
         ),
@@ -491,7 +491,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -54,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffffffff55555,
             0x5555555555555555555556eeeeeeeeef,
         ),
@@ -500,7 +500,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -55,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffffffffd5555,
             0x55555555555555555555556eeeeeeeef,
         ),
@@ -509,7 +509,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -56,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffff5555,
             0x555555555555555555555556eeeeeeef,
         ),
@@ -518,7 +518,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -57,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffd555,
             0x5555555555555555555555556eeeeeef,
         ),
@@ -527,7 +527,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -58,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffffffffff555,
             0x55555555555555555555555556eeeeef,
         ),
@@ -536,7 +536,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -59,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffffffffffd55,
             0x555555555555555555555555556eeeef,
         ),
@@ -545,7 +545,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -60,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffff55,
             0x5555555555555555555555555556eeef,
         ),
@@ -554,7 +554,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -61,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffd5,
             0x55555555555555555555555555556eef,
         ),
@@ -563,7 +563,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -62,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffffffffffff5,
             0x555555555555555555555555555556ef,
         ),
@@ -572,7 +572,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -63,
-        signif: u256::new(
+        signif: U256::new(
             0x7ffffffffffffffffffffffffffffffd,
             0x5555555555555555555555555555556f,
         ),
@@ -581,7 +581,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -64,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0x55555555555555555555555555555557,
         ),
@@ -590,7 +590,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -65,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xd5555555555555555555555555555555,
         ),
@@ -599,7 +599,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -66,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xf5555555555555555555555555555555,
         ),
@@ -608,7 +608,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -67,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfd555555555555555555555555555555,
         ),
@@ -617,7 +617,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -68,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xff555555555555555555555555555555,
         ),
@@ -626,7 +626,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -69,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffd55555555555555555555555555555,
         ),
@@ -635,7 +635,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -70,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfff55555555555555555555555555555,
         ),
@@ -644,7 +644,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -71,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffd5555555555555555555555555555,
         ),
@@ -653,7 +653,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -72,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffff5555555555555555555555555555,
         ),
@@ -662,7 +662,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -73,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffd555555555555555555555555555,
         ),
@@ -671,7 +671,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -74,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffff555555555555555555555555555,
         ),
@@ -680,7 +680,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -75,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffd55555555555555555555555555,
         ),
@@ -689,7 +689,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -76,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffff55555555555555555555555555,
         ),
@@ -698,7 +698,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -77,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffd5555555555555555555555555,
         ),
@@ -707,7 +707,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -78,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffff5555555555555555555555555,
         ),
@@ -716,7 +716,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -79,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffd555555555555555555555555,
         ),
@@ -725,7 +725,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -80,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffff555555555555555555555555,
         ),
@@ -734,7 +734,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -81,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffd55555555555555555555555,
         ),
@@ -743,7 +743,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -82,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffff55555555555555555555555,
         ),
@@ -752,7 +752,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -83,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffd5555555555555555555555,
         ),
@@ -761,7 +761,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -84,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffff5555555555555555555555,
         ),
@@ -770,7 +770,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -85,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffd555555555555555555555,
         ),
@@ -779,7 +779,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -86,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffff555555555555555555555,
         ),
@@ -788,7 +788,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -87,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffd55555555555555555555,
         ),
@@ -797,7 +797,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -88,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffff55555555555555555555,
         ),
@@ -806,7 +806,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -89,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffd5555555555555555555,
         ),
@@ -815,7 +815,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -90,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffff5555555555555555555,
         ),
@@ -824,7 +824,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -91,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffd555555555555555555,
         ),
@@ -833,7 +833,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -92,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffff555555555555555555,
         ),
@@ -842,7 +842,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -93,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffd55555555555555555,
         ),
@@ -851,7 +851,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -94,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffff55555555555555555,
         ),
@@ -860,7 +860,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -95,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffd5555555555555555,
         ),
@@ -869,7 +869,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -96,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffff5555555555555555,
         ),
@@ -878,7 +878,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -97,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffd555555555555555,
         ),
@@ -887,7 +887,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -98,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffff555555555555555,
         ),
@@ -896,7 +896,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -99,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffd55555555555555,
         ),
@@ -905,7 +905,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -100,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffff55555555555555,
         ),
@@ -914,7 +914,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -101,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffd5555555555555,
         ),
@@ -923,7 +923,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -102,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffff5555555555555,
         ),
@@ -932,7 +932,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -103,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffd555555555555,
         ),
@@ -941,7 +941,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -104,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffff555555555555,
         ),
@@ -950,7 +950,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -105,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffd55555555555,
         ),
@@ -959,7 +959,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -106,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffff55555555555,
         ),
@@ -968,7 +968,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -107,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffd5555555555,
         ),
@@ -977,7 +977,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -108,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffff5555555555,
         ),
@@ -986,7 +986,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -109,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffd555555555,
         ),
@@ -995,7 +995,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -110,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffff555555555,
         ),
@@ -1004,7 +1004,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -111,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffffd55555555,
         ),
@@ -1013,7 +1013,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -112,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffff55555555,
         ),
@@ -1022,7 +1022,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -113,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffffd5555555,
         ),
@@ -1031,7 +1031,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -114,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffffff5555555,
         ),
@@ -1040,7 +1040,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -115,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffffffd555555,
         ),
@@ -1049,7 +1049,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -116,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffffff555555,
         ),
@@ -1058,7 +1058,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -117,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffffffd55555,
         ),
@@ -1067,7 +1067,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -118,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffffffff55555,
         ),
@@ -1076,7 +1076,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -119,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffffffffd5555,
         ),
@@ -1085,7 +1085,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -120,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffffffff5555,
         ),
@@ -1094,7 +1094,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -121,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffffffffd555,
         ),
@@ -1103,7 +1103,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -122,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffffffffff555,
         ),
@@ -1112,7 +1112,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -123,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffffffffffd55,
         ),
@@ -1121,7 +1121,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -124,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffffffffff55,
         ),
@@ -1130,7 +1130,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -125,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffffffffffd5,
         ),
@@ -1139,7 +1139,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -126,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffffffffffff5,
         ),
@@ -1148,7 +1148,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -127,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xfffffffffffffffffffffffffffffffd,
         ),
@@ -1157,7 +1157,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -128,
-        signif: u256::new(
+        signif: U256::new(
             0x7fffffffffffffffffffffffffffffff,
             0xffffffffffffffffffffffffffffffff,
         ),
@@ -1166,7 +1166,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -128,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1175,7 +1175,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -129,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1184,7 +1184,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -130,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1193,7 +1193,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -131,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1202,7 +1202,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -132,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1211,7 +1211,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -133,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1220,7 +1220,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -134,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1229,7 +1229,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -135,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1238,7 +1238,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -136,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1247,7 +1247,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -137,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1256,7 +1256,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -138,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1265,7 +1265,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -139,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1274,7 +1274,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -140,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1283,7 +1283,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -141,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1292,7 +1292,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -142,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1301,7 +1301,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -143,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1310,7 +1310,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -144,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1319,7 +1319,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -145,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1328,7 +1328,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -146,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1337,7 +1337,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -147,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1346,7 +1346,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -148,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1355,7 +1355,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -149,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1364,7 +1364,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -150,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1373,7 +1373,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -151,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1382,7 +1382,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -152,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1391,7 +1391,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -153,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1400,7 +1400,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -154,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1409,7 +1409,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -155,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1418,7 +1418,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -156,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1427,7 +1427,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -157,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1436,7 +1436,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -158,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1445,7 +1445,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -159,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1454,7 +1454,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -160,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1463,7 +1463,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -161,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1472,7 +1472,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -162,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1481,7 +1481,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -163,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1490,7 +1490,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -164,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1499,7 +1499,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -165,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1508,7 +1508,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -166,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1517,7 +1517,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -167,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1526,7 +1526,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -168,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1535,7 +1535,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -169,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1544,7 +1544,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -170,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1553,7 +1553,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -171,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1562,7 +1562,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -172,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1571,7 +1571,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -173,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1580,7 +1580,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -174,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1589,7 +1589,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -175,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1598,7 +1598,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -176,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1607,7 +1607,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -177,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1616,7 +1616,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -178,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1625,7 +1625,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -179,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1634,7 +1634,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -180,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1643,7 +1643,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -181,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1652,7 +1652,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -182,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1661,7 +1661,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -183,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1670,7 +1670,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -184,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1679,7 +1679,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -185,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1688,7 +1688,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -186,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1697,7 +1697,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -187,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1706,7 +1706,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -188,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1715,7 +1715,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -189,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1724,7 +1724,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -190,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1733,7 +1733,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -191,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1742,7 +1742,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -192,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1751,7 +1751,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -193,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1760,7 +1760,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -194,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1769,7 +1769,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -195,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1778,7 +1778,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -196,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1787,7 +1787,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -197,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1796,7 +1796,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -198,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1805,7 +1805,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -199,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1814,7 +1814,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -200,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1823,7 +1823,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -201,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1832,7 +1832,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -202,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1841,7 +1841,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -203,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1850,7 +1850,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -204,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1859,7 +1859,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -205,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1868,7 +1868,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -206,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1877,7 +1877,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -207,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1886,7 +1886,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -208,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1895,7 +1895,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -209,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1904,7 +1904,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -210,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1913,7 +1913,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -211,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1922,7 +1922,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -212,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1931,7 +1931,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -213,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1940,7 +1940,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -214,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1949,7 +1949,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -215,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1958,7 +1958,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -216,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1967,7 +1967,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -217,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1976,7 +1976,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -218,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1985,7 +1985,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -219,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -1994,7 +1994,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -220,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2003,7 +2003,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -221,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2012,7 +2012,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -222,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2021,7 +2021,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -223,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2030,7 +2030,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -224,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2039,7 +2039,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -225,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2048,7 +2048,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -226,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2057,7 +2057,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -227,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2066,7 +2066,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -228,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2075,7 +2075,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -229,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2084,7 +2084,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -230,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2093,7 +2093,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -231,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2102,7 +2102,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -232,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2111,7 +2111,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -233,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2120,7 +2120,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -234,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2129,7 +2129,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -235,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2138,7 +2138,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -236,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2147,7 +2147,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -237,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2156,7 +2156,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -238,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2165,7 +2165,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -239,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2174,7 +2174,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -240,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2183,7 +2183,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -241,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2192,7 +2192,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -242,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2201,7 +2201,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -243,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2210,7 +2210,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -244,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2219,7 +2219,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -245,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2228,7 +2228,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -246,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2237,7 +2237,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -247,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2246,7 +2246,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -248,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2255,7 +2255,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -249,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2264,7 +2264,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -250,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2273,7 +2273,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -251,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2282,7 +2282,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -252,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2291,7 +2291,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -253,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2300,7 +2300,7 @@ pub(crate) const ATANS: [BigFloat; 255] = [
     BigFloat {
         signum: 1,
         exp: -254,
-        signif: u256::new(
+        signif: U256::new(
             0x40000000000000000000000000000000,
             0x00000000000000000000000000000000,
         ),
@@ -2324,7 +2324,7 @@ mod atan_table_tests {
             BigFloat {
                 signum: 1,
                 exp: -128,
-                signif: u256::new(
+                signif: U256::new(
                     0x40000000000000000000000000000000,
                     0x00000000000000000000000000000000,
                 ),

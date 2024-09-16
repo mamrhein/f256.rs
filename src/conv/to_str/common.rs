@@ -9,7 +9,7 @@
 
 use core::f64::consts::LOG10_2;
 
-use crate::big_uint::u256;
+use crate::big_uint::U256;
 
 /// Returns ⌊log₁₀(2ⁱ)⌋.
 #[inline(always)]
@@ -22,7 +22,7 @@ pub(crate) const fn floor_log10_pow2(i: i32) -> i32 {
 #[inline(always)]
 #[allow(clippy::cast_possible_truncation)]
 #[allow(clippy::cast_precision_loss)]
-pub(crate) fn floor_log10f(m: u256, i: i32) -> i32 {
+pub(crate) fn floor_log10f(m: U256, i: i32) -> i32 {
     (((m.hi as f64).log2() + 128_f64 + (i as f64)) * LOG10_2).trunc() as i32
 }
 

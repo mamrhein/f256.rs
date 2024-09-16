@@ -15,7 +15,7 @@ use core::{
 
 use crate::{
     abs_bits, abs_bits_sticky,
-    big_uint::{u256, u512, BigIntHelper, BigUIntHelper},
+    big_uint::{BigIntHelper, BigUIntHelper, U256, U512},
     binops::mul::mul_abs_finite,
     exp_bits, f256, left_adj_signif, norm_bit, norm_signif, sign_bits_hi,
     signif, BinEncAnySpecial, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX,
@@ -27,20 +27,20 @@ use crate::{
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Default, Eq, Ord, PartialOrd, PartialEq)]
 struct u768 {
-    hi: u256,
-    mi: u256,
-    lo: u256,
+    hi: U256,
+    mi: U256,
+    lo: U256,
 }
 
 impl u768 {
     const BITS: u32 = 768;
     const STICKY_BIT: Self = Self {
-        hi: u256::ZERO,
-        mi: u256::ZERO,
-        lo: u256::ONE,
+        hi: U256::ZERO,
+        mi: U256::ZERO,
+        lo: U256::ONE,
     };
 
-    fn new(hi: &u256, mi: &u256, lo: &u256) -> Self {
+    fn new(hi: &U256, mi: &U256, lo: &U256) -> Self {
         Self {
             hi: *hi,
             mi: *mi,
@@ -48,26 +48,26 @@ impl u768 {
         }
     }
 
-    fn from_u256_shifted(u: &u256, mut shr: u32) -> Self {
+    fn from_u256_shifted(u: &U256, mut shr: u32) -> Self {
         debug_assert!(shr < Self::BITS);
         match shr {
-            0 => Self::new(&u, &u256::ZERO, &u256::ZERO),
+            0 => Self::new(&u, &U256::ZERO, &U256::ZERO),
             1..=255 => {
-                Self::new(&(u >> shr), &(u << (256 - shr)), &u256::ZERO)
+                Self::new(&(u >> shr), &(u << (256 - shr)), &U256::ZERO)
             }
-            256 => Self::new(&u256::ZERO, u, &u256::ZERO),
+            256 => Self::new(&U256::ZERO, u, &U256::ZERO),
             257..=511 => Self::new(
-                &u256::ZERO,
+                &U256::ZERO,
                 &(u >> (shr - 256)),
                 &(u << (512 - shr)),
             ),
-            512 => Self::new(&u256::ZERO, &u256::ZERO, u),
+            512 => Self::new(&U256::ZERO, &U256::ZERO, u),
             513..=Self::BITS => {
                 shr -= 512;
                 let sticky = !(u << (256 - shr)).is_zero() as u128;
                 let mut lo = (u >> shr);
                 lo.lo |= sticky;
-                Self::new(&u256::ZERO, &u256::ZERO, &lo)
+                Self::new(&U256::ZERO, &U256::ZERO, &lo)
             }
             _ => unreachable!(),
         }
@@ -126,7 +126,7 @@ impl ShlAssign<u32> for u768 {
         assert!(rhs < Self::BITS, "Attempt to shift left with overflow.");
         match rhs {
             1..=255 => {
-                let mut carry = u256::ZERO;
+                let mut carry = U256::ZERO;
                 (self.lo, carry) = self.lo.widening_shl(rhs);
                 (self.mi, carry) = self.mi.carrying_shl(rhs, &carry);
                 (self.hi, _) = self.hi.carrying_shl(rhs, &carry);
@@ -134,24 +134,24 @@ impl ShlAssign<u32> for u768 {
             256 => {
                 self.hi = self.mi;
                 self.mi = self.lo;
-                self.lo = u256::ZERO;
+                self.lo = U256::ZERO;
             }
             257..=511 => {
                 rhs -= 256;
                 let (t, mut carry) = self.lo.widening_shl(rhs);
                 (self.hi, carry) = self.mi.carrying_shl(rhs, &carry);
                 self.mi = t;
-                self.lo = u256::ZERO;
+                self.lo = U256::ZERO;
             }
             512 => {
                 self.hi = self.lo;
-                self.mi = u256::ZERO;
-                self.lo = u256::ZERO;
+                self.mi = U256::ZERO;
+                self.lo = U256::ZERO;
             }
             513..=767 => {
                 self.hi = &self.lo << (rhs - 512);
-                self.mi = u256::ZERO;
-                self.lo = u256::ZERO;
+                self.mi = U256::ZERO;
+                self.lo = U256::ZERO;
             }
             0 => {}
             _ => unreachable!(),
@@ -199,7 +199,7 @@ pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
                     // The other is finite => product is zero
                     // => result is zero.
                     return f256 {
-                        bits: u256::new(sign_bits_hi_p & sign_bits_hi_a, 0),
+                        bits: U256::new(sign_bits_hi_p & sign_bits_hi_a, 0),
                     };
                 };
                 if max_abs_bits_sticky_xy == INF_HI {
@@ -258,7 +258,7 @@ pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
             // Atleast one multiplicand is infinite and the other non-zero
             // => product is infinite => result is infinite
             return f256 {
-                bits: u256::new(sign_bits_hi_p | INF_HI, 0),
+                bits: U256::new(sign_bits_hi_p | INF_HI, 0),
             };
         }
     }
@@ -285,7 +285,7 @@ pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
     // bit 474 and its guarantied to have 2 trailing zeroes.
     let (lo, hi) = signif_x.widening_mul(&(&signif_y << 2));
     let mut signif_p = u768 {
-        hi: u256::ZERO,
+        hi: U256::ZERO,
         mi: hi,
         lo,
     };
@@ -367,7 +367,7 @@ pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
         // `f256`, return +/- Infinity.
         if t >= EXP_MAX as i32 {
             return f256 {
-                bits: u256::new(sign_bits_hi_z | INF_HI, 0),
+                bits: U256::new(sign_bits_hi_z | INF_HI, 0),
             };
         }
         if t >= 1 {
@@ -386,7 +386,7 @@ pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
     let rnd_bits = hi_bits as u32
         | (carry != 0 || signif_z.mi.lo != 0 || !signif_z.lo.is_zero())
             as u32;
-    let mut bits_z = u256::new(
+    let mut bits_z = U256::new(
         signif_z.hi.hi + ((exp_bits_m1_z as u128) << HI_FRACTION_BITS),
         signif_z.hi.lo,
     );

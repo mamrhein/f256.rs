@@ -15,7 +15,7 @@ use super::{
 };
 use crate::{
     abs_bits, abs_bits_sticky,
-    big_uint::u256,
+    big_uint::U256,
     consts::{FRAC_PI_2, FRAC_PI_4, PI},
     f256, sign_bits_hi, BinEncAnySpecial, EXP_BIAS, HI_EXP_MASK,
     HI_FRACTION_BITS,
@@ -24,14 +24,14 @@ use crate::{
 // Cut-off of exponent for large values
 const LARGE_EXP_CUT_OFF: u32 = 240;
 // Cut-off for large values (2²⁴⁰)
-const LARGE_CUT_OFF: u256 = u256::new(
+const LARGE_CUT_OFF: U256 = U256::new(
     ((EXP_BIAS + LARGE_EXP_CUT_OFF) as u128) << HI_FRACTION_BITS,
     0_u128,
 );
 
 // Cut-off for small values
 // ≈0.00000000000000000000000000000000000210094754024801845063812748106760843
-const SMALL_CUT_OFF: u256 = u256::new(
+const SMALL_CUT_OFF: U256 = U256::new(
     0x3ff8865752be2a167f0644b50757a602,
     0x81800000000000000000000000000000,
 );

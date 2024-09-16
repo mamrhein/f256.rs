@@ -34,7 +34,7 @@ use super::{
 };
 use crate::{
     big_uint::{rounding_div_pow10, DivRem},
-    f256, u256, u512, EMAX, EMIN, FRACTION_BITS, SIGNIFICAND_BITS,
+    f256, EMAX, EMIN, FRACTION_BITS, SIGNIFICAND_BITS, U256, U512,
 };
 
 #[derive(PartialEq)]
@@ -46,10 +46,10 @@ enum Round {
 
 /// Calculate ⌊x × y / 2ᵏ⌋ % B, where B = 10 ^ CHUNK_SIZE.
 #[inline(always)]
-fn mul_shift_mod(x: &u256, y: &u512, k: u32) -> u64 {
+fn mul_shift_mod(x: &U256, y: &U512, k: u32) -> u64 {
     debug_assert!(k > 256);
     let mut t = x.widening_mul(&y.hi);
-    let mut res = u512::new(t.1, t.0);
+    let mut res = U512::new(t.1, t.0);
     t = x.widening_mul(&y.lo);
     let mut carry = false;
     (res.lo, carry) = res.lo.overflowing_add(&t.1);
@@ -61,15 +61,15 @@ fn mul_shift_mod(x: &u256, y: &u512, k: u32) -> u64 {
 }
 
 #[inline(always)]
-fn pow2_div_pow10(segment_idx: usize, chunk_idx: usize) -> u512 {
+fn pow2_div_pow10(segment_idx: usize, chunk_idx: usize) -> U512 {
     let t = lookup_pow2_div_pow10(segment_idx, chunk_idx);
-    u512::new(u256::new(0, t.0), u256::new(t.1, t.2))
+    U512::new(U256::new(0, t.0), U256::new(t.1, t.2))
 }
 
 #[inline(always)]
-fn pow10_div_pow2(segment_idx: usize, chunk_idx: usize) -> u512 {
+fn pow10_div_pow2(segment_idx: usize, chunk_idx: usize) -> U512 {
     let t = lookup_pow10_div_pow2(segment_idx, chunk_idx);
-    u512::new(u256::new(0, t.0), u256::new(t.1, t.2))
+    U512::new(U256::new(0, t.0), U256::new(t.1, t.2))
 }
 
 #[allow(clippy::integer_division)]
@@ -77,7 +77,7 @@ fn pow10_div_pow2(segment_idx: usize, chunk_idx: usize) -> u512 {
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
 fn bin_fract_2_dec_str(
-    signif2: u256,
+    signif2: U256,
     exp2: i32,
     prec: usize,
     buf: &mut String,
@@ -238,7 +238,7 @@ fn split_into_buf(buf: &mut String, s: &str) {
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
 fn bin_small_float_2_scientific(
-    signif2: u256,
+    signif2: U256,
     exp2: i32,
     prec: usize,
     buf: &mut String,
@@ -258,7 +258,7 @@ fn bin_small_float_2_scientific(
         // k >= 0 and 10ᵏ = 5ᵏ × 2ᵏ =>
         // ⌊signif2 × 10ᵏ / 2ⁿ⌋ = ⌊signif2 × 5ᵏ × 2ᵏ⁻ⁿ⌋
         let (lo, hi) = signif2.widening_mul(&get_power_of_five(k as u32));
-        let mut t = u512::new(hi, lo);
+        let mut t = U512::new(hi, lo);
         if k < n {
             // k < n => ⌊signif2 × 5ᵏ × 2ᵏ⁻ⁿ⌋ = ⌊signif2 × 5ᵏ / 2ⁿ⁻ᵏ⌋
             // 0 < n < 237 and 0 <= k < n => 0 < (n - k) < 237
@@ -278,7 +278,7 @@ fn bin_small_float_2_scientific(
         // following shift can't overflow.
         let d = &get_power_of_five(-k as u32) << (n - k) as u32;
         let mut t = signif2.rounding_div(&d);
-        u512::new(u256::ZERO, t)
+        U512::new(U256::ZERO, t)
     };
     let mut s = signif10.to_string();
     if s.len() > prec + 1 {
@@ -298,13 +298,13 @@ fn bin_small_float_2_scientific(
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
 fn bin_small_int_2_scientific(
-    signif2: u256,
+    signif2: U256,
     exp2: i32,
     prec: usize,
     buf: &mut String,
 ) -> (Round, i32) {
     debug_assert!(
-        exp2 >= 0 && exp2 <= (u512::BITS - SIGNIFICAND_BITS) as i32
+        exp2 >= 0 && exp2 <= (U512::BITS - SIGNIFICAND_BITS) as i32
     );
     let mut exp10 = floor_log10f(signif2, exp2);
     // Need to calculate the prec+1 left-most decimal digits of the number.
@@ -316,14 +316,14 @@ fn bin_small_int_2_scientific(
     // -4 <= k <= 154
     let signif10 = if k > 0 {
         // signif10 = ⌊signif2 × 2ⁿ / 10ᵏ⌋
-        let mut t = u512::new(u256::ZERO, signif2);
+        let mut t = U512::new(U256::ZERO, signif2);
         t <<= exp2 as u32;
         rounding_div_pow10(&t, k as u32)
     } else {
         // signif10 = ⌊signif2 × 2ⁿ × 10⁻ᵏ⌋ = ⌊signif2 × (5⁻ᵏ × 2ⁿ⁻ᵏ)⌋
         let t = &get_power_of_five(-k as u32) << (exp2 - k) as u32;
         let (lo, hi) = signif2.widening_mul(&t);
-        u512::new(hi, lo)
+        U512::new(hi, lo)
     };
     let mut s = signif10.to_string();
     if s.len() > prec + 1 {
@@ -344,12 +344,12 @@ fn bin_small_int_2_scientific(
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
 fn bin_large_int_2_scientific(
-    signif2: u256,
+    signif2: U256,
     exp2: i32,
     prec: usize,
     buf: &mut String,
 ) -> (Round, i32) {
-    debug_assert!(exp2 > (u512::BITS - SIGNIFICAND_BITS) as i32);
+    debug_assert!(exp2 > (U512::BITS - SIGNIFICAND_BITS) as i32);
     let mut round = Round::Down;
     let (segment_idx, (mut n_chunks, segment_shift)) =
         get_pow2_div_pow10_params(exp2);
@@ -447,7 +447,7 @@ fn bin_large_int_2_scientific(
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
 fn bin_fract_2_scientific(
-    signif2: u256,
+    signif2: U256,
     exp2: i32,
     prec: usize,
     buf: &mut String,
@@ -592,7 +592,7 @@ pub(crate) fn bin_2_dec_scientific(
     const NORMAL_EXP_LOWER_BOUND: i32 = EMIN;
     const FAST_LOWER_BOUND: i32 = -(FRACTION_BITS as i32);
     const FAST_LOWER_BOUND_MINUS_1: i32 = FAST_LOWER_BOUND - 1;
-    const FAST_UPPER_BOUND: i32 = (u512::BITS - SIGNIFICAND_BITS) as i32;
+    const FAST_UPPER_BOUND: i32 = (U512::BITS - SIGNIFICAND_BITS) as i32;
     const FAST_UPPER_BOUND_PLUS_1: i32 = FAST_UPPER_BOUND + 1;
     const EXP_UPPER_BOUND: i32 = EMAX - FRACTION_BITS as i32;
     let mut exp2 = f.quantum_exponent();

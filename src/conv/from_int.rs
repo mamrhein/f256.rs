@@ -8,8 +8,8 @@
 // $Revision$
 
 use crate::{
-    f256, u256, EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_FRACTION_BITS,
-    SIGNIFICAND_BITS,
+    f256, EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_FRACTION_BITS,
+    SIGNIFICAND_BITS, U256,
 };
 
 impl f256 {
@@ -26,7 +26,7 @@ impl f256 {
         Self::new(
             i.is_negative() as u32,
             msb as i32,
-            u256 {
+            U256 {
                 hi: j << (HI_FRACTION_BITS - msb),
                 lo: 0,
             },
@@ -49,7 +49,7 @@ impl f256 {
         Self::new(
             i.is_negative() as u32,
             msb as i32,
-            u256::new(0, j).shift_left(FRACTION_BITS - msb),
+            U256::new(0, j).shift_left(FRACTION_BITS - msb),
         )
     }
 
@@ -64,7 +64,7 @@ impl f256 {
         Self::new(
             0_u32,
             msb as i32,
-            u256 {
+            U256 {
                 hi: (i as u128) << (HI_FRACTION_BITS - msb),
                 lo: 0,
             },
@@ -82,14 +82,14 @@ impl f256 {
         Self::new(
             0_u32,
             msb as i32,
-            u256::new(0, i).shift_left(FRACTION_BITS - msb),
+            U256::new(0, i).shift_left(FRACTION_BITS - msb),
         )
     }
 
     /// Construct a finite `f256` from an unsigned 256-bit integer.
     #[must_use]
     #[inline]
-    pub(crate) const fn from_u256(i: &u256) -> Self {
+    pub(crate) const fn from_u256(i: &U256) -> Self {
         debug_assert!(i.leading_zeros() >= EXP_BITS);
         if i.is_zero() {
             return Self::ZERO;

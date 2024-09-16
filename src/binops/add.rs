@@ -15,9 +15,9 @@ use core::{
 
 use crate::{
     abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, sign_bits_hi,
-    signif, u256, BinEncAnySpecial, EXP_MAX, FRACTION_BITS, HI_ABS_MASK,
+    signif, BinEncAnySpecial, EXP_MAX, FRACTION_BITS, HI_ABS_MASK,
     HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK,
-    HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS,
+    HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS, U256,
 };
 
 pub(crate) fn add(x: f256, y: f256) -> f256 {
@@ -36,7 +36,7 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
         if max_abs_bits_sticky == 0 {
             // Both operands are zero.
             return f256 {
-                bits: u256::new(sign_bits_hi_x & sign_bits_hi_y, 0),
+                bits: U256::new(sign_bits_hi_x & sign_bits_hi_y, 0),
             };
         }
         if max_abs_bits_sticky > HI_EXP_MASK
@@ -84,9 +84,9 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
     // Determine the actual op to be performed: if the sign of the operands
     // are equal, it's an addition, otherwise a subtraction.
     let op = if sign_bits_hi_x == sign_bits_hi_y {
-        <&u256 as Add>::add
+        <&U256 as Add>::add
     } else {
-        <&u256 as Sub>::sub
+        <&U256 as Sub>::sub
     };
     let mut abs_bits_z = if norm_bit_x == 0 {
         // x subnormal and |x| >= |y| => y subnormal.
@@ -114,10 +114,10 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
 
 #[inline]
 fn add_or_sub_subnormals<'a>(
-    signif_x: &'a u256,
-    signif_y: &'a u256,
-    op: fn(&'a u256, &'a u256) -> u256,
-) -> u256 {
+    signif_x: &'a U256,
+    signif_y: &'a U256,
+    op: fn(&'a U256, &'a U256) -> U256,
+) -> U256 {
     // In case of two subnormals we don't have to care about overflow
     // because the overflow bit goes into the biased exponent, which is ok
     // because the result then is normal with an exponent equal to Eₘᵢₙ which
@@ -128,10 +128,10 @@ fn add_or_sub_subnormals<'a>(
 #[inline]
 fn add_or_sub_normals_exact<'a>(
     mut exp_bits_z: u32,
-    signif_x: &'a u256,
-    signif_y: &'a u256,
-    op: fn(&'a u256, &'a u256) -> u256,
-) -> u256 {
+    signif_x: &'a U256,
+    signif_y: &'a U256,
+    op: fn(&'a U256, &'a U256) -> U256,
+) -> U256 {
     debug_assert!(exp_bits_z > 0);
     debug_assert!(signif_x >= signif_y);
     let mut abs_bits_z = op(signif_x, signif_y);
@@ -142,7 +142,7 @@ fn add_or_sub_normals_exact<'a>(
         // If the result overflows the range of values representable as
         // `f256`, return +Inf.
         if exp_bits_z >= EXP_MAX {
-            return u256::new(INF_HI, 0);
+            return U256::new(INF_HI, 0);
         }
         let l2bits = (abs_bits_z.lo & 3) as u32;
         abs_bits_z >>= 1;
@@ -166,10 +166,10 @@ fn add_or_sub_normals_exact<'a>(
 fn add_or_sub_rounded<'a>(
     exp_bits_x: u32,
     exp_bits_y: u32,
-    signif_x: &'a mut u256,
-    signif_y: &'a mut u256,
-    op: fn(&'a u256, &'a u256) -> u256,
-) -> u256 {
+    signif_x: &'a mut U256,
+    signif_y: &'a mut U256,
+    op: fn(&'a U256, &'a U256) -> U256,
+) -> U256 {
     debug_assert!(exp_bits_x > 0); // x is normal!
     debug_assert!(
         exp_bits_x > exp_bits_y
@@ -196,7 +196,7 @@ fn add_or_sub_rounded<'a>(
     } else if adj >= SIGNIFICAND_BITS + 3 {
         1_u128
     } else {
-        !(&*signif_y << (u256::BITS - adj)).is_zero() as u128
+        !(&*signif_y << (U256::BITS - adj)).is_zero() as u128
     };
     *signif_y >>= adj;
     signif_y.lo |= sticky_bit;
@@ -211,7 +211,7 @@ fn add_or_sub_rounded<'a>(
         // If the result overflows the range of values representable as
         // `f256`, return +Inf.
         if exp_bits_z >= EXP_MAX {
-            return u256::new(INF_HI, 0);
+            return U256::new(INF_HI, 0);
         }
         sticky_bit |= abs_bits_z.lo & 1;
         abs_bits_z >>= 1;

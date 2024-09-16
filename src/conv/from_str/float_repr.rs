@@ -16,7 +16,7 @@ use super::common::{
     chunk_contains_7_digits_and_a_dot_at, chunk_contains_8_digits,
     chunk_to_u64, AsciiNumLit,
 };
-use crate::u256;
+use crate::U256;
 
 // Remove the byte at position p by shifting the bytes left from it right.
 const fn eliminate_byte_from_chunk(k: u64, p: u32) -> u64 {
@@ -40,7 +40,7 @@ const fn eliminate_byte_from_chunk(k: u64, p: u32) -> u64 {
 pub(super) struct DecNumRepr {
     pub(super) sign: u32,
     pub(super) exponent: i32,
-    pub(super) significand: u256,
+    pub(super) significand: U256,
     pub(super) signif_truncated: bool,
 }
 
@@ -102,8 +102,8 @@ impl PartialSignif {
     }
 
     #[allow(clippy::cast_possible_truncation)]
-    fn significand(&self) -> u256 {
-        let mut signif = u256::default();
+    fn significand(&self) -> U256 {
+        let mut signif = U256::default();
         for i in 0..self.n_chunks {
             signif *= 100000000;
             signif += self.chunks[i] as u128;
@@ -351,7 +351,7 @@ mod tests {
             FloatRepr::Number(DecNumRepr {
                 sign: 0,
                 exponent: 4,
-                significand: u256::new(0, 18),
+                significand: U256::new(0, 18),
                 signif_truncated: false
             })
         );
@@ -367,7 +367,7 @@ mod tests {
             FloatRepr::Number(DecNumRepr {
                 sign: 1,
                 exponent: -17,
-                significand: u256::new(0, 1),
+                significand: U256::new(0, 1),
                 signif_truncated: false
             })
         );
@@ -383,7 +383,7 @@ mod tests {
             r,
             FloatRepr::Number(DecNumRepr {
                 sign: 1,
-                significand: u256::new(0, 762939453125),
+                significand: U256::new(0, 762939453125),
                 exponent: -17,
                 signif_truncated: false
             })
@@ -399,7 +399,7 @@ mod tests {
             r,
             FloatRepr::Number(DecNumRepr {
                 sign: 1,
-                significand: u256::new(0, 1),
+                significand: U256::new(0, 1),
                 exponent: 108,
                 signif_truncated: false
             })
@@ -415,7 +415,7 @@ mod tests {
             r,
             FloatRepr::Number(DecNumRepr {
                 sign: 1,
-                significand: u256::new(
+                significand: U256::new(
                     1296714295663492914563767,
                     83422945940683308502053253308490666837
                 ),

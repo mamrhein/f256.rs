@@ -12,4 +12,4 @@ mod circular;
 
 pub(super) use circular::{cordic_atan, cordic_atan2};
 
-use super::{u256, BigFloat};
+use super::{BigFloat, U256};

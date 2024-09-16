@@ -14,7 +14,7 @@ use core::cmp::Ordering;
 /// Second`, available at [https://arxiv.org/abs/2101.11408.pdf], adopted for `f256`.
 use super::powers_of_five::{get_power_of_five, MAX_ABS_EXP};
 use super::{fast_exact::fast_exact, slow_exact::f256_exact};
-use crate::{f256, u256, EMAX, EXP_BIAS, EXP_BITS, HI_FRACTION_BIAS};
+use crate::{f256, EMAX, EXP_BIAS, EXP_BITS, HI_FRACTION_BIAS, U256};
 
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
@@ -22,7 +22,7 @@ pub(super) fn fast_approx(
     lit: &str,
     sign: u32,
     exp10: i32,
-    mut signif10: u256,
+    mut signif10: U256,
     signif_truncated: bool,
 ) -> f256 {
     // We have a number with a decimal representation (-1)ˢ × w × 10ᵏ,
@@ -42,7 +42,7 @@ pub(super) fn fast_approx(
         signif10 <<= signif10_nlz;
         // Compute w' * T[k]
         let (p5hi, p5lo, mut exp2) = get_power_of_five(exp10);
-        let mut signif2 = signif10.truncating_mul(&u256::new(p5hi, p5lo));
+        let mut signif2 = signif10.truncating_mul(&U256::new(p5hi, p5lo));
         // As both multiplicands have their highest bit set, the result has
         // atmost one leading zero. We have to shift the highest bit to the
         // position of the hidden bit, i.e. by EXP_BITS - number of leading

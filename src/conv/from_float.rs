@@ -9,7 +9,7 @@
 
 use core::ops::Neg;
 
-use crate::{f256, u256};
+use crate::{f256, U256};
 
 // TODO: use core::cmp::min when it got stable in const context
 const fn min(x: u32, y: u32) -> u32 {
@@ -76,7 +76,7 @@ impl<F: Float> From<F> for f256 {
             // Normal value
             let exp = (abs_bits >> F::FRACTION_BITS as u64) as i32
                 - F::EXP_BIAS_ADJ as i32;
-            let significand = u256 {
+            let significand = U256 {
                 hi: 0,
                 lo: ((bits & F::FRACTION_MASK) | F::FRACTION_BIAS) as u128,
             };
@@ -89,7 +89,7 @@ impl<F: Float> From<F> for f256 {
             Self::encode(
                 sign,
                 1 - F::EXP_BIAS_ADJ as i32,
-                u256 {
+                U256 {
                     hi: 0,
                     lo: (bits & F::FRACTION_MASK) as u128,
                 },

@@ -26,7 +26,7 @@ use core::{
 use dec_repr::DecNumRepr;
 use to_fixed_prec::{bin_2_dec_fixed_point, bin_2_dec_scientific};
 
-use crate::{f256, split_f256_enc, u256, EXP_MAX};
+use crate::{f256, split_f256_enc, EXP_MAX, U256};
 
 const MAX_PREC: usize = 75;
 
@@ -278,7 +278,7 @@ mod display_tests {
 
     #[test]
     fn test_shortest_one_half() {
-        let f = f256::encode(0, -1, u256::new(0, 1));
+        let f = f256::encode(0, -1, U256::new(0, 1));
         assert_eq!(format!("{f}"), "0.5");
         assert_eq!(format!("{f:3}"), "0.5");
         assert_eq!(format!("{f:_>4.}"), "_0.5");
@@ -454,7 +454,7 @@ mod display_tests {
 
     #[test]
     fn test_fixed_prec_one_half() {
-        let f = f256::encode(0, -1, u256::new(0, 1));
+        let f = f256::encode(0, -1, U256::new(0, 1));
         assert_eq!(format!("{f:>5.0}"), "    0");
         assert_eq!(format!("{f:.3}"), "0.500");
         assert_eq!(format!("{f:_>4.1}"), "_0.5");
@@ -672,7 +672,7 @@ mod format_exp_tests {
 
     #[test]
     fn test_shortest_one_half() {
-        let f = f256::encode(0, -1, u256::new(0, 1));
+        let f = f256::encode(0, -1, U256::new(0, 1));
         assert_eq!(format!("{f:e}"), "5e-1");
         assert_eq!(format!("{f:3e}"), "5e-1");
         assert_eq!(format!("{f:_>7.e}"), "___5e-1");

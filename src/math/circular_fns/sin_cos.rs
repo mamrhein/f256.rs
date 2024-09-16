@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use super::u256;
+use super::U256;
 use crate::{
     consts::FRAC_PI_2,
     f256,

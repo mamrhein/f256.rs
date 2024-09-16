@@ -15,17 +15,17 @@ use core::{
 
 use super::BigFloat;
 use crate::{
-    big_uint::{u256, u512},
+    big_uint::{U256, U512},
     f256, split_f256_enc, EXP_BITS, FRACTION_BITS,
 };
 
 /// Represents fixed-point numbers with 509 fractional bit in the range
 /// [-4, 4 - 2⁻⁵⁰⁹].
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub(super) struct FP509(u512);
+pub(super) struct FP509(U512);
 
 impl FP509 {
-    pub(super) const ZERO: Self = Self(u512::ZERO);
+    pub(super) const ZERO: Self = Self(U512::ZERO);
     pub(super) const ONE: Self =
         Self::new(1_u128 << 125, 0_u128, 0_u128, 0_u128);
     pub(super) const TWO: Self =
@@ -36,7 +36,7 @@ impl FP509 {
         Self::new(0_u128, 0_u128, 0_u128, 1_u128);
 
     pub(super) const fn new(hh: u128, hl: u128, lh: u128, ll: u128) -> Self {
-        Self(u512::new(u256::new(hh, hl), u256::new(lh, ll)))
+        Self(U512::new(U256::new(hh, hl), U256::new(lh, ll)))
     }
 
     #[inline(always)]
@@ -129,8 +129,8 @@ impl FP509 {
                 || !lo.lo.is_zero())) as u128;
         hi <<= 3;
         let mut ovl = false;
-        (hi.lo, ovl) = hi.lo.overflowing_add(&u256::new(0_u128, carry));
-        hi.hi += &u256::new(0_u128, ovl as u128);
+        (hi.lo, ovl) = hi.lo.overflowing_add(&U256::new(0_u128, carry));
+        hi.hi += &U256::new(0_u128, ovl as u128);
         self.0 = hi;
         if signum < 0 {
             self.ineg();
@@ -143,10 +143,10 @@ impl From<&BigFloat> for FP509 {
     fn from(value: &BigFloat) -> Self {
         debug_assert!(value.exp <= 1);
         let sh = value.exp.unsigned_abs() + 1;
-        if sh >= u512::BITS {
+        if sh >= U512::BITS {
             return FP509::ZERO;
         }
-        let mut res = Self(&u512::new(value.signif, u256::ZERO) >> sh);
+        let mut res = Self(&U512::new(value.signif, U256::ZERO) >> sh);
         if value.signum < 0 {
             res.ineg();
         }
@@ -166,7 +166,7 @@ impl From<&FP509> for BigFloat {
         };
         let nlz = fp_abs_signif.leading_zeros();
         let mut exp = 2 - nlz as i32;
-        const N: u32 = u512::BITS - BigFloat::FRACTION_BITS - 1;
+        const N: u32 = U512::BITS - BigFloat::FRACTION_BITS - 1;
         match nlz {
             // nlz < N = 257 => shift right and round
             0..=256 => {
@@ -196,7 +196,7 @@ impl From<&f256> for FP509 {
         exp += FRACTION_BITS as i32;
         let shl = RADIX_ADJ + exp.clamp(0, 2) as u32;
         let shr = exp.clamp(-510, 0).unsigned_abs();
-        let mut res = Self(&u512::new(&signif << shl, u256::ZERO) >> shr);
+        let mut res = Self(&U512::new(&signif << shl, U256::ZERO) >> shr);
         if value.is_sign_negative() {
             res.ineg();
         }
@@ -219,7 +219,7 @@ impl From<&FP509> for f256 {
         match nlz {
             // nlz < u256::BITS + EXP_BITS = 275 => shift right and round
             0..=274 => {
-                let n = u256::BITS + EXP_BITS - nlz;
+                let n = U256::BITS + EXP_BITS - nlz;
                 fp_abs_signif = fp_abs_signif.rounding_div_pow2(n);
                 // shift left 1 bit in case rounding overflowed the hidden bit
                 let sh = EXP_BITS - fp_abs_signif.lo.leading_zeros();
@@ -227,7 +227,7 @@ impl From<&FP509> for f256 {
                 exp += sh as i32;
             }
             // nlz > u256::BITS + EXP_BITS = 275 => shift left
-            276..=511 => fp_abs_signif <<= nlz - u256::BITS - EXP_BITS,
+            276..=511 => fp_abs_signif <<= nlz - U256::BITS - EXP_BITS,
             _ => {
                 return f256::ZERO;
             }
@@ -236,9 +236,9 @@ impl From<&FP509> for f256 {
     }
 }
 
-impl From<u512> for FP509 {
+impl From<U512> for FP509 {
     #[inline(always)]
-    fn from(value: u512) -> Self {
+    fn from(value: U512) -> Self {
         Self(value)
     }
 }

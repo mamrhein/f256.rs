@@ -14,7 +14,7 @@ use core::{
 
 use crate::{
     abs_bits, abs_bits_sticky,
-    big_uint::{u256, u512, DivRem},
+    big_uint::{DivRem, U256, U512},
     exp_bits, f256, norm_bit, norm_signif, sign_bits_hi, signif,
     BinEncAnySpecial, FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS, MAX_HI,
     SIGNIFICAND_BITS,
@@ -70,12 +70,12 @@ pub(crate) fn rem(x: f256, y: f256) -> f256 {
     }
 
     let n_bits = exp_bits_x + norm_bit_y - exp_bits_y - norm_bit_x;
-    let sh = n_bits % u256::BITS;
-    let mut t = u512::new(u256::ZERO, signif_x);
+    let sh = n_bits % U256::BITS;
+    let mut t = U512::new(U256::ZERO, signif_x);
     t <<= sh;
     let mut abs_bits_z = &t % &signif_y;
     for _ in 0..n_bits >> 8 {
-        t = u512::new(abs_bits_z, u256::ZERO);
+        t = U512::new(abs_bits_z, U256::ZERO);
         abs_bits_z = &t % &signif_y;
         if abs_bits_z.is_zero() {
             break;
@@ -92,7 +92,7 @@ pub(crate) fn rem(x: f256, y: f256) -> f256 {
     let exp_bits_z_m1 = (exp_bits_y - shift_z).saturating_sub(1);
     abs_bits_z.hi += (exp_bits_z_m1 as u128) << HI_FRACTION_BITS;
     f256 {
-        bits: u256 {
+        bits: U256 {
             hi: sign_bits_hi(&x) | abs_bits_z.hi,
             lo: abs_bits_z.lo,
         },
