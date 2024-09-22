@@ -9,7 +9,7 @@
 
 use core::f64::consts::LOG10_2;
 
-use crate::big_uint::U256;
+use crate::U256;
 
 /// Returns ⌊log₁₀(2ⁱ)⌋.
 #[inline(always)]

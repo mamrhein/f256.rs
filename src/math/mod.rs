@@ -15,4 +15,4 @@ mod sqrt;
 use big_float::BigFloat;
 use fp509::FP509;
 
-use crate::big_uint::U256;
+use super::U256;

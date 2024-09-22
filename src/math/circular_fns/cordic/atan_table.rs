@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use crate::{big_uint::U256, math::BigFloat};
+use crate::{math::BigFloat, U256};
 
 pub(crate) const ATANS: [BigFloat; 255] = [
     // 7.85398163397448309615660845819875721049292349843776455243736148076954101571550e-1

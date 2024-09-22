@@ -15,10 +15,9 @@ use super::{
 };
 use crate::{
     abs_bits, abs_bits_sticky,
-    big_uint::U256,
     consts::{FRAC_PI_2, FRAC_PI_4, PI},
     f256, sign_bits_hi, BinEncAnySpecial, EXP_BIAS, HI_EXP_MASK,
-    HI_FRACTION_BITS,
+    HI_FRACTION_BITS, U256,
 };
 
 // Cut-off of exponent for large values

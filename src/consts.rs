@@ -9,7 +9,7 @@
 
 //! Basic mathematical constants.
 
-use crate::{big_uint::U256, f256, EXP_BIAS};
+use crate::{f256, EXP_BIAS, U256};
 
 /// Archimedes' constant (π)
 ///
