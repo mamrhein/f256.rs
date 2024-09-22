@@ -8,7 +8,7 @@
 // $Revision$
 
 use crate::{
-    f256, EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_FRACTION_BITS,
+    f256, BigUInt, EXP_BIAS, EXP_BITS, FRACTION_BITS, HI_FRACTION_BITS,
     SIGNIFICAND_BITS, U256,
 };
 
@@ -26,10 +26,7 @@ impl f256 {
         Self::new(
             i.is_negative() as u32,
             msb as i32,
-            U256 {
-                hi: j << (HI_FRACTION_BITS - msb),
-                lo: 0,
-            },
+            U256::new(j << (HI_FRACTION_BITS - msb), 0),
         )
     }
 
@@ -64,10 +61,7 @@ impl f256 {
         Self::new(
             0_u32,
             msb as i32,
-            U256 {
-                hi: (i as u128) << (HI_FRACTION_BITS - msb),
-                lo: 0,
-            },
+            U256::new((i as u128) << (HI_FRACTION_BITS - msb), 0),
         )
     }
 
@@ -89,12 +83,12 @@ impl f256 {
     /// Construct a finite `f256` from an unsigned 256-bit integer.
     #[must_use]
     #[inline]
-    pub(crate) const fn from_u256(i: &U256) -> Self {
-        debug_assert!(i.leading_zeros() >= EXP_BITS);
+    pub(crate) fn from_u256(i: &U256) -> Self {
+        debug_assert!(i.hi.0.leading_zeros() >= EXP_BITS);
         if i.is_zero() {
             return Self::ZERO;
         }
-        let msb = 255 - i.leading_zeros();
+        let msb = i.msb();
         Self::new(0_u32, msb as i32, i.shift_left(FRACTION_BITS - msb))
     }
 }
@@ -142,8 +136,8 @@ mod from_signed_int_tests {
             };
             assert_eq!(f.is_sign_negative(), i.is_negative());
             let (s, t, c) = f.decode();
-            assert_eq!(c.hi, 0);
-            assert_eq!(c.lo, j >> t as usize);
+            assert_eq!(c.hi.0, 0);
+            assert_eq!(c.lo.0, j >> t as usize);
         }
     }
 
@@ -218,8 +212,8 @@ mod from_unsigned_int_tests {
             let i = (*n).into();
             assert!(f.is_sign_positive());
             let (s, t, c) = f.decode();
-            assert_eq!(c.hi, 0);
-            assert_eq!(c.lo, i >> t as usize);
+            assert_eq!(c.hi.0, 0);
+            assert_eq!(c.lo.0, i >> t as usize);
         }
     }
 

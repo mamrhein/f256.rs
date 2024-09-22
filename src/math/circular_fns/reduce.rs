@@ -11,7 +11,8 @@ use core::ops::Neg;
 
 use super::{two_over_pi::get_256_bits, BigFloat, FP509, U256};
 use crate::{
-    big_uint::U512, consts::TAU, f256, FRACTION_BITS, SIGNIFICAND_BITS, TWO,
+    consts::TAU, f256, BigUInt, HiLo, FRACTION_BITS, SIGNIFICAND_BITS, TWO,
+    U512,
 };
 
 const FP_FRAC_PI_4: FP509 = FP509::new(
@@ -203,7 +204,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP509) {
         };
         // x <= M => z < 2ᴾ⁻²
         let e = z.exp - BigFloat::FRACTION_BITS as i32;
-        let q = (&z.signif >> e.unsigned_abs()).lo as u32 & 0x3;
+        let q = (&z.signif >> e.unsigned_abs()).lo.0 as u32 & 0x3;
         // Convert (v1 + v2) into a fixed-point number with 509-bit-fraction
         // |v1| <= ½π => v1.exp <= 0
         let mut fx = FP509::from(&v1);
@@ -257,13 +258,13 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP509) {
     let (_, tl1) = m.widening_mul(&r1_lo);
     let (tl2, mut th1) = m.widening_mul(&r1_mi);
     let (tl, ovl) = tl1.overflowing_add(&tl2);
-    th1 += ovl as u128;
+    th1.incr_if(ovl);
     let (th2, _) = m.widening_mul(&r1_hi);
     let (mut th, _) = th1.overflowing_add(&th2);
-    let mut f = U512::new(th, tl);
-    let mut k = (th.hi >> u128::BITS - 3) as u32;
-    th.hi &= (1 << (u128::BITS - 3)) - 1;
-    let mut y = FP509::from(U512::new(th, tl));
+    let mut f = U512::from_hi_lo(th, tl);
+    let mut k = (th.hi.0 >> u128::BITS - 3) as u32;
+    th.hi.0 &= (1 << (u128::BITS - 3)) - 1;
+    let mut y = FP509::from(U512::from_hi_lo(th, tl));
     if y > FP509::ONE_HALF || (y == FP509::ONE_HALF && (k & 1) == 1) {
         k += 1;
         y -= &FP509::ONE;

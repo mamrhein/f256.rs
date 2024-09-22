@@ -14,13 +14,11 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky,
-    big_uint::{BigIntHelper, BigUIntHelper, U256, U512},
-    binops::mul::mul_abs_finite,
-    exp_bits, f256, left_adj_signif, norm_bit, norm_signif, sign_bits_hi,
-    signif, BinEncAnySpecial, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX,
-    FRACTION_BITS, HI_FRACTION_BITS, HI_SIGN_MASK, INF_HI, MAX_HI,
-    SIGNIFICAND_BITS,
+    abs_bits, abs_bits_sticky, binops::mul::mul_abs_finite, exp_bits, f256,
+    left_adj_signif, norm_bit, norm_signif, sign_bits_hi, signif, BigUInt,
+    BinEncAnySpecial, HiLo, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS,
+    HI_FRACTION_BITS, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS, U256,
+    U512,
 };
 
 /// Helper type representing signed integers of 768 bits.
@@ -66,7 +64,7 @@ impl u768 {
                 shr -= 512;
                 let sticky = !(u << (256 - shr)).is_zero() as u128;
                 let mut lo = (u >> shr);
-                lo.lo |= sticky;
+                lo.lo.0 |= sticky;
                 Self::new(&U256::ZERO, &U256::ZERO, &lo)
             }
             _ => unreachable!(),
@@ -74,12 +72,12 @@ impl u768 {
     }
 
     fn invert(&mut self) {
-        self.lo.lo = self.lo.lo.bitxor(u128::MAX);
-        self.lo.hi = self.lo.hi.bitxor(u128::MAX);
-        self.mi.lo = self.mi.lo.bitxor(u128::MAX);
-        self.mi.hi = self.mi.hi.bitxor(u128::MAX);
-        self.hi.lo = self.hi.lo.bitxor(u128::MAX);
-        self.hi.hi = self.hi.hi.bitxor(u128::MAX);
+        self.lo.lo.0 = self.lo.lo.0.bitxor(u128::MAX);
+        self.lo.hi.0 = self.lo.hi.0.bitxor(u128::MAX);
+        self.mi.lo.0 = self.mi.lo.0.bitxor(u128::MAX);
+        self.mi.hi.0 = self.mi.hi.0.bitxor(u128::MAX);
+        self.hi.lo.0 = self.hi.lo.0.bitxor(u128::MAX);
+        self.hi.hi.0 = self.hi.hi.0.bitxor(u128::MAX);
     }
 
     fn iadd(&mut self, rhs: &Self) {
@@ -92,8 +90,8 @@ impl u768 {
     fn isub(&mut self, rhs: &Self) {
         let mut borrow = false;
         (self.lo, borrow) = self.lo.overflowing_sub(&rhs.lo);
-        (self.mi, borrow) = self.mi.borrowing_sub(&rhs.mi, borrow);
-        (self.hi, borrow) = self.hi.borrowing_sub(&rhs.hi, borrow);
+        (self.mi, borrow) = self.mi.borrowing_sub(rhs.mi, borrow);
+        (self.hi, borrow) = self.hi.borrowing_sub(rhs.hi, borrow);
     }
 
     fn leading_zeros(&self) -> u32 {
@@ -111,12 +109,12 @@ impl fmt::Debug for u768 {
             form,
             "(0x{:032x}, 0x{:032x}, 0x{:032x}, 0x{:032x}, 0x{:032x}, \
              0x{:032x})",
-            self.hi.hi,
-            self.hi.lo,
-            self.mi.hi,
-            self.mi.lo,
-            self.lo.hi,
-            self.lo.lo,
+            self.hi.hi.0,
+            self.hi.lo.0,
+            self.mi.hi.0,
+            self.mi.lo.0,
+            self.lo.hi.0,
+            self.lo.lo.0,
         )
     }
 }
@@ -166,7 +164,7 @@ impl ShlAssign<u32> for u768 {
 #[inline]
 pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
     // The products sign is the XOR of the signs of the operands.
-    let sign_bits_hi_p = (x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK;
+    let sign_bits_hi_p = (x.bits.hi.0 ^ y.bits.hi.0) & HI_SIGN_MASK;
     let sign_bits_hi_a = sign_bits_hi(&a);
 
     // Check whether one or more operands are NaN, infinite or zero.
@@ -212,11 +210,10 @@ pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
                 // Both multiplicands are finite => result = product.
                 let (mut bits_z, rnd_bits) =
                     mul_abs_finite(&abs_bits_x, &abs_bits_y);
-                bits_z.hi |= sign_bits_hi_p;
+                bits_z.hi.0 |= sign_bits_hi_p;
                 // Final rounding. Possibly overflowing into the exponent, but
                 // that is ok.
-                if rnd_bits > 0b10
-                    || (rnd_bits == 0b10 && ((bits_z.lo & 1) == 1))
+                if rnd_bits > 0b10 || (rnd_bits == 0b10 && bits_z.lo.is_odd())
                 {
                     bits_z.incr();
                 }
@@ -383,17 +380,17 @@ pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
     // rounding.
     debug_assert!(signif_z.hi.leading_zeros() >= EXP_BITS);
     let (hi_bits, carry) = signif_z.mi.hi.widening_shr(u128::BITS - 3);
-    let rnd_bits = hi_bits as u32
-        | (carry != 0 || signif_z.mi.lo != 0 || !signif_z.lo.is_zero())
+    let rnd_bits = hi_bits.0 as u32
+        | (carry.0 != 0 || signif_z.mi.lo.0 != 0 || !signif_z.lo.is_zero())
             as u32;
-    let mut bits_z = U256::new(
+    let mut bits_z = U256::from_hi_lo(
         signif_z.hi.hi + ((exp_bits_m1_z as u128) << HI_FRACTION_BITS),
         signif_z.hi.lo,
     );
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
-    if rnd_bits > 0x4 || rnd_bits == 0x4 && (bits_z.lo & 1) == 1 {
+    if rnd_bits > 0x4 || rnd_bits == 0x4 && bits_z.lo.is_odd() {
         bits_z.incr();
     }
-    bits_z.hi |= sign_bits_hi_z;
+    bits_z.hi.0 |= sign_bits_hi_z;
     f256 { bits: bits_z }
 }

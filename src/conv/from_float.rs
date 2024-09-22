@@ -76,10 +76,10 @@ impl<F: Float> From<F> for f256 {
             // Normal value
             let exp = (abs_bits >> F::FRACTION_BITS as u64) as i32
                 - F::EXP_BIAS_ADJ as i32;
-            let significand = U256 {
-                hi: 0,
-                lo: ((bits & F::FRACTION_MASK) | F::FRACTION_BIAS) as u128,
-            };
+            let significand = U256::new(
+                0,
+                ((bits & F::FRACTION_MASK) | F::FRACTION_BIAS) as u128,
+            );
             Self::encode(sign, exp, significand)
         } else if abs_bits == 0 {
             // +/- zero
@@ -89,10 +89,7 @@ impl<F: Float> From<F> for f256 {
             Self::encode(
                 sign,
                 1 - F::EXP_BIAS_ADJ as i32,
-                U256 {
-                    hi: 0,
-                    lo: (bits & F::FRACTION_MASK) as u128,
-                },
+                U256::new(0, (bits & F::FRACTION_MASK) as u128),
             )
         } else if abs_bits == F::INF {
             // +/- inf

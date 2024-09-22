@@ -43,14 +43,15 @@ impl f256 {
     pub fn atan(&self) -> Self {
         let abs_bits_self = abs_bits(self);
         // If self is NAN, atan self is NAN.
-        if (abs_bits_self.hi | (abs_bits_self.lo != 0) as u128) > HI_EXP_MASK
+        if (abs_bits_self.hi.0 | (abs_bits_self.lo.0 != 0) as u128)
+            > HI_EXP_MASK
         {
             return f256::NAN;
         }
         // If |self| >= 2²⁴⁰, atan self = ±½π.
         if abs_bits_self.hi >= LARGE_CUT_OFF.hi {
             let mut res = FRAC_PI_2;
-            res.bits.hi ^= sign_bits_hi(self);
+            res.bits.hi.0 ^= sign_bits_hi(self);
             return res;
         }
         // If |self| is very small, atan self = self.
@@ -90,7 +91,7 @@ impl f256 {
                 } else {
                     // other = 0, self != 0 => ±½π
                     let mut res = FRAC_PI_2;
-                    res.bits.hi |= sign_bits_hi(&self);
+                    res.bits.hi.0 |= sign_bits_hi(&self);
                     res
                 };
             }

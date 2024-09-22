@@ -15,7 +15,7 @@ impl f256 {
     pub fn tan(&self) -> Self {
         if self.is_special() {
             // x is NAN or infinite => tangent x is NAN
-            if (self.bits.hi & HI_ABS_MASK) > f256::MAX.bits.hi {
+            if (self.bits.hi.0 & HI_ABS_MASK) > f256::MAX.bits.hi.0 {
                 return f256::NAN;
             }
             // x = 0 => tangent x = 0

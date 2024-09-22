@@ -13,22 +13,21 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky,
-    big_uint::{DivRem, U512},
-    exp_bits, f256, norm_bit, norm_signif, BinEncAnySpecial, EMIN, EXP_BIAS,
-    EXP_BITS, EXP_MAX, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK,
-    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK,
-    INF_HI, MAX_HI, SIGNIFICAND_BITS, U256,
+    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, norm_signif,
+    BigUInt, BinEncAnySpecial, DivRem, HiLo, EMIN, EXP_BIAS, EXP_BITS,
+    EXP_MAX, FRACTION_BITS, HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS,
+    HI_FRACTION_BITS, HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI, MAX_HI,
+    SIGNIFICAND_BITS, U256, U512,
 };
 
 #[inline]
 fn div_signifs(x: &U256, y: &U256) -> (U256, u32) {
     debug_assert_eq!(x.hi.leading_zeros(), EXP_BITS);
     debug_assert_eq!(y.hi.leading_zeros(), EXP_BITS);
-    let mut t = U512::new(U256::ZERO, *x);
+    let mut t = U512::from_hi_lo(U256::ZERO, *x);
     t <<= SIGNIFICAND_BITS + (x < y) as u32;
-    let (mut q, r) = t.div_rem(y);
-    let c = ((q.lo.lo & 1) as u32) << 1 | (!r.is_zero() as u32);
+    let (mut q, r) = t.div_rem(*y);
+    let c = ((q.lo.lo.0 & 1) as u32) << 1 | (!r.is_zero() as u32);
     q >>= 1;
     debug_assert!(q.hi.is_zero());
     (q.lo, c)
@@ -41,7 +40,7 @@ fn div_signifs(x: &U256, y: &U256) -> (U256, u32) {
 #[inline]
 pub(crate) fn div(x: f256, y: f256) -> f256 {
     // The quotients sign is the XOR of the signs of the operands.
-    let sign_bits_hi_z = (x.bits.hi ^ y.bits.hi) & HI_SIGN_MASK;
+    let sign_bits_hi_z = (x.bits.hi.0 ^ y.bits.hi.0) & HI_SIGN_MASK;
     let mut abs_bits_x = abs_bits(&x);
     let mut abs_bits_y = abs_bits(&y);
     // Check whether one or both operands are NaN, infinite or zero.
@@ -110,22 +109,22 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
             // Adjust the rounding bits for correct final rounding.
             match shift {
                 1 => {
-                    rnd_bits = (((signif_z.lo & 1) as u32) << 1)
+                    rnd_bits = (((signif_z.lo.0 & 1) as u32) << 1)
                         | (rnd_bits != 0) as u32;
                 }
                 2 => {
                     rnd_bits =
-                        ((signif_z.lo & 3) as u32) | (rnd_bits != 0) as u32;
+                        ((signif_z.lo.0 & 3) as u32) | (rnd_bits != 0) as u32;
                 }
                 3..=127 => {
-                    let rem = signif_z.rem_pow2(shift).lo;
+                    let rem = signif_z.rem_pow2(shift).lo.0;
                     rnd_bits = (rem >> (shift - 2)) as u32
                         | (rem > (1_u128 << (shift - 1))) as u32
                         | (rnd_bits != 0) as u32;
                 }
                 _ => {
                     let rem = signif_z.rem_pow2(shift);
-                    rnd_bits = (&rem >> (shift - 2)).lo as u32
+                    rnd_bits = (&rem >> (shift - 2)).lo.0 as u32
                         | (rem > (&U256::ONE << (shift - 1))) as u32
                         | (rnd_bits != 0) as u32;
                 }
@@ -137,13 +136,13 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
 
     // Assemble the result.
     let mut bits_z = U256::new(
-        signif_z.hi + ((exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS),
-        signif_z.lo,
+        signif_z.hi.0 + ((exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS),
+        signif_z.lo.0,
     );
-    bits_z.hi |= sign_bits_hi_z;
+    bits_z.hi.0 |= sign_bits_hi_z;
 
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
-    if rnd_bits > 0b10 || (rnd_bits == 0b10 && ((bits_z.lo & 1) == 1)) {
+    if rnd_bits > 0b10 || (rnd_bits == 0b10 && bits_z.lo.is_odd()) {
         bits_z.incr();
     }
     f256 { bits: bits_z }

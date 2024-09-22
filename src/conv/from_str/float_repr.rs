@@ -103,13 +103,14 @@ impl PartialSignif {
 
     #[allow(clippy::cast_possible_truncation)]
     fn significand(&self) -> U256 {
+        const CHUNK_BASE: U256 = U256::new(0_u128, 100000000_u128);
         let mut signif = U256::default();
         for i in 0..self.n_chunks {
-            signif *= 100000000;
-            signif += self.chunks[i] as u128;
+            signif *= &CHUNK_BASE;
+            signif += &(self.chunks[i] as u128);
         }
-        signif *= 10_u64.pow(self.n_rem_digits as u32) as u128;
-        signif += self.rem as u128;
+        signif *= &10_u128.pow(self.n_rem_digits as u32);
+        signif += &(self.rem as u128);
         signif
     }
 }

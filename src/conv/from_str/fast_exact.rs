@@ -9,8 +9,8 @@
 
 use super::{fast_approx::fast_approx, slow_exact::f256_exact};
 use crate::{
-    f256, FIVE, HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK,
-    HI_SIGN_SHIFT, U256,
+    f256, BigUInt, FIVE, HI_FRACTION_BIAS, HI_FRACTION_BITS,
+    HI_FRACTION_MASK, HI_SIGN_SHIFT, U256,
 };
 
 const MAX_SIGNIF_HI: u128 = HI_FRACTION_BIAS + HI_FRACTION_MASK;
@@ -40,20 +40,20 @@ pub(super) fn fast_exact(
     // Finally, setting e = t + k and setting the sign gives the required
     // result.
     let exp10_abs = exp10.unsigned_abs();
-    if signif10.hi <= MAX_SIGNIF_HI && exp10_abs <= MAX_EXP10 {
+    if signif10.hi.0 <= MAX_SIGNIF_HI && exp10_abs <= MAX_EXP10 {
         let x = f256::from_u256(&signif10);
         let y = POWERS_OF_FIVE[exp10_abs as usize];
         let mut f: f256;
         if exp10 < 0 {
             f = x / y;
             // e = t + k
-            f.bits.hi -= ((exp10_abs as u128) << HI_FRACTION_BITS);
+            f.bits.hi.0 -= ((exp10_abs as u128) << HI_FRACTION_BITS);
         } else {
             f = x * y;
             // e = t + k
-            f.bits.hi += ((exp10_abs as u128) << HI_FRACTION_BITS);
+            f.bits.hi.0 += ((exp10_abs as u128) << HI_FRACTION_BITS);
         };
-        f.bits.hi |= (sign as u128) << HI_SIGN_SHIFT;
+        f.bits.hi.0 |= (sign as u128) << HI_SIGN_SHIFT;
         if signif_truncated {
             // The real significand w' has been truncated, so f may be less
             // than the correctly rounded result f'. But

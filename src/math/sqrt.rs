@@ -8,9 +8,9 @@
 // $Revision$
 
 use crate::{
-    abs_bits, exp_bits, f256, fraction, BinEncSpecial, EMIN, EXP_BIAS,
-    EXP_BITS, EXP_MAX, HI_FRACTION_BIAS, HI_FRACTION_BITS, SIGNIFICAND_BITS,
-    U256,
+    abs_bits, exp_bits, f256, fraction, BigUInt, BinEncSpecial, EMIN,
+    EXP_BIAS, EXP_BITS, EXP_MAX, HI_FRACTION_BIAS, HI_FRACTION_BITS,
+    SIGNIFICAND_BITS, U256,
 };
 
 impl f256 {
@@ -54,7 +54,7 @@ impl f256 {
         exp = (exp - exp_is_odd) / 2;
         // Calculate the significand, gain extra bit for final rounding
         let mut signif = &fraction(&bin_enc) << norm_shift;
-        signif.hi |= (hidden_bit as u128) << HI_FRACTION_BITS;
+        signif.hi.0 |= (hidden_bit as u128) << HI_FRACTION_BITS;
         let mut q = U256::new(HI_FRACTION_BIAS << 1, 0);
         let mut r = &(&signif << (1 + exp_is_odd as u32)) - &q;
         let mut s = q;
@@ -70,7 +70,8 @@ impl f256 {
             }
         }
         // Final rounding
-        q = &(&q >> 1) + ((q.lo & 1) as u32);
+        q.incr_if(q.lo.is_odd());
+        q >>= 1;
         Self::new(0, exp, q)
     }
 }
@@ -196,17 +197,17 @@ mod sqrt_tests {
     #[test]
     fn test_subnormal_1() {
         let f = f256 {
-            bits: U256 {
-                hi: 161381583805889998189973969922,
-                lo: 288413346707470246106660640932215474040,
-            },
+            bits: U256::new(
+                161381583805889998189973969922,
+                288413346707470246106660640932215474040,
+            ),
         };
         assert!(f.is_subnormal());
         let r = f256 {
-            bits: U256 {
-                hi: 42533487390635923064310396803489994282,
-                lo: 251643572745990121674876797336685460940,
-            },
+            bits: U256::new(
+                42533487390635923064310396803489994282,
+                251643572745990121674876797336685460940,
+            ),
         };
         assert!(r.is_normal());
         assert_eq!(r * r, f);

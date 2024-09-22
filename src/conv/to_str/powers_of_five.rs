@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use crate::{big_uint::DivRem, U256};
+use crate::{BigUInt, DivRem, U256};
 
 pub(crate) const MAX_EXP: u32 = 102;
 
@@ -24,11 +24,11 @@ pub(crate) fn is_multiple_of_pow5(x: &U256, e: u32) -> bool {
         return true;
     }
     if e == 1 {
-        return x % 5_u64 == 0;
+        return *x % 5_u128 == 0_u128;
     }
     let p = get_power_of_five(e);
     if e <= 55 {
-        return x % p.lo == 0;
+        return (*x % p.lo).is_zero();
     }
     let (_, r) = x.div_rem(&p);
     r.is_zero()

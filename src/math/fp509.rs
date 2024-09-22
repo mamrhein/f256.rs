@@ -15,8 +15,7 @@ use core::{
 
 use super::BigFloat;
 use crate::{
-    big_uint::{U256, U512},
-    f256, split_f256_enc, EXP_BITS, FRACTION_BITS,
+    f256, split_f256_enc, BigUInt, HiLo, EXP_BITS, FRACTION_BITS, U256, U512,
 };
 
 /// Represents fixed-point numbers with 509 fractional bit in the range
@@ -35,8 +34,9 @@ impl FP509 {
     pub(super) const EPSILON: Self =
         Self::new(0_u128, 0_u128, 0_u128, 1_u128);
 
+    #[inline(always)]
     pub(super) const fn new(hh: u128, hl: u128, lh: u128, ll: u128) -> Self {
-        Self(U512::new(U256::new(hh, hl), U256::new(lh, ll)))
+        Self(U512::new(hh, hl, lh, ll))
     }
 
     #[inline(always)]
@@ -70,10 +70,10 @@ impl FP509 {
 
     #[inline(always)]
     fn invert(&mut self) {
-        self.0.lo.lo ^= u128::MAX;
-        self.0.lo.hi ^= u128::MAX;
-        self.0.hi.lo ^= u128::MAX;
-        self.0.hi.hi ^= u128::MAX;
+        self.0.lo.lo.0 ^= u128::MAX;
+        self.0.lo.hi.0 ^= u128::MAX;
+        self.0.hi.lo.0 ^= u128::MAX;
+        self.0.hi.hi.0 ^= u128::MAX;
     }
 
     #[inline(always)]
@@ -120,17 +120,17 @@ impl FP509 {
         rhs.iabs();
         let (lo, mut hi) = self.0.widening_mul(&rhs.0);
         // To get an FP509 in hi, shift (hi, lo) left by 3 bits and round
-        let mut carry = lo.hi.hi >> 125;
-        let rem_hi = lo.hi.hi << 3;
+        let mut carry = lo.hi.hi.0 >> 125;
+        let rem_hi = lo.hi.hi.0 << 3;
         const TIE: u128 = 1_u128 << 127;
         carry += ((rem_hi > TIE)
             || (rem_hi == TIE && ((carry & 1_u128) == 1_u128)
-                || lo.hi.lo != 0
+                || lo.hi.lo.0 != 0
                 || !lo.lo.is_zero())) as u128;
         hi <<= 3;
         let mut ovl = false;
         (hi.lo, ovl) = hi.lo.overflowing_add(&U256::new(0_u128, carry));
-        hi.hi += &U256::new(0_u128, ovl as u128);
+        hi.hi.incr_if(ovl);
         self.0 = hi;
         if signum < 0 {
             self.ineg();
@@ -146,7 +146,7 @@ impl From<&BigFloat> for FP509 {
         if sh >= U512::BITS {
             return FP509::ZERO;
         }
-        let mut res = Self(&U512::new(value.signif, U256::ZERO) >> sh);
+        let mut res = Self(&U512::from_hi_lo(value.signif, U256::ZERO) >> sh);
         if value.signum < 0 {
             res.ineg();
         }
@@ -182,7 +182,7 @@ impl From<&FP509> for BigFloat {
             258..=511 => fp_abs_signif <<= nlz - N,
             _ => {}
         };
-        Self::new(signum, exp, (fp_abs_signif.lo.hi, fp_abs_signif.lo.lo))
+        Self::new(signum, exp, (fp_abs_signif.lo.hi.0, fp_abs_signif.lo.lo.0))
     }
 }
 
@@ -196,7 +196,8 @@ impl From<&f256> for FP509 {
         exp += FRACTION_BITS as i32;
         let shl = RADIX_ADJ + exp.clamp(0, 2) as u32;
         let shr = exp.clamp(-510, 0).unsigned_abs();
-        let mut res = Self(&U512::new(&signif << shl, U256::ZERO) >> shr);
+        let mut res =
+            Self(&U512::from_hi_lo(&signif << shl, U256::ZERO) >> shr);
         if value.is_sign_negative() {
             res.ineg();
         }
@@ -255,9 +256,9 @@ impl Neg for FP509 {
 impl PartialOrd for FP509 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let mut lhs = self.0;
-        lhs.hi.hi ^= 1_u128 << 127;
+        lhs.hi.hi.0 ^= 1_u128 << 127;
         let mut rhs = other.0;
-        rhs.hi.hi ^= 1_u128 << 127;
+        rhs.hi.hi.0 ^= 1_u128 << 127;
         lhs.partial_cmp(&rhs)
     }
 }

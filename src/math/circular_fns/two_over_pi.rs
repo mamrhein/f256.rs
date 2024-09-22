@@ -7,10 +7,7 @@
 // $Source$
 // $Revision$
 
-use crate::{
-    big_uint::{U256, U512},
-    EMAX, FRACTION_BITS, SIGNIFICAND_BITS,
-};
+use crate::{BigUInt, EMAX, FRACTION_BITS, SIGNIFICAND_BITS, U256, U512};
 
 const LZ_MAX: u32 = 253;
 const N: u32 = EMAX as u32 + LZ_MAX + 2 * FRACTION_BITS + 4;
@@ -29,7 +26,7 @@ pub(super) fn get_256_bits(offset: u32) -> U256 {
     );
     if sh > 0 {
         res <<= sh;
-        res.lo += (TWO_OVER_PI[idx + (U256::BITS / u8::BITS) as usize]
+        res.lo.0 += (TWO_OVER_PI[idx + (U256::BITS / u8::BITS) as usize]
             >> (u8::BITS - sh)) as u128;
     }
     res

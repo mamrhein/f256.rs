@@ -59,9 +59,9 @@
 extern crate alloc;
 extern crate core;
 
-use core::{cmp::Ordering, num::FpCategory, ops::Neg};
+use core::{cmp::Ordering, convert::Into, num::FpCategory, ops::Neg};
 
-use crate::big_uint::{U256, U512};
+use crate::big_uint::{BigUInt, DivRem, HiLo, U128, U256, U512};
 
 mod big_uint;
 mod binops;
@@ -142,61 +142,36 @@ pub struct f256 {
 
 /// Some f256 constants (only used to hide the internals in the doc)
 const EPSILON: f256 = f256 {
-    bits: U256 {
-        hi: EPSILON_HI,
-        lo: 0,
-    },
+    bits: U256::new(EPSILON_HI, 0),
 };
 const MAX: f256 = f256 {
-    bits: U256 {
-        hi: MAX_HI,
-        lo: u128::MAX,
-    },
+    bits: U256::new(MAX_HI, u128::MAX),
 };
 const MIN: f256 = MAX.negated();
 const MIN_POSITIVE: f256 = f256 {
-    bits: U256 {
-        hi: HI_FRACTION_BIAS,
-        lo: 0,
-    },
+    bits: U256::new(HI_FRACTION_BIAS, 0),
 };
-const MIN_GT_ZERO: f256 = f256 {
-    bits: U256 { hi: 0, lo: 1 },
-};
+const MIN_GT_ZERO: f256 = f256 { bits: U256::ONE };
 const NAN: f256 = f256 {
-    bits: U256 { hi: NAN_HI, lo: 0 },
+    bits: U256::new(NAN_HI, 0),
 };
 const INFINITY: f256 = f256 {
-    bits: U256 { hi: INF_HI, lo: 0 },
+    bits: U256::new(INF_HI, 0),
 };
 const NEG_INFINITY: f256 = f256 {
-    bits: U256 {
-        hi: NEG_INF_HI,
-        lo: 0,
-    },
+    bits: U256::new(NEG_INF_HI, 0),
 };
-const ZERO: f256 = f256 {
-    bits: U256 { hi: 0, lo: 0 },
-};
+const ZERO: f256 = f256 { bits: U256::ZERO };
 const NEG_ZERO: f256 = ZERO.negated();
 pub(crate) const ONE_HALF: f256 = f256 {
-    bits: U256 {
-        hi: ((EXP_BIAS - 1) as u128) << HI_FRACTION_BITS,
-        lo: 0,
-    },
+    bits: U256::new((((EXP_BIAS - 1) as u128) << HI_FRACTION_BITS), 0),
 };
 const ONE: f256 = f256 {
-    bits: U256 {
-        hi: (EXP_BIAS as u128) << HI_FRACTION_BITS,
-        lo: 0,
-    },
+    bits: U256::new(((EXP_BIAS as u128) << HI_FRACTION_BITS), 0),
 };
 const NEG_ONE: f256 = ONE.negated();
 const TWO: f256 = f256 {
-    bits: U256 {
-        hi: ((1 + EXP_BIAS) as u128) << HI_FRACTION_BITS,
-        lo: 0,
-    },
+    bits: U256::new((((1 + EXP_BIAS) as u128) << HI_FRACTION_BITS), 0),
 };
 pub(crate) const FIVE: f256 = f256::from_u64(5);
 const TEN: f256 = f256::from_u64(10);
@@ -289,15 +264,15 @@ impl f256 {
         debug_assert!(sign == 0 || sign == 1);
         debug_assert!(exponent >= EMIN - 1 && exponent <= EMAX);
         debug_assert!(!significand.is_zero());
-        debug_assert!((significand.hi >> HI_FRACTION_BITS) <= 1_u128);
+        debug_assert!((significand.hi.0 >> HI_FRACTION_BITS) <= 1_u128);
         let biased_exp = (exponent + EXP_BIAS as i32) as u128;
         Self {
-            bits: U256 {
-                hi: (significand.hi & HI_FRACTION_MASK)
+            bits: U256::new(
+                (significand.hi.0 & HI_FRACTION_MASK)
                     | (biased_exp << HI_FRACTION_BITS)
                     | ((sign as u128) << HI_SIGN_SHIFT),
-                lo: significand.lo,
-            },
+                significand.lo.0,
+            ),
         }
     }
 
@@ -352,7 +327,7 @@ impl f256 {
                 t += shift as i32;
                 c = c.rounding_div_pow2(shift);
                 // Rounding may have caused significand to overflow.
-                if (c.hi >> (HI_FRACTION_BITS + 1)) != 0 {
+                if (c.hi.0 >> (HI_FRACTION_BITS + 1)) != 0 {
                     t += 1;
                     c >>= 1;
                 }
@@ -387,13 +362,15 @@ impl f256 {
     /// Returns the sign bit of `self`: 0 = positive, 1 = negative.
     #[inline]
     pub(crate) const fn sign(&self) -> u32 {
-        (self.bits.hi >> HI_SIGN_SHIFT) as u32
+        let self1 = &self.bits;
+        (self1.hi.0 >> HI_SIGN_SHIFT) as u32
     }
 
     /// Returns the biased binary exponent of `self`.
     #[inline]
     pub(crate) const fn biased_exponent(&self) -> u32 {
-        ((self.bits.hi & HI_EXP_MASK) >> HI_FRACTION_BITS) as u32
+        let self1 = &self.bits;
+        ((self1.hi.0 & HI_EXP_MASK) >> HI_FRACTION_BITS) as u32
     }
 
     /// Returns the quantum exponent of `self`.
@@ -428,10 +405,9 @@ impl f256 {
     /// Returns the fraction of `self`.
     #[inline]
     pub(crate) const fn fraction(&self) -> U256 {
-        U256 {
-            hi: self.bits.hi & HI_FRACTION_MASK,
-            lo: self.bits.lo,
-        }
+        let self1 = &self.bits;
+        let self2 = &self.bits;
+        U256::new(self2.hi.0 & HI_FRACTION_MASK, self1.lo.0)
     }
 
     /// Returns the integral significand of `self`.
@@ -444,15 +420,14 @@ impl f256 {
         );
         let hidden_one =
             ((self.biased_exponent() != 0) as u128) << HI_FRACTION_BITS;
-        U256 {
-            hi: (self.bits.hi & HI_FRACTION_MASK) | hidden_one,
-            lo: self.bits.lo,
-        }
+        let self1 = &self.bits;
+        let self2 = &self.bits;
+        U256::new((self2.hi.0 & HI_FRACTION_MASK) | hidden_one, self1.lo.0)
     }
 
     /// Returns the significand of `self`.
     /// Pre-condition: `self` is finite!
-    pub(crate) const fn significand(&self) -> Self {
+    pub(crate) fn significand(&self) -> Self {
         debug_assert!(
             self.is_finite(),
             "Attempt to extract significand from Infinity or NaN."
@@ -461,17 +436,16 @@ impl f256 {
             return *self;
         }
         let mut biased_exp = EXP_BIAS;
-        let mut bits = U256 {
-            hi: (self.bits.hi & HI_FRACTION_MASK),
-            lo: self.bits.lo,
-        };
+        let self1 = &self.bits;
+        let self2 = &self.bits;
+        let mut bits = U256::new((self2.hi.0 & HI_FRACTION_MASK), self1.lo.0);
         if self.biased_exponent() == 0 {
             // self is subnormal
             let shift = (bits.leading_zeros() - EXP_BITS);
             bits = bits.shift_left(shift);
             biased_exp -= shift + 1;
         }
-        bits.hi += (biased_exp as u128) << HI_FRACTION_BITS;
+        bits.hi.0 += (biased_exp as u128) << HI_FRACTION_BITS;
         Self { bits }
     }
 
@@ -517,14 +491,14 @@ impl f256 {
     #[must_use]
     pub fn as_sign_exp_signif(&self) -> (u32, i32, (u128, u128)) {
         let (s, t, c) = self.decode();
-        (s, t, (c.hi, c.lo))
+        (s, t, (c.hi.0, c.lo.0))
     }
 
     /// Returns `true` if this value is `NaN`.
     #[must_use]
     #[inline]
     pub const fn is_nan(self) -> bool {
-        ((self.bits.hi & HI_ABS_MASK) | (self.bits.lo != 0) as u128)
+        ((self.bits.hi.0 & HI_ABS_MASK) | (self.bits.lo.0 != 0) as u128)
             > HI_EXP_MASK
     }
 
@@ -533,21 +507,21 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_infinite(self) -> bool {
-        (self.bits.hi & HI_ABS_MASK) == HI_EXP_MASK && self.bits.lo == 0
+        (self.bits.hi.0 & HI_ABS_MASK) == HI_EXP_MASK && self.bits.lo.0 == 0
     }
 
     /// Returns `true` if this number is neither infinite nor NaN.
     #[must_use]
     #[inline]
     pub const fn is_finite(self) -> bool {
-        (self.bits.hi & HI_EXP_MASK) != HI_EXP_MASK
+        (self.bits.hi.0 & HI_EXP_MASK) != HI_EXP_MASK
     }
 
     /// Returns `true` if the number is subnormal.
     #[must_use]
     #[inline]
     pub const fn is_subnormal(self) -> bool {
-        (self.bits.hi & HI_EXP_MASK) == 0 && !self.eq_zero()
+        (self.bits.hi.0 & HI_EXP_MASK) == 0 && !self.eq_zero()
     }
 
     /// Returns `true` if the number is neither zero, infinite, subnormal, or
@@ -578,7 +552,7 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn eq_zero(self) -> bool {
-        (self.bits.hi << 1) == 0 && self.bits.lo == 0
+        (self.bits.hi.0 << 1) == 0 && self.bits.lo.0 == 0
     }
 
     /// Returns `true` if `self` is either not a number, infinite or equal to
@@ -586,7 +560,7 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_special(self) -> bool {
-        (self.bits.hi & HI_ABS_MASK | (self.bits.lo != 0) as u128)
+        (self.bits.hi.0 & HI_ABS_MASK | (self.bits.lo.0 != 0) as u128)
             .wrapping_sub(1)
             >= MAX_HI
     }
@@ -596,7 +570,7 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_sign_positive(self) -> bool {
-        self.bits.hi < HI_SIGN_MASK
+        self.bits.hi.0 < HI_SIGN_MASK
     }
 
     /// Returns `true` if `self` has a negative sign, including `-0.0` and
@@ -604,7 +578,7 @@ impl f256 {
     #[must_use]
     #[inline]
     pub const fn is_sign_negative(self) -> bool {
-        self.bits.hi >= HI_SIGN_MASK
+        self.bits.hi.0 >= HI_SIGN_MASK
     }
 
     /// Returns the unit in the last place of `self`.
@@ -621,7 +595,7 @@ impl f256 {
                 .saturating_sub(exp_bits - norm_bit(&abs_bits_self));
             exp_bits = exp_bits.saturating_sub(FRACTION_BITS + 1);
             bits >>= sh;
-            bits.hi += (exp_bits as u128) << HI_FRACTION_BITS;
+            bits.hi.0 += (exp_bits as u128) << HI_FRACTION_BITS;
             f256 { bits }
         } else {
             // `self` is infinite or nan.
@@ -665,7 +639,7 @@ impl f256 {
         let signif = self.integral_significand();
         let exp = self.quantum_exponent();
         let (lo, hi) = M.widening_mul(&signif);
-        let mut t = U512::new(hi, lo);
+        let mut t = U512::from_hi_lo(hi, lo);
         let sh = signif.msb() + 256 - SIGNIFICAND_BITS;
         t = t.rounding_div_pow2(sh);
         Self::encode(self.sign(), exp - SH + sh as i32, t.lo)
@@ -687,7 +661,7 @@ impl f256 {
         let signif = self.integral_significand();
         let exp = self.quantum_exponent();
         let (lo, hi) = M.widening_mul(&signif);
-        let mut t = U512::new(hi, lo);
+        let mut t = U512::from_hi_lo(hi, lo);
         let sh = signif.msb() + 256 - SIGNIFICAND_BITS;
         t = t.rounding_div_pow2(sh);
         Self::encode(self.sign(), exp - SH + sh as i32, t.lo)
@@ -723,16 +697,16 @@ impl f256 {
         self
     }
 
-    /// Raw transmutation to `(u128, u128)` ((self.bits.hi, self.bits.lo),
+    /// Raw transmutation to `(u128, u128)` ((self.bits.hi.0, self.bits.lo.0),
     /// each in native endian order).
     #[inline]
     #[must_use]
     pub const fn to_bits(&self) -> (u128, u128) {
-        (self.bits.hi, self.bits.lo)
+        (self.bits.hi.0, self.bits.lo.0)
     }
 
-    /// Raw transmutation from `(u128, u128)` ((self.bits.hi, self.bits.lo),
-    /// each in native endian order).
+    /// Raw transmutation from `(u128, u128)` ((self.bits.hi.0,
+    /// self.bits.lo.0), each in native endian order).
     #[inline]
     #[must_use]
     pub const fn from_bits(bits: (u128, u128)) -> Self {
@@ -747,7 +721,8 @@ impl f256 {
     #[inline]
     #[allow(unsafe_code)]
     pub const fn to_be_bytes(self) -> [u8; 32] {
-        let bytes = [self.bits.hi.to_be_bytes(), self.bits.lo.to_be_bytes()];
+        let bytes =
+            [self.bits.hi.0.to_be_bytes(), self.bits.lo.0.to_be_bytes()];
         // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
         unsafe { core::mem::transmute(bytes) }
     }
@@ -758,7 +733,8 @@ impl f256 {
     #[inline]
     #[allow(unsafe_code)]
     pub const fn to_le_bytes(self) -> [u8; 32] {
-        let bytes = [self.bits.lo.to_le_bytes(), self.bits.hi.to_le_bytes()];
+        let bytes =
+            [self.bits.lo.0.to_le_bytes(), self.bits.hi.0.to_le_bytes()];
         // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
         unsafe { core::mem::transmute(bytes) }
     }
@@ -783,10 +759,10 @@ impl f256 {
         // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
         let bits: [[u8; 16]; 2] = unsafe { core::mem::transmute(bytes) };
         Self {
-            bits: U256 {
-                hi: u128::from_be_bytes(bits[0]),
-                lo: u128::from_be_bytes(bits[1]),
-            },
+            bits: U256::new(
+                u128::from_be_bytes(bits[0]),
+                u128::from_be_bytes(bits[1]),
+            ),
         }
     }
 
@@ -799,10 +775,10 @@ impl f256 {
         // SAFETY: safe because size of [[u8; 16]; 2] == size of [u8; 32]
         let bits: [[u8; 16]; 2] = unsafe { core::mem::transmute(bytes) };
         Self {
-            bits: U256 {
-                hi: u128::from_le_bytes(bits[1]),
-                lo: u128::from_le_bytes(bits[0]),
-            },
+            bits: U256::new(
+                u128::from_le_bytes(bits[1]),
+                u128::from_le_bytes(bits[0]),
+            ),
         }
     }
 
@@ -906,10 +882,7 @@ impl f256 {
     #[must_use]
     pub const fn abs(&self) -> Self {
         Self {
-            bits: U256 {
-                hi: self.bits.hi & HI_ABS_MASK,
-                lo: self.bits.lo,
-            },
+            bits: U256::new(self.bits.hi.0 & HI_ABS_MASK, self.bits.lo.0),
         }
     }
 
@@ -923,12 +896,12 @@ impl f256 {
             return *self;
         }
         // self is finite and non-zero.
-        if abs_bits.hi >= MIN_NO_FRACT_HI {
+        if abs_bits.hi.0 >= MIN_NO_FRACT_HI {
             // |self| >= 2²³⁶, i. e. self is integral.
             return *self;
         }
         let sign = self.sign();
-        if abs_bits.hi < ONE.bits.hi {
+        if abs_bits.hi.0 < ONE.bits.hi.0 {
             // 0 < |self| < 1
             return match (sign, adj(sign)) {
                 (0, true) => Self::ONE,
@@ -943,8 +916,8 @@ impl f256 {
         abs_int_bits += &(&U256::new(0, c as u128) << n_fract_bits);
         Self {
             bits: U256::new(
-                abs_int_bits.hi | sign_bits_hi(self),
-                abs_int_bits.lo,
+                abs_int_bits.hi.0 | sign_bits_hi(self),
+                abs_int_bits.lo.0,
             ),
         }
     }
@@ -1063,18 +1036,18 @@ impl f256 {
             return *self;
         }
         // self is finite and non-zero.
-        if abs_bits.hi >= MIN_NO_FRACT_HI {
+        if abs_bits.hi.0 >= MIN_NO_FRACT_HI {
             // |self| >= 2²³⁶, i. e. self is integral.
             return *self;
         }
-        if abs_bits.hi < ONE_HALF.bits.hi {
+        if abs_bits.hi.0 < ONE_HALF.bits.hi.0 {
             // 0 < |self| < ½
             return Self::ZERO;
         }
-        if abs_bits.hi <= ONE.bits.hi {
+        if abs_bits.hi.0 <= ONE.bits.hi.0 {
             // ½ <= |self| <= 1
             return Self {
-                bits: U256::new(ONE.bits.hi | sign_bits_hi(self), 0),
+                bits: U256::new(ONE.bits.hi.0 | sign_bits_hi(self), 0),
             };
         }
         // 1 < |self| < 2²³⁶
@@ -1087,7 +1060,10 @@ impl f256 {
         }
         abs_bits <<= n_fract_bits;
         Self {
-            bits: U256::new(abs_bits.hi | sign_bits_hi(self), abs_bits.lo),
+            bits: U256::new(
+                abs_bits.hi.0 | sign_bits_hi(self),
+                abs_bits.lo.0,
+            ),
         }
     }
 
@@ -1114,18 +1090,18 @@ impl f256 {
             return *self;
         }
         // self is finite and non-zero.
-        if abs_bits.hi >= MIN_NO_FRACT_HI {
+        if abs_bits.hi.0 >= MIN_NO_FRACT_HI {
             // |self| >= 2²³⁶, i. e. self is integral.
             return *self;
         }
-        if abs_bits.hi <= ONE_HALF.bits.hi {
+        if abs_bits.hi.0 <= ONE_HALF.bits.hi.0 {
             // 0 < |self| <= ½
             return Self::ZERO;
         }
-        if abs_bits.hi <= ONE.bits.hi {
+        if abs_bits.hi.0 <= ONE.bits.hi.0 {
             // ½ < |self| <= 1
             return Self {
-                bits: U256::new(ONE.bits.hi | sign_bits_hi(self), 0),
+                bits: U256::new(ONE.bits.hi.0 | sign_bits_hi(self), 0),
             };
         }
         // 1 < |self| < 2²³⁶
@@ -1134,18 +1110,20 @@ impl f256 {
         abs_bits = abs_bits.rounding_div_pow2(n);
         abs_bits <<= n_fract_bits;
         Self {
-            bits: U256::new(abs_bits.hi | sign_bits_hi(self), abs_bits.lo),
+            bits: U256::new(
+                abs_bits.hi.0 | sign_bits_hi(self),
+                abs_bits.lo.0,
+            ),
         }
     }
 
     /// Returns the additive inverse of `self`.
     #[inline(always)]
     pub(crate) const fn negated(&self) -> Self {
+        let self1 = &self.bits;
+        let self2 = &self.bits;
         Self {
-            bits: U256 {
-                hi: self.bits.hi ^ HI_SIGN_MASK,
-                lo: self.bits.lo,
-            },
+            bits: U256::new(self2.hi.0 ^ HI_SIGN_MASK, self1.lo.0),
         }
     }
 
@@ -1218,23 +1196,20 @@ impl Neg for &f256 {
 /// Returns the high bits of f reduced to its sign bit.
 #[inline(always)]
 pub(crate) const fn sign_bits_hi(f: &f256) -> u128 {
-    f.bits.hi & HI_SIGN_MASK
+    f.bits.hi.0 & HI_SIGN_MASK
 }
 
 /// Returns the representation of f.abs().
 #[inline(always)]
 pub(crate) const fn abs_bits(f: &f256) -> U256 {
-    U256 {
-        hi: f.bits.hi & HI_ABS_MASK,
-        lo: f.bits.lo,
-    }
+    U256::new(f.bits.hi.0 & HI_ABS_MASK, f.bits.lo.0)
 }
 
 /// Returns the high bits of `abs_bits` or'ed with 1 if the lower bits of
 /// `abs_bits` != 0.
 #[inline(always)]
 pub(crate) const fn abs_bits_sticky(abs_bits: &U256) -> u128 {
-    abs_bits.hi | (abs_bits.lo != 0) as u128
+    abs_bits.hi.0 | (abs_bits.lo.0 != 0) as u128
 }
 
 pub(crate) trait BinEncSpecial {
@@ -1308,35 +1283,35 @@ impl BinEncAnySpecial for (u128, u128, u128) {
 /// Returns 0 if `abs_bits` represents a subnormal f256 or ZERO, 1 otherwise.
 #[inline(always)]
 pub(crate) const fn norm_bit(abs_bits: &U256) -> u32 {
-    (abs_bits.hi >= HI_FRACTION_BIAS) as u32
+    (abs_bits.hi.0 >= HI_FRACTION_BIAS) as u32
 }
 
 /// Returns the biased exponent from `abs_bits`.
 #[inline(always)]
 pub(crate) const fn exp_bits(abs_bits: &U256) -> u32 {
-    (abs_bits.hi >> HI_FRACTION_BITS) as u32
+    (abs_bits.hi.0 >> HI_FRACTION_BITS) as u32
 }
 
 /// Returns the fraction from `abs_bits`.
 #[inline(always)]
 pub(crate) const fn fraction(abs_bits: &U256) -> U256 {
-    U256::new(abs_bits.hi & HI_FRACTION_MASK, abs_bits.lo)
+    U256::new(abs_bits.hi.0 & HI_FRACTION_MASK, abs_bits.lo.0)
 }
 
 /// Returns the integral significand from `abs_bits`.
 #[inline(always)]
 pub(crate) const fn signif(abs_bits: &U256) -> U256 {
     U256::new(
-        (((abs_bits.hi >= HI_FRACTION_BIAS) as u128) << HI_FRACTION_BITS)
-            | (abs_bits.hi & HI_FRACTION_MASK),
-        abs_bits.lo,
+        (((abs_bits.hi.0 >= HI_FRACTION_BIAS) as u128) << HI_FRACTION_BITS)
+            | (abs_bits.hi.0 & HI_FRACTION_MASK),
+        abs_bits.lo.0,
     )
 }
 
 /// Returns the normalized integral significand and the corresponding shift
 /// from `abs_bits`.
 #[inline(always)]
-pub(crate) const fn norm_signif(abs_bits: &U256) -> (U256, u32) {
+pub(crate) fn norm_signif(abs_bits: &U256) -> (U256, u32) {
     debug_assert!(!abs_bits.is_zero());
     let signif = signif(abs_bits);
     let shift = FRACTION_BITS - signif.msb();
@@ -1346,7 +1321,7 @@ pub(crate) const fn norm_signif(abs_bits: &U256) -> (U256, u32) {
 /// Returns the left adjusted integral significand and the corresponding
 /// shift from `abs_bits`.
 #[inline(always)]
-pub(crate) const fn left_adj_signif(abs_bits: &U256) -> (U256, u32) {
+pub(crate) fn left_adj_signif(abs_bits: &U256) -> (U256, u32) {
     debug_assert!(!abs_bits.is_zero());
     let signif = signif(abs_bits);
     let shift = signif.leading_zeros();
@@ -1368,10 +1343,7 @@ pub(crate) const fn split_f256_enc(f: &f256) -> (u32, i32, U256) {
         _ => (
             sign,
             exp_bits as i32 - TOTAL_BIAS,
-            U256 {
-                hi: fraction.hi | HI_FRACTION_BIAS,
-                lo: fraction.lo,
-            },
+            U256::new(fraction.hi.0 | HI_FRACTION_BIAS, fraction.lo.0),
         ),
     }
 }
@@ -1435,12 +1407,9 @@ mod repr_tests {
         assert_eq!(i.quantum_exponent(), INT_EXP);
         assert_eq!(
             i.integral_significand(),
-            U256 {
-                hi: 1_u128 << HI_FRACTION_BITS,
-                lo: 0,
-            }
+            U256::new(1_u128 << HI_FRACTION_BITS, 0)
         );
-        assert_eq!(i.decode(), (0, 0, U256 { hi: 0, lo: 1 }));
+        assert_eq!(i.decode(), (0, 0, U256::ONE));
         assert_eq!(i.exponent(), 0);
         assert_eq!(i.significand(), f256::ONE);
         let i = f256::NEG_ONE;
@@ -1449,12 +1418,9 @@ mod repr_tests {
         assert_eq!(i.quantum_exponent(), INT_EXP);
         assert_eq!(
             i.integral_significand(),
-            U256 {
-                hi: 1_u128 << HI_FRACTION_BITS,
-                lo: 0,
-            }
+            U256::new(1_u128 << HI_FRACTION_BITS, 0)
         );
-        assert_eq!(i.decode(), (1, 0, U256 { hi: 0, lo: 1 }));
+        assert_eq!(i.decode(), (1, 0, U256::ONE));
         assert_eq!(i.exponent(), 0);
         assert_eq!(i.significand(), f256::ONE);
     }
@@ -1467,12 +1433,9 @@ mod repr_tests {
         assert_eq!(i.quantum_exponent(), INT_EXP + 1);
         assert_eq!(
             i.integral_significand(),
-            U256 {
-                hi: 1_u128 << HI_FRACTION_BITS,
-                lo: 0,
-            }
+            U256::new(1_u128 << HI_FRACTION_BITS, 0)
         );
-        assert_eq!(i.decode(), (0, 1, U256 { hi: 0, lo: 1 }));
+        assert_eq!(i.decode(), (0, 1, U256::ONE));
         assert_eq!(i.exponent(), 1);
         assert_eq!(i.significand(), f256::ONE);
         let f = f256::from(-3.5_f64);
@@ -1480,12 +1443,9 @@ mod repr_tests {
         assert_eq!(f.quantum_exponent(), -235);
         assert_eq!(
             f.integral_significand(),
-            U256 {
-                hi: 567907468902246771870523036008448,
-                lo: 0,
-            }
+            U256::new(567907468902246771870523036008448, 0)
         );
-        assert_eq!(f.decode(), (1, -1, U256 { hi: 0, lo: 7 }));
+        assert_eq!(f.decode(), (1, -1, U256::new(0_u128, 7_u128)));
         assert_eq!(f.exponent(), 1);
         assert_eq!(f.significand(), f.abs() / f256::TWO);
     }
@@ -1496,11 +1456,8 @@ mod repr_tests {
         let f = f256::MIN_GT_ZERO;
         assert_eq!(f.sign(), 0);
         assert_eq!(f.quantum_exponent(), EMIN - FRACTION_BITS as i32);
-        assert_eq!(f.integral_significand(), U256 { hi: 0, lo: 1 });
-        assert_eq!(
-            f.decode(),
-            (0, EMIN - FRACTION_BITS as i32, U256 { hi: 0, lo: 1 })
-        );
+        assert_eq!(f.integral_significand(), U256::ONE);
+        assert_eq!(f.decode(), (0, EMIN - FRACTION_BITS as i32, U256::ONE));
         assert_eq!(f.exponent(), EMIN);
         assert_eq!(
             f.significand(),
@@ -1532,10 +1489,7 @@ mod encode_decode_tests {
     fn test_normal() {
         let sign = 1_u32;
         let exponent = -23_i32;
-        let significand = U256 {
-            hi: 39,
-            lo: 10000730744,
-        };
+        let significand = U256::new(39, 10000730744);
         let f = f256::encode(sign, exponent, significand);
         let (s, t, c) = f.decode();
         let g = f256::encode(s, t, c);
@@ -1546,10 +1500,7 @@ mod encode_decode_tests {
     fn test_subnormal() {
         let sign = 0_u32;
         let exponent = EMIN - 235_i32;
-        let significand = U256 {
-            hi: u128::MAX >> (EXP_BITS + 2),
-            lo: 0,
-        };
+        let significand = U256::new(u128::MAX >> (EXP_BITS + 2), 0);
         let f = f256::encode(sign, exponent, significand);
         assert!(f.is_subnormal());
         let (s, t, c) = f.decode();
@@ -1570,8 +1521,8 @@ mod raw_bits_tests {
     fn test_to_from_bits() {
         let f = f256::TEN;
         let bits = f.to_bits();
-        assert_eq!(bits.0, f.bits.hi);
-        assert_eq!(bits.1, f.bits.lo);
+        assert_eq!(bits.0, f.bits.hi.0);
+        assert_eq!(bits.1, f.bits.lo.0);
         let g = f256::from_bits(bits);
         assert_eq!(f, g);
     }

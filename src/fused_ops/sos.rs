@@ -14,11 +14,9 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky,
-    big_uint::{BigUIntHelper, U256, U512},
-    exp_bits, f256, norm_bit, signif, BinEncAnySpecial, EMAX, EMIN, EXP_BITS,
-    EXP_MAX, FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS, HI_FRACTION_MASK,
-    INF_HI,
+    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, signif, BigUInt,
+    BinEncAnySpecial, HiLo, EMAX, EMIN, EXP_BITS, EXP_MAX, FRACTION_BITS,
+    HI_EXP_MASK, HI_FRACTION_BITS, HI_FRACTION_MASK, INF_HI, U256, U512,
 };
 
 pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
@@ -96,10 +94,10 @@ pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
             let mut t = U512::default();
             let shr = d - 20;
             (signif_y2, t) = signif_y2.widening_shr(shr);
-            signif_y2.lo.lo |= (!t.is_zero()) as u128;
+            signif_y2.lo.lo.0 |= (!t.is_zero()) as u128;
         }
         _ => {
-            signif_y2 = U512::new(U256::ZERO, U256::ONE);
+            signif_y2 = U512::ONE;
         }
     }
     signif_z += &signif_y2;
@@ -113,18 +111,18 @@ pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
         max(exp_bits_z - EXP_MAX as i32, nlz - EXP_BITS as i32).clamp(0, 236);
     signif_z >>= shr.clamp(0, 511) as u32;
     signif_z <<= shl as u32;
-    exp_bits_z += shr - shl + (signif_z.hi.hi > HI_FRACTION_MASK) as i32;
+    exp_bits_z += shr - shl + (signif_z.hi.hi.0 > HI_FRACTION_MASK) as i32;
     if exp_bits_z >= EXP_MAX as i32 {
         return f256::INFINITY;
     }
     let exp_bits_z_minus_1 = (exp_bits_z - 1).clamp(0, EXP_MAX as i32);
-    let rnd_bits = (signif_z.lo.hi >> (u128::BITS - 3)) as u32
-        | ((signif_z.lo.hi << 3) != 0) as u32
-        | (signif_z.lo.lo != 0) as u32;
+    let rnd_bits = (signif_z.lo.hi.0 >> (u128::BITS - 3)) as u32
+        | ((signif_z.lo.hi.0 << 3) != 0) as u32
+        | (signif_z.lo.lo.0 != 0) as u32;
     let mut abs_bits_z = signif_z.hi;
-    abs_bits_z.hi += (exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS;
+    abs_bits_z.hi.0 += (exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS;
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
-    if rnd_bits > 0x4 || rnd_bits == 0x4 && (abs_bits_z.lo & 1) == 1 {
+    if rnd_bits > 0x4 || rnd_bits == 0x4 && abs_bits_z.lo.is_odd() {
         abs_bits_z.incr();
     }
     f256 { bits: abs_bits_z }

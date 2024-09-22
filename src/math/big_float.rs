@@ -16,12 +16,9 @@ use core::{
 };
 
 use crate::{
-    abs_bits,
-    big_uint::{BigUIntHelper, DivRem, U256, U512},
-    exp_bits, f256,
-    math::fp509::FP509,
-    norm_bit, signif, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
-    HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS,
+    abs_bits, exp_bits, f256, math::fp509::FP509, norm_bit, signif, BigUInt,
+    DivRem, HiLo, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
+    HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS, U256, U512,
 };
 
 fn add_signifs(x: &U256, y: &U256) -> (U256, i32) {
@@ -65,13 +62,13 @@ fn div_signifs(x: &U256, y: &U256) -> (U256, i32) {
     let exp_adj = (x < y) as i32;
     let mut quot = U256::new(((exp_adj == 0) as u128) << N, 0);
     debug_assert!(quot.hi.leading_zeros() == 1 || quot.is_zero());
-    let mut x_hat = &U512::new(U256::ZERO, x % y) << BigFloat::FRACTION_BITS;
-    let (q, r) = x_hat.div_rem_u256_special(&y);
+    let mut x_hat = &U512::from(&(x % y)) << BigFloat::FRACTION_BITS;
+    let (q, r) = x_hat.div_rem_subuint_special(&y);
     debug_assert_eq!(q.hi, U256::ZERO);
     debug_assert!(q.lo.leading_zeros() >= 2);
     quot += &q.lo;
     let rnd = r > (y >> 1);
-    quot += rnd as u128;
+    quot.incr_if(rnd);
     let nlz = quot.hi.leading_zeros();
     quot <<= nlz - 1;
     (quot, exp_adj)
@@ -89,15 +86,10 @@ pub(crate) struct BigFloat {
     pub(crate) signif: U256,
 }
 
-const SIGNIF_ONE: U256 = U256 {
-    hi: 1_u128 << (BigFloat::FRACTION_BITS - 128),
-    lo: 0_u128,
-};
+const SIGNIF_ONE: U256 =
+    U256::new(1_u128 << (BigFloat::FRACTION_BITS - 128), 0_u128);
 
-const TIE: U256 = U256 {
-    hi: 1_u128 << 127,
-    lo: 0_u128,
-};
+const TIE: U256 = U256::new(1_u128 << 127, 0_u128);
 
 impl BigFloat {
     pub(crate) const FRACTION_BITS: u32 = 254;
@@ -245,13 +237,13 @@ impl BigFloat {
     }
 
     // TODO: remove (inline) this fn when trait fns can be constant!
-    pub(crate) const fn from_f256(f: &f256) -> Self {
+    pub(crate) fn from_f256(f: &f256) -> Self {
         if f.eq_zero() {
             return Self::ZERO;
         }
         const PREC_ADJ: u32 = BigFloat::FRACTION_BITS - FRACTION_BITS;
         let abs_bits_f = abs_bits(f);
-        debug_assert!(abs_bits_f.hi < HI_EXP_MASK); // f is finite?
+        debug_assert!(abs_bits_f.hi.0 < HI_EXP_MASK); // f is finite?
         debug_assert!(!abs_bits_f.is_zero());
         let signif_f = signif(&abs_bits_f);
         let shl = signif_f.leading_zeros()
@@ -358,7 +350,7 @@ impl BigFloat {
             // TODO: do rounding in fn mul_signifs
             let rnd = prod_signif.lo > TIE
                 || (prod_signif.lo == TIE && prod_signif.hi.is_odd());
-            prod_signif.hi += rnd as u128;
+            prod_signif.hi.incr_if(rnd);
             prod_signif.hi >>= (prod_signif.hi.leading_zeros() == 0) as u32;
             self.signif = prod_signif.hi;
             self.exp += other.exp + exp_adj;
@@ -438,7 +430,8 @@ impl BigFloat {
                             let (q, r) =
                                 addend_signif.widening_shr(exp_diff as u32);
                             addend_signif = q;
-                            addend_signif.lo.lo |= (r != U512::ZERO) as u128;
+                            addend_signif.lo.lo.0 |=
+                                (r != U512::ZERO) as u128;
                             (prod_sign, prod_signif, prod_exp, addend_signif)
                         }
                         i32::MIN..=-1 => {
@@ -446,7 +439,7 @@ impl BigFloat {
                             let (q, r) = prod_signif
                                 .widening_shr(exp_diff.unsigned_abs());
                             prod_signif = q;
-                            prod_signif.lo.lo |= (r != U512::ZERO) as u128;
+                            prod_signif.lo.lo.0 |= (r != U512::ZERO) as u128;
                             (a.signum, addend_signif, a.exp, prod_signif)
                         }
                     };
@@ -457,14 +450,14 @@ impl BigFloat {
                     // addition may have overflowed
                     let mut shr = (x_signif.leading_zeros() == 0) as u32;
                     self.exp += shr as i32;
-                    let mut rnd = (x_signif.hi.lo & shr as u128) == 1;
+                    let mut rnd = (x_signif.hi.lo.0 & shr as u128) == 1;
                     x_signif.hi >>= shr;
                     rnd &= (x_signif.lo != U256::ZERO)
                         || (x_signif.lo == U256::ZERO
                             && x_signif.hi.is_odd());
                     rnd |= (x_signif.lo > TIE)
                         || (x_signif.lo == TIE && x_signif.hi.is_odd());
-                    x_signif.hi += rnd as u128;
+                    x_signif.hi.incr_if(rnd);
                     shr = (x_signif.hi.leading_zeros() == 0) as u32;
                     self.exp += shr as i32;
                     x_signif.hi >>= shr;
@@ -569,17 +562,17 @@ impl From<&BigFloat> for f256 {
                 let exp_bits = (EXP_BIAS.saturating_add_signed(fp.exp - 1)
                     as u128)
                     << HI_FRACTION_BITS;
-                bits.hi += exp_bits;
+                bits.hi.0 += exp_bits;
                 // Final rounding. Possibly overflowing into the exponent,
                 // but that is ok.
-                if rem > TIE || (rem == TIE && (bits.lo & 1) == 1) {
+                if rem > TIE || (rem == TIE && bits.lo.is_odd()) {
                     bits.incr();
                 }
                 bits
             }
             EXP_OVERFLOW.. => f256::INFINITY.bits,
         };
-        f256_bits.hi |= ((fp.signum < 0) as u128) << HI_SIGN_SHIFT;
+        f256_bits.hi.0 |= ((fp.signum < 0) as u128) << HI_SIGN_SHIFT;
         f256 { bits: f256_bits }
     }
 }
@@ -859,7 +852,7 @@ mod add_sub_tests {
         let mut f = BigFloat {
             signum: -1,
             exp: 0,
-            signif: U256::new(BigFloat::ONE.signif.hi, 1),
+            signif: U256::new(BigFloat::ONE.signif.hi.0, 1),
         };
         f += &BigFloat::EPSILON;
         assert_eq!(f, BigFloat::NEG_ONE);
@@ -923,7 +916,7 @@ mod add_sub_tests {
         let mut f = BigFloat {
             signum: 1,
             exp: 0,
-            signif: U256::new(BigFloat::ONE.signif.hi, 1),
+            signif: U256::new(BigFloat::ONE.signif.hi.0, 1),
         };
         f -= &BigFloat::EPSILON;
         assert_eq!(f, BigFloat::ONE);
@@ -998,7 +991,7 @@ mod mul_tests {
         x.imul(&y);
         assert_eq!(x.signum, 1);
         assert_eq!(x.exp, -1);
-        assert_eq!(x.signif, U256::new(y.signif.hi, y.signif.lo - 2));
+        assert_eq!(x.signif, U256::new(y.signif.hi.0, y.signif.lo.0 - 2));
     }
 
     #[test]

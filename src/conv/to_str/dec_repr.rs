@@ -16,8 +16,8 @@ use super::{
     powers_of_five::is_multiple_of_pow5,
 };
 use crate::{
-    big_uint::{u256_truncating_mul_u512, DivRem, U512},
-    f256, U256,
+    big_uint::{HiLo, U128},
+    f256, BigUInt, DivRem, U256, U512,
 };
 
 /// Returns ⌊log₁₀(5ⁱ)⌋ for 0 <= i <= 262380.
@@ -61,6 +61,29 @@ fn lookup_pow5_div_pow2(idx: usize) -> U512 {
         hi: U256::new(t.0, t.1),
         lo: U256::new(t.2, t.3),
     }
+}
+
+// Calculate ⌊(x * y) / 2⁵¹²⌋.
+pub(crate) fn u256_truncating_mul_u512(x: &U256, y: &U512) -> U256 {
+    let mut carry = U128::ZERO;
+    let mut l = (U128::ZERO, U128::ZERO, U128::ZERO, U128::ZERO);
+    let mut h = (U128::ZERO, U128::ZERO, U128::ZERO, U128::ZERO);
+    (_, carry) = y.lo.lo.widening_mul(&x.lo);
+    (l.0, carry) = y.lo.hi.carrying_mul(&x.lo, &carry);
+    (l.1, carry) = y.hi.lo.carrying_mul(&x.lo, &carry);
+    (l.2, carry) = y.hi.hi.carrying_mul(&x.lo, &carry);
+    l.3 = carry;
+    (h.0, carry) = y.lo.lo.widening_mul(&x.hi);
+    (h.1, carry) = y.lo.hi.carrying_mul(&x.hi, &carry);
+    (h.2, carry) = y.hi.lo.carrying_mul(&x.hi, &carry);
+    (h.3, carry) = y.hi.hi.carrying_mul(&x.hi, &carry);
+    let mut hi = carry;
+    let (_, carry) = l.0.overflowing_add(&h.0);
+    let (_, carry) = l.1.carrying_add(&h.1, carry);
+    let (_, carry) = l.2.carrying_add(&h.2, carry);
+    let (lo, carry) = l.3.carrying_add(&h.3, carry);
+    hi.incr_if(carry);
+    U256::from_hi_lo(hi, lo)
 }
 
 /// Internal representation of a finite decimal number d as (s, k, w)
@@ -110,7 +133,7 @@ impl DecNumRepr {
         // Max number of bits needed to store ⌊2ʰ / 5ᵍ⌋ + 1 or ⌊5⁻ᵉ⁻ᵍ / 2ʰ⌋.
         const H: i32 = 501;
 
-        let accept_bounds = (signif2.lo & 1) == 0;
+        let accept_bounds = signif2.is_even();
 
         // Subtract 2 from exponent and adjust significand in prep of step 2.
         exp2 -= 2;
@@ -119,8 +142,9 @@ impl DecNumRepr {
         // Step 2: Compute the halfway points to the next smaller and larger
         // floating point values.
         let is_non_integer = exp2 < -(signif2.trailing_zeros() as i32);
-        let lower_signif2 = &signif2 - (1 + is_non_integer as u32);
-        let upper_signif2 = &signif2 + 2_u32;
+        let lower_signif2 =
+            &signif2 - &U256::from(1 + is_non_integer as u128);
+        let upper_signif2 = &signif2 + &U256::TWO;
 
         // Step 3: Convert the interval to a decimal power base.
         let mut exp10: i32;
@@ -154,7 +178,7 @@ impl DecNumRepr {
             if g <= 102 {
                 // Only one of lower_signif10, signif10, upper_signif10 can be
                 // a multiple of 5ᵍ, if any.
-                if &signif2 % 5_u64 == 0 {
+                if (&signif2 % &U128::from(5_u128)).is_zero() {
                     rem_zero = is_multiple_of_pow5(&signif2, g as u32);
                 } else if accept_bounds {
                     lower_rem_zero =
@@ -234,7 +258,7 @@ impl DecNumRepr {
             }
             if round_digit > 5  // need to round up
                 || (round_digit == 5    // need to round to even
-                && (!rem_zero || (signif10.lo & 1) == 1))
+                && (!rem_zero || signif10.lo.is_odd()))
             {
                 signif10.incr();
             }

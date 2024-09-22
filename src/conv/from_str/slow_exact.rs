@@ -168,7 +168,7 @@ pub(super) fn f256_exact(s: &str) -> f256 {
         dec.left_shift(n);
     }
     let mut significand = dec.round();
-    if significand.hi >= HI_FRACTION_BIAS << 1 {
+    if significand.hi.0 >= HI_FRACTION_BIAS << 1 {
         // Rounding overflowed, need to shift back.
         dec.right_shift(1);
         bin_exp += 1;
@@ -178,7 +178,7 @@ pub(super) fn f256_exact(s: &str) -> f256 {
         significand = dec.round();
     }
     // Adjust exponent if number is subnormal.
-    if significand.hi < HI_FRACTION_BIAS {
+    if significand.hi.0 < HI_FRACTION_BIAS {
         bin_exp -= 1;
     }
     if significand.is_zero() {

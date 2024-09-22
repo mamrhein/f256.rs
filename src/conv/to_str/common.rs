@@ -23,7 +23,7 @@ pub(crate) const fn floor_log10_pow2(i: i32) -> i32 {
 #[allow(clippy::cast_possible_truncation)]
 #[allow(clippy::cast_precision_loss)]
 pub(crate) fn floor_log10f(m: U256, i: i32) -> i32 {
-    (((m.hi as f64).log2() + 128_f64 + (i as f64)) * LOG10_2).trunc() as i32
+    (((m.hi.0 as f64).log2() + 128_f64 + (i as f64)) * LOG10_2).trunc() as i32
 }
 
 // The following code is copied from rust stdlib.

@@ -33,8 +33,8 @@ use super::{
     powers_of_five::{get_power_of_five, is_multiple_of_pow5},
 };
 use crate::{
-    big_uint::{rounding_div_pow10, DivRem},
-    f256, EMAX, EMIN, FRACTION_BITS, SIGNIFICAND_BITS, U256, U512,
+    big_uint::rounding_div_pow10, f256, BigUInt, DivRem, HiLo, EMAX, EMIN,
+    FRACTION_BITS, SIGNIFICAND_BITS, U256, U512,
 };
 
 #[derive(PartialEq)]
@@ -49,7 +49,7 @@ enum Round {
 fn mul_shift_mod(x: &U256, y: &U512, k: u32) -> u64 {
     debug_assert!(k > 256);
     let mut t = x.widening_mul(&y.hi);
-    let mut res = U512::new(t.1, t.0);
+    let mut res = U512::from_hi_lo(t.1, t.0);
     t = x.widening_mul(&y.lo);
     let mut carry = false;
     (res.lo, carry) = res.lo.overflowing_add(&t.1);
@@ -57,19 +57,19 @@ fn mul_shift_mod(x: &U256, y: &U512, k: u32) -> u64 {
         res.hi.incr();
     }
     res >>= (k - 256);
-    &res % CHUNK_BASE
+    (res % CHUNK_BASE as u128) as u64
 }
 
 #[inline(always)]
 fn pow2_div_pow10(segment_idx: usize, chunk_idx: usize) -> U512 {
     let t = lookup_pow2_div_pow10(segment_idx, chunk_idx);
-    U512::new(U256::new(0, t.0), U256::new(t.1, t.2))
+    U512::from_hi_lo(U256::new(0, t.0), U256::new(t.1, t.2))
 }
 
 #[inline(always)]
 fn pow10_div_pow2(segment_idx: usize, chunk_idx: usize) -> U512 {
     let t = lookup_pow10_div_pow2(segment_idx, chunk_idx);
-    U512::new(U256::new(0, t.0), U256::new(t.1, t.2))
+    U512::from_hi_lo(U256::new(0, t.0), U256::new(t.1, t.2))
 }
 
 #[allow(clippy::integer_division)]
@@ -258,7 +258,7 @@ fn bin_small_float_2_scientific(
         // k >= 0 and 10ᵏ = 5ᵏ × 2ᵏ =>
         // ⌊signif2 × 10ᵏ / 2ⁿ⌋ = ⌊signif2 × 5ᵏ × 2ᵏ⁻ⁿ⌋
         let (lo, hi) = signif2.widening_mul(&get_power_of_five(k as u32));
-        let mut t = U512::new(hi, lo);
+        let mut t = U512::from_hi_lo(hi, lo);
         if k < n {
             // k < n => ⌊signif2 × 5ᵏ × 2ᵏ⁻ⁿ⌋ = ⌊signif2 × 5ᵏ / 2ⁿ⁻ᵏ⌋
             // 0 < n < 237 and 0 <= k < n => 0 < (n - k) < 237
@@ -278,7 +278,7 @@ fn bin_small_float_2_scientific(
         // following shift can't overflow.
         let d = &get_power_of_five(-k as u32) << (n - k) as u32;
         let mut t = signif2.rounding_div(&d);
-        U512::new(U256::ZERO, t)
+        U512::from_hi_lo(U256::ZERO, t)
     };
     let mut s = signif10.to_string();
     if s.len() > prec + 1 {
@@ -316,14 +316,14 @@ fn bin_small_int_2_scientific(
     // -4 <= k <= 154
     let signif10 = if k > 0 {
         // signif10 = ⌊signif2 × 2ⁿ / 10ᵏ⌋
-        let mut t = U512::new(U256::ZERO, signif2);
+        let mut t = U512::from_hi_lo(U256::ZERO, signif2);
         t <<= exp2 as u32;
         rounding_div_pow10(&t, k as u32)
     } else {
         // signif10 = ⌊signif2 × 2ⁿ × 10⁻ᵏ⌋ = ⌊signif2 × (5⁻ᵏ × 2ⁿ⁻ᵏ)⌋
         let t = &get_power_of_five(-k as u32) << (exp2 - k) as u32;
         let (lo, hi) = signif2.widening_mul(&t);
-        U512::new(hi, lo)
+        U512::from_hi_lo(hi, lo)
     };
     let mut s = signif10.to_string();
     if s.len() > prec + 1 {

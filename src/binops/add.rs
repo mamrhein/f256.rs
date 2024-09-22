@@ -14,10 +14,10 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, sign_bits_hi,
-    signif, BinEncAnySpecial, EXP_MAX, FRACTION_BITS, HI_ABS_MASK,
-    HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK,
-    HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS, U256,
+    abs_bits, abs_bits_sticky, big_uint::BigUInt, exp_bits, f256, norm_bit,
+    sign_bits_hi, signif, BinEncAnySpecial, EXP_MAX, FRACTION_BITS,
+    HI_ABS_MASK, HI_EXP_MASK, HI_FRACTION_BIAS, HI_FRACTION_BITS,
+    HI_FRACTION_MASK, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS, U256,
 };
 
 pub(crate) fn add(x: f256, y: f256) -> f256 {
@@ -108,7 +108,7 @@ pub(crate) fn add(x: f256, y: f256) -> f256 {
 
     // The sign of the result is the sign of the operand with the greater
     // absolute value.
-    abs_bits_z.hi |= sign_bits_hi_x;
+    abs_bits_z.hi.0 |= sign_bits_hi_x;
     f256 { bits: abs_bits_z }
 }
 
@@ -137,28 +137,28 @@ fn add_or_sub_normals_exact<'a>(
     let mut abs_bits_z = op(signif_x, signif_y);
     // If addition carried over, adjust the significand and increment
     // the exponent.
-    if abs_bits_z.hi >= HI_FRACTION_BIAS << 1 {
+    if abs_bits_z.hi.0 >= HI_FRACTION_BIAS << 1 {
         exp_bits_z += 1;
         // If the result overflows the range of values representable as
         // `f256`, return +Inf.
         if exp_bits_z >= EXP_MAX {
             return U256::new(INF_HI, 0);
         }
-        let l2bits = (abs_bits_z.lo & 3) as u32;
+        let l2bits = (abs_bits_z.lo.0 & 3) as u32;
         abs_bits_z >>= 1;
-        abs_bits_z += (l2bits == 3) as u128;
+        abs_bits_z.incr_if(l2bits == 3);
     }
     // If subtraction cancelled the hidden bit, left-shift the significand
     // and decrement the exponent, unless exp is already zero.
-    else if abs_bits_z.hi < HI_FRACTION_BIAS {
+    else if abs_bits_z.hi.0 < HI_FRACTION_BIAS {
         let adj = min(FRACTION_BITS - abs_bits_z.msb(), exp_bits_z);
         exp_bits_z -= adj;
         // exp == 0 => result is subnormal => no hidden bit
         abs_bits_z <<= (adj - (exp_bits_z == 0) as u32);
     }
     // Erase hidden bit and set exponent.
-    abs_bits_z.hi &= HI_FRACTION_MASK;
-    abs_bits_z.hi |= (exp_bits_z as u128) << HI_FRACTION_BITS;
+    abs_bits_z.hi.0 &= HI_FRACTION_MASK;
+    abs_bits_z.hi.0 |= (exp_bits_z as u128) << HI_FRACTION_BITS;
     abs_bits_z
 }
 
@@ -199,27 +199,27 @@ fn add_or_sub_rounded<'a>(
         !(&*signif_y << (U256::BITS - adj)).is_zero() as u128
     };
     *signif_y >>= adj;
-    signif_y.lo |= sticky_bit;
+    signif_y.lo.0 |= sticky_bit;
 
     // Add / subract the adjusted operands.
     let mut exp_bits_z = exp_bits_x;
     let mut abs_bits_z = op(signif_x, signif_y);
     // If addition carried over, right-shift the significand and increment
     // the exponent.
-    if abs_bits_z.hi >= HI_FRACTION_BIAS << 4 {
+    if abs_bits_z.hi.0 >= HI_FRACTION_BIAS << 4 {
         exp_bits_z += 1;
         // If the result overflows the range of values representable as
         // `f256`, return +Inf.
         if exp_bits_z >= EXP_MAX {
             return U256::new(INF_HI, 0);
         }
-        sticky_bit |= abs_bits_z.lo & 1;
+        sticky_bit |= abs_bits_z.lo.0 & 1;
         abs_bits_z >>= 1;
-        abs_bits_z.lo |= sticky_bit;
+        abs_bits_z.lo.0 |= sticky_bit;
     }
     // If subtraction cancelled the hidden bit, left-shift the significand
     // and decrement the exponent.
-    else if abs_bits_z.hi < HI_FRACTION_BIAS << 3 {
+    else if abs_bits_z.hi.0 < HI_FRACTION_BIAS << 3 {
         let adj = min(FRACTION_BITS + 3 - abs_bits_z.msb(), exp_bits_z);
         exp_bits_z -= adj;
         // exp_bits_x == 0 => result is subnormal => no hidden bit
@@ -227,13 +227,13 @@ fn add_or_sub_rounded<'a>(
     }
 
     // Get round, guard and sticky bit.
-    let l3bits = (abs_bits_z.lo & 0x7_u128) as u32;
+    let l3bits = (abs_bits_z.lo.0 & 0x7_u128) as u32;
     // Shift significand back, erase hidden bit and set exponent.
     abs_bits_z >>= 3;
-    abs_bits_z.hi &= HI_FRACTION_MASK;
-    abs_bits_z.hi |= (exp_bits_z as u128) << HI_FRACTION_BITS;
+    abs_bits_z.hi.0 &= HI_FRACTION_MASK;
+    abs_bits_z.hi.0 |= (exp_bits_z as u128) << HI_FRACTION_BITS;
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
-    if l3bits > 0x4 || l3bits == 0x4 && (abs_bits_z.lo & 1) == 1 {
+    if l3bits > 0x4 || l3bits == 0x4 && abs_bits_z.lo.is_odd() {
         abs_bits_z.incr();
     }
     abs_bits_z

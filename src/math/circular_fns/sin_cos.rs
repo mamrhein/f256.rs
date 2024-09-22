@@ -26,7 +26,7 @@ impl f256 {
     pub fn sin_cos(&self) -> (Self, Self) {
         if self.is_special() {
             // x is NAN or infinite => sine x and cosine x are NAN
-            if (self.bits.hi & HI_ABS_MASK) > f256::MAX.bits.hi {
+            if (self.bits.hi.0 & HI_ABS_MASK) > f256::MAX.bits.hi.0 {
                 return (f256::NAN, f256::NAN);
             }
             // x = 0 => sine x = 0 and cosine x = 1

@@ -7,14 +7,19 @@
 // $Source$
 // $Revision$
 
-use core::cmp::Ordering;
-
 /// Implementation of a fast decimal to float conversion algorithm as
 /// described in `Daniel Lemire: Number Parsing at a Gigabyte per
 /// Second`, available at [https://arxiv.org/abs/2101.11408.pdf], adopted for `f256`.
-use super::powers_of_five::{get_power_of_five, MAX_ABS_EXP};
-use super::{fast_exact::fast_exact, slow_exact::f256_exact};
-use crate::{f256, EMAX, EXP_BIAS, EXP_BITS, HI_FRACTION_BIAS, U256};
+use core::cmp::Ordering;
+
+use super::{
+    fast_exact::fast_exact,
+    powers_of_five::{get_power_of_five, MAX_ABS_EXP},
+    slow_exact::f256_exact,
+};
+use crate::{
+    f256, BigUInt, EMAX, EXP_BIAS, EXP_BITS, HI_FRACTION_BIAS, U256,
+};
 
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
@@ -51,7 +56,7 @@ pub(super) fn fast_approx(
         let mut shift = EXP_BITS - signif2_nlz;
         let mask = (1_u128 << shift) - 1;
         let tie = 1_u128 << (shift - 1);
-        let fract = signif2.lo & mask;
+        let fract = signif2.lo.0 & mask;
         signif2 >>= shift;
         // Check rounding condition.
         let round_up = match fract.cmp(&tie) {
@@ -75,7 +80,7 @@ pub(super) fn fast_approx(
                 // If 5ᵏ ∈ [1..2²⁵⁶) we can be sure to have a tie, otherwise
                 // we have "a tie and a little bit more".
                 if (0..=110).contains(&exp10) {
-                    Some((signif2.lo & 1) == 1)
+                    Some(signif2.lo.is_odd())
                 } else {
                     Some(true)
                 }
@@ -84,7 +89,7 @@ pub(super) fn fast_approx(
         if let Some(up) = round_up {
             if up {
                 signif2.incr();
-                if signif2.hi >= (HI_FRACTION_BIAS << 1) {
+                if signif2.hi.0 >= (HI_FRACTION_BIAS << 1) {
                     // Rounding overflowed, need to shift back.
                     signif2 >>= 1;
                     exp2 += 1;

@@ -19,7 +19,7 @@ impl f256 {
     pub fn cos(&self) -> Self {
         if self.is_special() {
             // x is NAN or infinite => cosine x is NAN
-            if (self.bits.hi & HI_ABS_MASK) > Self::MAX.bits.hi {
+            if (self.bits.hi.0 & HI_ABS_MASK) > Self::MAX.bits.hi.0 {
                 return Self::NAN;
             }
             // x = 0 => cosine x = 1
