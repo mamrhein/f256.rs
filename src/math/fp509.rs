@@ -10,20 +10,30 @@
 use core::{
     cmp::Ordering,
     fmt,
-    ops::{AddAssign, Neg, SubAssign},
+    ops::{AddAssign, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
 use super::BigFloat;
 use crate::{
-    f256, split_f256_enc, BigUInt, HiLo, EXP_BITS, FRACTION_BITS, U256, U512,
+    f256, split_f256_enc, BigUInt, HiLo, EXP_BITS, FRACTION_BITS,
+    SIGNIFICAND_BITS, U1024, U256, U512,
 };
 
-/// Represents fixed-point numbers with 509 fractional bit in the range
+const FRAC_1_OVER_256: FP509 = FP509::new(
+    0x00200000000000000000000000000000,
+    0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000,
+    0x00000000000000000000000000000000,
+);
+const FRAC_1_OVER_256_HI_TZ: u32 = 117;
+
+/// Represents fixed-point numbers with 509 fractional bits in the range
 /// [-4, 4 - 2⁻⁵⁰⁹].
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub(super) struct FP509(U512);
 
 impl FP509 {
+    pub(super) const FRACTION_BITS: u32 = 509;
     pub(super) const ZERO: Self = Self(U512::ZERO);
     pub(super) const ONE: Self =
         Self::new(1_u128 << 125, 0_u128, 0_u128, 0_u128);
@@ -136,6 +146,21 @@ impl FP509 {
             self.ineg();
         }
     }
+
+    /// Returns ⌊self * 256⌋, ⌊self * 256⌋ / 256, self - ⌊self * 256⌋ / 256
+    pub(super) fn divmod_1_over_256(mut self) -> (i32, Self, Self) {
+        let signum = self.signum();
+        if signum == 0 {
+            return (0, self, self);
+        }
+        if signum == -1 {
+            self.iabs();
+        }
+        let q = self.0.hi.hi.0 >> FRAC_1_OVER_256_HI_TZ;
+        let mut c = FP509::new(q << FRAC_1_OVER_256_HI_TZ, 0, 0, 0);
+        self -= &c;
+        (q as i32, c, self)
+    }
 }
 
 impl From<&BigFloat> for FP509 {
@@ -189,7 +214,8 @@ impl From<&FP509> for BigFloat {
 impl From<&f256> for FP509 {
     fn from(value: &f256) -> Self {
         const FOUR: f256 = f256::from_u64(4);
-        const RADIX_ADJ: u32 = 509 - 256 - FRACTION_BITS;
+        const RADIX_ADJ: u32 =
+            FP509::FRACTION_BITS - U256::BITS - FRACTION_BITS;
         debug_assert!(value < &FOUR);
         let (sign, mut exp, signif) = split_f256_enc(value);
         // Compensate fraction bias
@@ -218,7 +244,7 @@ impl From<&FP509> for f256 {
         let nlz = fp_abs_signif.leading_zeros();
         let mut exp = 2 - nlz as i32;
         match nlz {
-            // nlz < u256::BITS + EXP_BITS = 275 => shift right and round
+            // nlz < U256::BITS + EXP_BITS = 275 => shift right and round
             0..=274 => {
                 let n = U256::BITS + EXP_BITS - nlz;
                 fp_abs_signif = fp_abs_signif.rounding_div_pow2(n);
@@ -227,7 +253,7 @@ impl From<&FP509> for f256 {
                 fp_abs_signif.lo >>= sh;
                 exp += sh as i32;
             }
-            // nlz > u256::BITS + EXP_BITS = 275 => shift left
+            // nlz > U256::BITS + EXP_BITS = 275 => shift left
             276..=511 => fp_abs_signif <<= nlz - U256::BITS - EXP_BITS,
             _ => {
                 return f256::ZERO;
@@ -282,6 +308,41 @@ impl SubAssign<&FP509> for FP509 {
     #[inline(always)]
     fn sub_assign(&mut self, rhs: &FP509) {
         *self += &rhs.neg();
+    }
+}
+
+impl Sub for &FP509 {
+    type Output = FP509;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        let mut res = *self;
+        res -= rhs;
+        res
+    }
+}
+
+impl MulAssign<&Self> for FP509 {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: &Self) {
+        self.imul_round(rhs);
+    }
+}
+
+impl DivAssign<&Self> for FP509 {
+    fn div_assign(&mut self, rhs: &Self) {
+        debug_assert!(self.is_sign_positive());
+        debug_assert!(rhs.is_sign_positive());
+        debug_assert!(
+            self.0.hi.hi.leading_zeros() > rhs.0.hi.hi.leading_zeros()
+        );
+        let mut x =
+            U1024::from_hi_lo(U512::ZERO, self.0) << Self::FRACTION_BITS;
+        let y = rhs.0;
+        let tie = y >> 1;
+        let (mut quot, rem) = x.div_rem_subuint_special(&y);
+        quot.incr_if(rem > tie || rem == tie && quot.is_odd());
+        debug_assert!(quot.hi.is_zero());
+        self.0 = quot.lo;
     }
 }
 
