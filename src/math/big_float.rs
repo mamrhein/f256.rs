@@ -361,7 +361,7 @@ impl BigFloat {
         }
     }
 
-    fn idiv(&mut self, other: &Self) {
+    pub(crate) fn idiv(&mut self, other: &Self) {
         assert!(!other.is_zero(), "Division by zero.");
         if self.signum == 0 {
             return;
