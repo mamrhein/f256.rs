@@ -61,7 +61,7 @@ extern crate core;
 
 use core::{cmp::Ordering, convert::Into, num::FpCategory, ops::Neg};
 
-use crate::big_uint::{BigUInt, DivRem, HiLo, U128, U256, U512};
+use crate::big_uint::{BigUInt, DivRem, HiLo, U1024, U128, U256, U512};
 
 mod big_uint;
 mod binops;
