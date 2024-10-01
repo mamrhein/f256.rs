@@ -9,31 +9,30 @@
 
 use core::cmp::max;
 
-use super::{
-    cordic::{cordic_atan, cordic_atan2},
-    BigFloat,
-};
+use super::{approx_atan::approx_atan, BigFloat, FP509};
 use crate::{
     abs_bits, abs_bits_sticky,
     consts::{FRAC_PI_2, FRAC_PI_4, PI},
     f256, sign_bits_hi, BinEncAnySpecial, EXP_BIAS, HI_EXP_MASK,
-    HI_FRACTION_BITS, U256,
+    HI_FRACTION_BITS, SIGNIFICAND_BITS, U256,
 };
 
-// Cut-off of exponent for large values
-const LARGE_EXP_CUT_OFF: u32 = 240;
-// Cut-off for large values (2²⁴⁰)
+// Cut-off for large values (2²³⁷)
 const LARGE_CUT_OFF: U256 = U256::new(
-    ((EXP_BIAS + LARGE_EXP_CUT_OFF) as u128) << HI_FRACTION_BITS,
+    ((EXP_BIAS + SIGNIFICAND_BITS) as u128) << HI_FRACTION_BITS,
     0_u128,
 );
 
 // Cut-off for small values
-// ≈0.00000000000000000000000000000000000210094754024801845063812748106760843
-const SMALL_CUT_OFF: U256 = U256::new(
-    0x3ff8865752be2a167f0644b50757a602,
-    0x81800000000000000000000000000000,
-);
+// 3.444749121093773839689726956186168304612457006116422368206098464464836e-36
+const SMALL_CUT_OFF: f256 = f256 {
+    bits: U256::new(
+        0x3ff89250bfe1b082f4f9b8d4ce85ca7f,
+        0xcf68624c7d1e08b5846dbf5cd6f14b42,
+    ),
+};
+
+// fn atan_ge_1(x: &BigFloat) -> BigFloat {}
 
 impl f256 {
     /// Computes the arctangent of a number (in radians).
@@ -47,18 +46,30 @@ impl f256 {
         {
             return f256::NAN;
         }
-        // If |self| >= 2²⁴⁰, atan self = ±½π.
+        // If |self| >= 2²³⁷, atan self = ±½π.
         if abs_bits_self.hi >= LARGE_CUT_OFF.hi {
             let mut res = FRAC_PI_2;
             res.bits.hi.0 ^= sign_bits_hi(self);
             return res;
         }
         // If |self| is very small, atan self = self.
-        if abs_bits_self <= SMALL_CUT_OFF {
+        if abs_bits_self <= SMALL_CUT_OFF.bits {
             return *self;
         }
-        // Now we have ε < |self| < 2²⁴⁰.
-        f256::from(&cordic_atan(BigFloat::from(self)))
+        // Now we have ε < |self| < 2²³⁷.
+        if abs_bits_self < Self::ONE.bits {
+            Self::from(&approx_atan(&FP509::from(self)))
+        } else if abs_bits_self > Self::ONE.bits {
+            // atan(±x) = ±½π - atan(1/x) for |x| > 1
+            let xr = BigFloat::from(self).recip();
+            let atan = [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2]
+                [self.sign() as usize]
+                - &BigFloat::from(&approx_atan(&FP509::from(&xr)));
+            Self::from(&atan)
+        } else {
+            // atan(±1) = ±¼π
+            [FRAC_PI_4, -FRAC_PI_4][self.sign() as usize]
+        }
     }
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other`
@@ -111,9 +122,29 @@ impl f256 {
 
         // Both operands are finite and non-zero.
 
-        let y = BigFloat::from(self);
-        let x = BigFloat::from(other);
-        f256::from(&cordic_atan2(&y, &x))
+        let sign_q = (self.sign() + other.sign()) % 2;
+        let mut atan = if abs_bits_y < abs_bits_x {
+            let mut q = BigFloat::from(self);
+            q.idiv(&BigFloat::from(other));
+            BigFloat::from(&approx_atan(&FP509::from(&q)))
+        } else if abs_bits_y > abs_bits_x {
+            let mut q = BigFloat::from(other);
+            q.idiv(&BigFloat::from(self));
+            [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2][sign_q as usize]
+                - &BigFloat::from(&approx_atan(&FP509::from(&q)))
+        } else {
+            [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2][sign_q as usize]
+        };
+        match (self.sign(), other.sign()) {
+            (0, 1) => {
+                atan += &BigFloat::PI;
+            }
+            (1, 1) => {
+                atan -= &BigFloat::PI;
+            }
+            _ => {}
+        }
+        Self::from(&atan)
     }
 }
 
@@ -126,6 +157,38 @@ mod atan_tests {
         consts::{FRAC_1_PI, FRAC_PI_3, FRAC_PI_4, FRAC_PI_6},
         EPSILON,
     };
+
+    #[test]
+    fn calc_small_cutoff() {
+        let mut lf = f256::from(1e-36_f64);
+        let mut uf = f256::from(1e-35_f64);
+        assert_eq!(lf, lf.atan());
+        assert_ne!(uf, uf.atan());
+        let mut f = (lf + uf) / f256::TWO;
+        while lf < f && f < uf {
+            if f == f.atan() {
+                lf = f;
+            } else {
+                uf = f;
+            }
+            f = (lf + uf) / f256::TWO;
+        }
+        // println!("\n{lf:?}\n{:?}", lf.atan());
+        // println!("\n{f:?}\n{:?}", f.atan());
+        // println!("\n{uf:?}\n{:?}", uf.atan());
+        // println!("\n// {f:e}");
+        // println!("const SMALL_CUT_OFF: f256 = f256 {{");
+        // println!("    bits: U256::new(");
+        // println!(
+        //     "        0x{:032x},\n        0x{:032x},\n    ),\n}};",
+        //     f.bits.hi.0, f.bits.lo.0
+        // );
+
+        assert_eq!(f, f.atan());
+        assert_eq!(f, SMALL_CUT_OFF);
+        let g = f + f.ulp();
+        assert_ne!(g, g.atan());
+    }
 
     #[test]
     fn test_atan_inf() {
@@ -174,13 +237,23 @@ mod atan_tests {
     }
 
     #[test]
+    fn test_atan_frac_1_over_256() {
+        let x = f256::from(256).recip();
+        let ax = f256::from_str(
+            "3.90623013196697182762866531142438714035749011520285621521309514901134417e-3")
+            .unwrap();
+        let r = x.atan();
+        assert_eq!(ax, r);
+    }
+
+    #[test]
     fn test_atan_frac_pi_2() {
         let s = "1.00388482185388721414842394491713228829210446059487057472971282410801519";
         let a = f256::from_str(s).unwrap();
         let f1 = FRAC_PI_2.atan();
-        assert_eq!(f1, a);
+        assert_eq!(f1, a, "{} != {}", f1, a);
         let f2 = PI.atan2(&f256::TWO);
-        assert_eq!(f1, f2);
+        assert_eq!(f1, f2, "{} != {}", f1, f2);
     }
 
     #[test]
