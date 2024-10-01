@@ -57,7 +57,8 @@ mod random_math_fn_tests {
                     if err == 0 {
                         assert_eq!(
                             res, z,
-                            "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}"
+                            "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}\nx: \
+                             {x}\nz: {z}\nr: {res}"
                         );
                     } else {
                         let d = (z - res).abs();
@@ -126,5 +127,20 @@ mod random_math_fn_tests {
     #[test]
     fn test_tan_large_values() {
         run_tests(f256::tan, 2, "test_tan_large_values.txt");
+    }
+
+    #[test]
+    fn test_atan_lt_2pi() {
+        run_tests(f256::atan, 0, "test_atan_lt_2pi.txt");
+    }
+
+    #[test]
+    fn test_tan_mid_range() {
+        run_tests(f256::atan, 0, "test_atan_mid_range.txt");
+    }
+
+    #[test]
+    fn test_atan_large_values() {
+        run_tests(f256::atan, 0, "test_atan_large_values.txt");
     }
 }
