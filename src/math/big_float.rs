@@ -311,10 +311,14 @@ impl BigFloat {
         if other.is_zero() || (exp - other.exp) > Self::FRACTION_BITS as i32 {
             return;
         }
-        let (mut signif_self, rem_self) =
-            self.signif.widening_shr((exp - self.exp) as u32);
-        let (mut signif_other, rem_other) =
-            other.signif.widening_shr((exp - other.exp) as u32);
+        let (mut signif_self, rem_self) = match (exp - self.exp) as u32 {
+            0 => (self.signif, U256::ZERO),
+            sh @ _ => self.signif.widening_shr(sh),
+        };
+        let (mut signif_other, rem_other) = match (exp - other.exp) as u32 {
+            0 => (other.signif, U256::ZERO),
+            sh @ _ => other.signif.widening_shr(sh),
+        };
         let op = [add_signifs, sub_signifs]
             [(self.signum != other.signum) as usize];
         if signif_self < signif_other {
