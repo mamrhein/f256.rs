@@ -1,0 +1,82 @@
+roundingwarnings = off;
+display = decimal;
+
+prec = 512;
+
+signum = proc(f) {
+    var s;
+    if (f == 0) then s = 0 else s = f / abs(f);
+    return s;
+};
+
+hex = proc(m) {
+    var d, s, p, n, i;
+    d = 16;
+    A = [|"0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"|];
+    s = "";
+    p = "0x";
+    n = 1;
+    while (n <= 32) do {
+        i = mod(m, d);
+        s = A[i] @ s;
+        m = div(m, d);
+        n = n + 1;
+    };
+    return p @ s;
+};
+
+repr = proc(s, m) {
+    var z, n, r;
+    B = 2^128;
+    if (s < 0) then m = 2^512 - m;
+    z = "";
+    n = 1;
+    while (n <= 4) do {
+        r = hex(mod(m, B));
+        z = r @ ",\n" @ z;
+        m = div(m, B);
+        n = n + 1;
+    };
+    return z;
+};
+
+P = 509;
+X = 2^P;
+
+// --- Polynomial approximating atan -----------------------------------------
+
+ATAN = atan(x);
+LIM = 1/256;
+N = 32;
+s = -1;
+print("");
+while (N >= 0) do {
+    var n, c, m;
+    n = 2 * N + 1;
+    c = 1 / n;
+    s = -1 * s;
+    m = nearestint(c * X);
+    print("//", n @ ":", s * c);
+    print("FP509::new(");
+    print(repr(s, m), "),");
+    N = N - 1;
+};
+print("");
+
+// --- Table atan(i/256) for i ∈ [0, 255]
+
+i = 0;
+while (i < 256) do {
+    var a, v, m;
+    v = i/256;
+    a = ATAN(v);
+    m = nearestint(a * X);
+    print("// atan(" @ i @ "/256)");
+    print("FP509::new(");
+    print(repr(1, m), "),");
+    i = i + 1;
+};
+
+print("");
+print("const LIM: FP509 = FP509::new(");
+print(repr(1, nearestint(LIM * X)), ");");
