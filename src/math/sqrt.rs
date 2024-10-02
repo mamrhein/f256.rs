@@ -59,6 +59,9 @@ impl f256 {
         let mut r = &(&signif << (1 + exp_is_odd as u32)) - &q;
         let mut s = q;
         for i in 1..=SIGNIFICAND_BITS {
+            if r.is_zero() {
+                break;
+            }
             s >>= 1;
             let t = &r << 1;
             let u = &(&q << 1) + &s;
@@ -81,7 +84,10 @@ mod sqrt_tests {
     use core::str::FromStr;
 
     use super::*;
-    use crate::consts::{PI, SQRT_2, SQRT_5, SQRT_PI};
+    use crate::{
+        consts::{PI, SQRT_2, SQRT_5, SQRT_PI},
+        ONE_HALF,
+    };
 
     #[test]
     fn test_zero() {
@@ -117,6 +123,12 @@ mod sqrt_tests {
     }
 
     #[test]
+    fn test_one_half() {
+        let r = ONE_HALF.sqrt();
+        assert!((r - SQRT_2.recip()).abs() <= f256::EPSILON);
+    }
+
+    #[test]
     fn test_two() {
         let sqrt2 = f256::TWO.sqrt();
         assert_eq!(sqrt2, SQRT_2);
@@ -126,6 +138,21 @@ mod sqrt_tests {
     fn test_five() {
         let sqrt5 = f256::from(5).sqrt();
         assert_eq!(sqrt5, SQRT_5);
+    }
+
+    #[test]
+    fn test_nine() {
+        let nine = f256::from(9);
+        let three = f256::from(3);
+        assert_eq!(nine.sqrt(), three);
+    }
+
+    #[test]
+    fn test_nine_quarter() {
+        let nine = f256::from(9);
+        let four = f256::from(4);
+        let three = f256::from(3);
+        assert_eq!((nine / four).sqrt(), three / f256::TWO);
     }
 
     #[test]
