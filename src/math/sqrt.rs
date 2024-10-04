@@ -86,7 +86,7 @@ mod sqrt_tests {
 
     use super::*;
     use crate::{
-        consts::{PI, SQRT_2, SQRT_5, SQRT_PI},
+        consts::{FRAC_1_SQRT_2, PI, SQRT_2, SQRT_5, SQRT_PI},
         ONE_HALF,
     };
 
@@ -126,7 +126,7 @@ mod sqrt_tests {
     #[test]
     fn test_one_half() {
         let r = ONE_HALF.sqrt();
-        assert!((r - SQRT_2.recip()).abs() <= f256::EPSILON);
+        assert_eq!(r, FRAC_1_SQRT_2);
     }
 
     #[test]
