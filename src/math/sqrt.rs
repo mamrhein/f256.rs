@@ -56,7 +56,7 @@ impl f256 {
         let mut signif = &fraction(&bin_enc) << norm_shift;
         signif.hi.0 |= (hidden_bit as u128) << HI_FRACTION_BITS;
         let mut q = U256::new(HI_FRACTION_BIAS << 1, 0);
-        let mut r = &(&signif << (1 + exp_is_odd as u32)) - &q;
+        let mut r = (&signif << (1 + exp_is_odd as u32)) - q;
         let mut s = q;
         for i in 1..=SIGNIFICAND_BITS {
             if r.is_zero() {
@@ -64,16 +64,17 @@ impl f256 {
             }
             s >>= 1;
             let t = &r << 1;
-            let u = &(&q << 1) + &s;
+            let u = (&q << 1) + s;
             if t < u {
                 r = t;
             } else {
                 q += &s;
-                r = &t - &u;
+                r = t - u;
             }
         }
         // Final rounding
-        q.incr_if(q.lo.is_odd());
+        let rnd_bits = (q.lo.0 & 3_u128) as u32;
+        q.incr_if(rnd_bits == 3 || rnd_bits == 1 && !r.is_zero());
         q >>= 1;
         Self::new(0, exp, q)
     }
