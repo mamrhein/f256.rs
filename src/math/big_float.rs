@@ -18,7 +18,8 @@ use core::{
 use crate::{
     abs_bits, exp_bits, f256, math::fp509::FP509, norm_bit, signif, BigUInt,
     DivRem, HiLo, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
-    HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS, U256, U512,
+    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS,
+    U256, U512,
 };
 
 fn add_signifs(x: &U256, y: &U256) -> (U256, i32) {
@@ -107,6 +108,11 @@ impl BigFloat {
         signum: -1,
         signif: SIGNIF_ONE,
         exp: 0,
+    };
+    pub(crate) const TWO: Self = Self {
+        signum: 1,
+        signif: SIGNIF_ONE,
+        exp: 1,
     };
     pub(crate) const ONE_HALF: Self = Self {
         signum: 1,
@@ -207,6 +213,36 @@ impl BigFloat {
         (
             0x7118eafb32caed3daeaf976e787bd035,
             0xa7114be4cdda630141269b3d813b0743,
+        ),
+    );
+    // SQRT_PI = ◯₂₅₅(√π) =
+    // 1.77245385090551602729816748334114518279754945612238712821380778985291128459104
+    pub(crate) const SQRT_PI: BigFloat = BigFloat::new(
+        1,
+        0,
+        (
+            0x716fe246d3bdaa9e70ec1483576e4e0f,
+            0xf8e48551bd8ec94b728402f4fa851d1c,
+        ),
+    );
+    // SQRT_2 = ◯₂₅₅(√2) =
+    // 1.41421356237309504880168872420969807856967187537694807317667973799073247846212
+    pub(crate) const SQRT_2: BigFloat = BigFloat::new(
+        1,
+        0,
+        (
+            0x5a827999fcef32422cbec4d9baa55f4f,
+            0x8eb7b05d449dd426768bd642c199cc8b,
+        ),
+    );
+    // FRAC_1_SQRT_2 = ◯₂₅₅(1/√2) =
+    // 0.70710678118654752440084436210484903928483593768847403658833986899536623923106
+    pub(crate) const FRAC_1_SQRT_2: BigFloat = BigFloat::new(
+        1,
+        -1,
+        (
+            0x5a827999fcef32422cbec4d9baa55f4f,
+            0x8eb7b05d449dd426768bd642c199cc8b,
         ),
     );
 
@@ -519,6 +555,49 @@ impl BigFloat {
         let p = *self * rhs;
         let r = self.mul_add(rhs, &p.neg());
         (p, r)
+    }
+
+    /// Computes `self * self` .
+    #[inline(always)]
+    #[must_use]
+    pub fn square(self) -> Self {
+        self * &self
+    }
+
+    /// Returns the square root of `self`.
+    #[must_use]
+    pub fn sqrt(&self) -> Self {
+        debug_assert!(self.signum >= 0);
+        if self.signum == 0 {
+            return *self;
+        }
+        // Calculate the exponent
+        let mut exp = self.exp;
+        let exp_is_odd = exp & 1;
+        exp = (exp - exp_is_odd) / 2;
+        // Calculate the significand, gain extra bit for final rounding
+        let mut q = SIGNIF_ONE << 1;
+        let mut r = (U512::from(&self.signif) << (1 + exp_is_odd as u32)) - q;
+        let mut s = q;
+        for _ in 0..=BigFloat::FRACTION_BITS {
+            if r.is_zero() {
+                break;
+            }
+            s >>= 1;
+            let t = &r << 1;
+            let u = (U512::from(&q) << 1) + s;
+            if t < u {
+                r = t;
+            } else {
+                q += &s;
+                r = t - u;
+            }
+        }
+        // Final rounding
+        let rnd_bits = (q.lo.0 & 3_u128) as u32;
+        q.incr_if(rnd_bits == 3 || rnd_bits == 1 && !r.is_zero());
+        q >>= 1;
+        Self::new(1, exp, (q.hi.0, q.lo.0))
     }
 }
 
@@ -1119,5 +1198,55 @@ mod div_tests {
         q.idiv(&x);
         let d = (q - &z.recip()).abs();
         assert!(d <= BigFloat::EPSILON);
+    }
+}
+
+#[cfg(test)]
+mod sqrt_tests {
+    use super::*;
+
+    #[test]
+    fn test_zero() {
+        assert_eq!(BigFloat::ZERO.sqrt(), BigFloat::ZERO);
+    }
+
+    #[test]
+    fn test_one() {
+        assert_eq!(BigFloat::ONE.sqrt(), BigFloat::ONE);
+    }
+
+    #[test]
+    fn test_nine() {
+        let nine = BigFloat::from(&f256::from(9));
+        let three = BigFloat::from(&f256::from(3));
+        assert_eq!(nine.sqrt(), three);
+    }
+
+    #[test]
+    fn test_nine_quarter() {
+        let nine = f256::from(9);
+        let four = f256::from(4);
+        let three = f256::from(3);
+        let x = nine / four;
+        let y = three / f256::TWO;
+        assert_eq!(BigFloat::from(&x).sqrt(), BigFloat::from(&y));
+    }
+
+    #[test]
+    fn test_one_half() {
+        let r = BigFloat::ONE_HALF.sqrt();
+        assert_eq!(r, BigFloat::FRAC_1_SQRT_2);
+    }
+
+    #[test]
+    fn test_two() {
+        let sqrt2 = BigFloat::TWO.sqrt();
+        assert_eq!(sqrt2, BigFloat::SQRT_2);
+    }
+
+    #[test]
+    fn test_pi() {
+        let sqrt_pi = BigFloat::PI.sqrt();
+        assert_eq!(sqrt_pi, BigFloat::SQRT_PI);
     }
 }
