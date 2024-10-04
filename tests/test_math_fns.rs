@@ -143,4 +143,9 @@ mod random_math_fn_tests {
     fn test_atan_large_values() {
         run_tests(f256::atan, 0, "test_atan_large_values.txt");
     }
+
+    #[test]
+    fn test_asin() {
+        run_tests(f256::asin, 0, "test_asin.txt");
+    }
 }
