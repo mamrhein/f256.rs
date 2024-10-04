@@ -32,8 +32,6 @@ const SMALL_CUT_OFF: f256 = f256 {
     ),
 };
 
-// fn atan_ge_1(x: &BigFloat) -> BigFloat {}
-
 impl f256 {
     /// Computes the arctangent of a number (in radians).
     ///
