@@ -11,6 +11,7 @@ mod approx_atan;
 mod approx_cos;
 mod approx_sin;
 mod approx_sin_cos;
+mod asin;
 mod atan;
 mod cos;
 mod reduce;
