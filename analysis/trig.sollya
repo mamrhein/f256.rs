@@ -4,41 +4,39 @@ display = decimal;
 prec = 255;
 
 signum = proc(f) {
+    var s;
     if (f == 0) then s = 0 else s = f / abs(f);
     return s;
 };
 
-hex = proc(n) {
+hex = proc(m) {
+    var d, s, p, n, i;
     d = 16;
     A = [|"0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"|];
     s = "";
-    if (n >= 0) then
-        p = "0x"
-    else {
-        p = "-0x";
-        n = abs(n);
-    };
-    while (n != 0) do {
-        i = mod(n, d);
+    p = "0x";
+    n = 1;
+    while (n <= 32) do {
+        i = mod(m, d);
         s = A[i] @ s;
-        n := div(n, d);
+        m = div(m, d);
+        n = n + 1;
     };
     return p @ s;
 };
 
 prx = proc(f) {
+    var B, m, shl, hi, lo;
     B = 2^128;
     m = abs(mantissa(f));
     shl = X - ceil(log2(m));
     m = m * 2^shl;
     hi = div(m, B);
     lo = mod(m, B);
-    print(hex(signum(f) * hi) @ ",", hex(lo) @ ",", exponent(f)+X-1-shl);
+    print(signum(f) @ ",", exponent(f)+X-1-shl @ ",", "(" @ hex(hi) @ ",", hex(lo) @ ")");
 };
 
-B = 256;
-P = 237;
-X = B - 1;
+X = prec;
 
 // --- Pi et al. -------------------------------------------------------------
 
@@ -48,6 +46,7 @@ FRAC_PI_3 = round(pi/3, X, RN);
 FRAC_PI_4 = round(pi/4, X, RN);
 FRAC_3_PI_2 = round(3*pi/2, X, RN);
 TAU = round(2*pi, X, RN);
+SQRT_PI = round(sqrt(pi), X, RN);
 SQRT_2 = round(sqrt(2), X, RN);
 FRAC_1_SQRT_2 = round(1/sqrt(2), X, RN);
 
@@ -86,6 +85,10 @@ while (j <= 9) do {
     print(");");
     j = j + 2;
 };
+print("// SQRT_PI = ◯₂₅₅(√π) =\n//", SQRT_PI);
+print("pub(crate) const SQRT_PI: BigFloat = BigFloat::new(");
+prx(SQRT_PI);
+print(");");
 print("// SQRT_2 = ◯₂₅₅(√2) =\n//", SQRT_2);
 print("pub(crate) const SQRT_2: BigFloat = BigFloat::new(");
 prx(SQRT_2);
