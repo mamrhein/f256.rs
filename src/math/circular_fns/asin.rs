@@ -15,7 +15,16 @@ use crate::{
         big_float::BigFloat, circular_fns::approx_atan::approx_atan,
         fp509::FP509,
     },
-    HI_EXP_MASK,
+    HI_EXP_MASK, U256,
+};
+
+// Cut-off for small values
+// 4.34011792384841269241918479487309437935796941860057715139559227691773315e-36
+const SMALL_CUT_OFF: f256 = f256 {
+    bits: U256::new(
+        0x3ff89713765fce269de05bbe5d2df6f0,
+        0xb6f406126cab80a1f5eca809c5595b15,
+    ),
 };
 
 /// Computes the arctangent of a number (in radians).
@@ -56,7 +65,11 @@ impl f256 {
         if abs_bits_self == f256::ONE.bits {
             return [FRAC_PI_2, -FRAC_PI_2][self.sign() as usize];
         }
-        // Now we have |self| < 1
+        // If |self| is very small, atan self = self.
+        if abs_bits_self <= SMALL_CUT_OFF.bits {
+            return *self;
+        }
+        // Now we have ε < |self| < 1
         // asin(x) = atan(x/√(1-x²))
         let mut x = BigFloat::from(self);
         x.idiv(&(BigFloat::ONE - &x.square()).sqrt());
@@ -71,6 +84,41 @@ mod asin_tests {
         consts::{FRAC_PI_3, FRAC_PI_4, FRAC_PI_6, SQRT_2},
         ONE_HALF,
     };
+
+    #[test]
+    fn calc_small_cutoff() {
+        let mut lf = f256::from(1e-36_f64);
+        let mut uf = f256::from(1e-35_f64);
+        assert_eq!(lf, lf.asin());
+        assert_ne!(uf, uf.asin());
+        let mut f = (lf + uf) / f256::TWO;
+        while lf < f && f < uf {
+            if f == f.asin() {
+                lf = f;
+            } else {
+                uf = f;
+            }
+            f = (lf + uf) / f256::TWO;
+            if f == uf {
+                f = lf;
+            }
+        }
+        // println!("\n{lf:?}\n{:?}", lf.asin());
+        // println!("\n{f:?}\n{:?}", f.asin());
+        // println!("\n{uf:?}\n{:?}", uf.asin());
+        // println!("\n// {f:e}");
+        // println!("const SMALL_CUT_OFF: f256 = f256 {{");
+        // println!("    bits: U256::new(");
+        // println!(
+        //     "        0x{:032x},\n        0x{:032x},\n    ),\n}};",
+        //     f.bits.hi.0, f.bits.lo.0
+        // );
+
+        assert_eq!(f, f.asin());
+        assert_eq!(f, SMALL_CUT_OFF);
+        let g = f + f.ulp();
+        assert_ne!(g, g.asin());
+    }
 
     #[test]
     fn test_asin_inf() {
