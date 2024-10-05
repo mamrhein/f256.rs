@@ -603,6 +603,13 @@ impl f256 {
         }
     }
 
+    /// Returns true, if |self - other| <= N * self.ulp()
+    #[must_use]
+    #[inline]
+    pub(crate) fn almost_eq<const N: u8>(&self, other: &Self) -> bool {
+        (self - other).abs() <= Self::from(N) * self.ulp()
+    }
+
     /// Returns the reciprocal (multiplicative inverse) of `self`.
     ///
     /// # Examples
