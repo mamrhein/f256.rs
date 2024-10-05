@@ -1,5 +1,8 @@
 Version   Changes
 --------  --------------------------------------------------------------------
+ 0.4.0    Added trigonometric functions asin, acos and atan.
+          Set minimal rust version to 1.74.1.
+
  0.3.0    Added trigonometric functions sin, cos and tan.
 
  0.2.0    Added some basic mathematical constants.
