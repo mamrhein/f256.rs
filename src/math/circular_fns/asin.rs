@@ -51,13 +51,7 @@ impl f256 {
     /// Return value is in radians in the range [-½π, ½π].
     pub fn asin(&self) -> Self {
         let abs_bits_self = abs_bits(self);
-        // If self is NAN, asin self is NAN.
-        if (abs_bits_self.hi.0 | (abs_bits_self.lo.0 != 0) as u128)
-            > HI_EXP_MASK
-        {
-            return f256::NAN;
-        }
-        // if |self| > 1, asin self is NAN
+        // if self is NAN or |self| > 1, asin self is NAN
         if abs_bits_self > f256::ONE.bits {
             return f256::NAN;
         }
