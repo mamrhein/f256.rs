@@ -202,7 +202,10 @@ where
     /// Returns `(self << shift, self >> (Self::BITS - shift))`
     fn widening_shl(&self, shift: u32) -> (Self, Self) {
         debug_assert!(shift < Self::BITS);
-        (*self << shift, *self >> (Self::BITS - shift))
+        match shift {
+            0 => (*self, Self::ZERO),
+            _ => (*self << shift, *self >> (Self::BITS - shift)),
+        }
     }
 
     /// Returns `((self << shift) | carry, self >> (Self::BITS - shift))`
@@ -215,7 +218,10 @@ where
     /// Returns `(self >> shift, self << (Self::BITS - shift))`
     fn widening_shr(&self, shift: u32) -> (Self, Self) {
         debug_assert!(shift < Self::BITS);
-        (*self >> shift, *self << (Self::BITS - shift))
+        match shift {
+            0 => (*self, Self::ZERO),
+            _ => (*self >> shift, *self << (Self::BITS - shift)),
+        }
     }
 
     /// Returns `(carry | (self >> shift), self << (Self::BITS - shift))`
