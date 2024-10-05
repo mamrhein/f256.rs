@@ -80,3 +80,13 @@ while (i < 256) do {
 print("");
 print("const LIM: FP509 = FP509::new(");
 print(repr(1, nearestint(LIM * X)), ");");
+
+print("");
+print("const FP509_FRAC_PI_2: FP509 = FP509::new(");
+print(repr(1, nearestint(pi * X / 2)), ");");
+print("const FP509_NEG_FRAC_PI_2: FP509 = FP509::new(");
+print(repr(-1, nearestint(pi * X / 2)), ");");
+print("const FP509_FRAC_PI_4: FP509 = FP509::new(");
+print(repr(1, nearestint(pi * X / 4)), ");");
+print("const FP509_NEG_FRAC_PI_4: FP509 = FP509::new(");
+print(repr(-1, nearestint(pi * X / 4)), ");");
