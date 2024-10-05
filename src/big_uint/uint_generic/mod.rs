@@ -413,16 +413,22 @@ impl U256 {
 
     pub(crate) const fn shift_left(&self, shift: u32) -> Self {
         debug_assert!(shift < Self::BITS, "Shift with overflow");
+        // TODO: change to exclusive range patterns when 1.82 got stable
+        const MAX_SHIFT: u32 = U256::BITS - 1;
         const TIE: u32 = U256::BITS >> 1;
+        const TIE_M1: u32 = TIE - 1;
+        const TIE_P1: u32 = TIE + 1;
         match shift {
-            1..TIE => {
+            1..=TIE_M1 => {
                 let (lo, carry) =
                     (self.lo.0 << shift, self.lo.0 >> (u128::BITS - shift));
                 let hi = (self.hi.0 << shift) | carry;
                 Self::new(hi, lo)
             }
             TIE => Self::new(self.lo.0, 0_u128),
-            TIE..Self::BITS => Self::new(self.lo.0 << (shift - TIE), 0_u128),
+            TIE_P1..=MAX_SHIFT => {
+                Self::new(self.lo.0 << (shift - TIE), 0_u128)
+            }
             _ => *self,
         }
     }
