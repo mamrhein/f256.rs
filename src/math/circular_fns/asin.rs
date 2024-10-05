@@ -9,7 +9,7 @@
 
 use crate::{
     abs_bits,
-    consts::{FRAC_PI_2, FRAC_PI_4},
+    consts::FRAC_PI_2,
     f256,
     math::{
         big_float::BigFloat, circular_fns::approx_atan::approx_atan,
@@ -27,21 +27,46 @@ const SMALL_CUT_OFF: f256 = f256 {
     ),
 };
 
+const FP509_FRAC_PI_2: FP509 = FP509::new(
+    0x3243f6a8885a308d313198a2e0370734,
+    0x4a4093822299f31d0082efa98ec4e6c8,
+    0x9452821e638d01377be5466cf34e90c6,
+    0xcc0ac29b7c97c50dd3f84d5b5b547091,
+);
+const FP509_NEG_FRAC_PI_2: FP509 = FP509::new(
+    0xcdbc095777a5cf72cece675d1fc8f8cb,
+    0xb5bf6c7ddd660ce2ff7d1056713b1937,
+    0x6bad7de19c72fec8841ab9930cb16f39,
+    0x33f53d6483683af22c07b2a4a4ab8f6f,
+);
+const FP509_FRAC_PI_4: FP509 = FP509::new(
+    0x1921fb54442d18469898cc51701b839a,
+    0x252049c1114cf98e804177d4c7627364,
+    0x4a29410f31c6809bbdf2a33679a74863,
+    0x6605614dbe4be286e9fc26adadaa3849,
+);
+const FP509_NEG_FRAC_PI_4: FP509 = FP509::new(
+    0xe6de04abbbd2e7b9676733ae8fe47c65,
+    0xdadfb63eeeb306717fbe882b389d8c9b,
+    0xb5d6bef0ce397f64420d5cc98658b79c,
+    0x99fa9eb241b41d791603d9525255c7b7,
+);
+
 /// Computes the arctangent of a number (in radians).
-fn atan(x: &BigFloat) -> f256 {
+fn atan(x: &BigFloat) -> FP509 {
     let x_abs = x.abs();
     let sign = (x.signum < 0) as usize;
     if x_abs < BigFloat::ONE {
-        f256::from(&approx_atan(&FP509::from(x)))
+        approx_atan(&FP509::from(x))
     } else if x_abs > BigFloat::ONE {
         // atan(±x) = ±½π - atan(1/x) for |x| > 1
         let xr = x.recip();
-        let atan = [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2][sign]
-            - &BigFloat::from(&approx_atan(&FP509::from(&xr)));
-        f256::from(&atan)
+        let mut atan = [FP509_FRAC_PI_2, FP509_NEG_FRAC_PI_2][sign];
+        atan -= &approx_atan(&FP509::from(&xr));
+        atan
     } else {
         // atan(±1) = ±¼π
-        [FRAC_PI_4, -FRAC_PI_4][sign]
+        [FP509_FRAC_PI_4, FP509_NEG_FRAC_PI_4][sign]
     }
 }
 
@@ -67,7 +92,7 @@ impl f256 {
         // asin(x) = atan(x/√(1-x²))
         let mut x = BigFloat::from(self);
         x.idiv(&(BigFloat::ONE - &x.square()).sqrt());
-        atan(&x)
+        Self::from(&atan(&x))
     }
 }
 
