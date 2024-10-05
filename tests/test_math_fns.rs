@@ -148,4 +148,9 @@ mod random_math_fn_tests {
     fn test_asin() {
         run_tests(f256::asin, 0, "test_asin.txt");
     }
+
+    #[test]
+    fn test_acos() {
+        run_tests(f256::acos, 0, "test_acos.txt");
+    }
 }
