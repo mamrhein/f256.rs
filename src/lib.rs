@@ -1126,11 +1126,10 @@ impl f256 {
 
     /// Returns the additive inverse of `self`.
     #[inline(always)]
+    // TODO: Inline in impl Neg when trait fns can be const.
     pub(crate) const fn negated(&self) -> Self {
-        let self1 = &self.bits;
-        let self2 = &self.bits;
         Self {
-            bits: U256::new(self2.hi.0 ^ HI_SIGN_MASK, self1.lo.0),
+            bits: U256::new(self.bits.hi.0 ^ HI_SIGN_MASK, self.bits.lo.0),
         }
     }
 
