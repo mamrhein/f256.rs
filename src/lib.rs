@@ -60,6 +60,7 @@ extern crate alloc;
 extern crate core;
 
 use core::{cmp::Ordering, convert::Into, num::FpCategory, ops::Neg};
+use std::cmp::{max, min};
 
 use crate::big_uint::{BigUInt, DivRem, HiLo, U1024, U128, U256, U512};
 
@@ -1134,9 +1135,36 @@ impl f256 {
     }
 
     /// Returns `self` * 2ⁿ
-    pub(crate) fn mul_pow2(&self, n: u32) -> Self {
-        let (sign, exp, signif) = split_f256_enc(self);
-        f256::encode(sign, exp + n as i32, signif)
+    pub fn mul_pow2(&self, n: u32) -> Self {
+        let abs_bits = abs_bits(self);
+        if abs_bits.is_special() {
+            // self is either NaN, infinite or equal 0
+            return *self;
+        }
+        // self is finite and non-zero.
+        let exp_bits = exp_bits(&abs_bits);
+        if exp_bits.saturating_add(n) >= EXP_MAX {
+            return [Self::INFINITY, Self::NEG_INFINITY]
+                [self.sign() as usize];
+        }
+        if exp_bits == 0 {
+            // self is subnornal
+            const EXP: i32 = 1 - (EXP_BIAS as i32 + FRACTION_BITS as i32);
+            let fraction = fraction(&abs_bits);
+            let exp = EXP + n as i32;
+            return Self::from_sign_exp_signif(
+                self.sign(),
+                exp,
+                (fraction.hi.0, fraction.lo.0),
+            );
+        }
+        // self is normal.
+        Self {
+            bits: U256::new(
+                self.bits.hi.0 + ((n as u128) << HI_FRACTION_BITS),
+                self.bits.lo.0,
+            ),
+        }
     }
 
     /// Fused multiply-add.
@@ -1637,6 +1665,14 @@ mod mul_pow2_tests {
     use super::*;
 
     #[test]
+    fn test_special() {
+        assert_eq!(f256::ZERO.mul_pow2(4), f256::ZERO);
+        assert_eq!(f256::INFINITY.mul_pow2(1), f256::INFINITY);
+        assert_eq!(f256::NEG_INFINITY.mul_pow2(1), f256::NEG_INFINITY);
+        assert!(f256::NAN.mul_pow2(38).is_nan());
+    }
+
+    #[test]
     fn test_normal() {
         let f = f256::TEN.mul_pow2(4);
         assert_eq!(f, f256::from(160));
@@ -1645,8 +1681,30 @@ mod mul_pow2_tests {
     }
 
     #[test]
+    fn test_overflow() {
+        let f = f256::MAX.mul_pow2(1);
+        assert_eq!(f, f256::INFINITY);
+        let f = f256::MIN.mul_pow2(5);
+        assert_eq!(f, f256::NEG_INFINITY);
+    }
+
+    #[test]
     fn test_subnormal() {
         let f = f256::MIN_POSITIVE - f256::MIN_GT_ZERO;
-        assert_eq!(f.mul_pow2(2), f * (f256::TWO * f256::TWO));
+        assert!(f.is_subnormal());
+        let g = f.mul_pow2(1);
+        assert!(g.is_normal());
+        assert_eq!(g, f * f256::TWO);
+        let f = f256::MIN_GT_ZERO;
+        let g = f.mul_pow2(5);
+        assert!(g.is_subnormal());
+        assert_eq!(g, f * f256::from(32));
+    }
+
+    #[test]
+    fn test_subnormal_overflow() {
+        let f = f256::MIN_GT_ZERO;
+        let g = f.mul_pow2(u32::MAX);
+        assert_eq!(g, f256::INFINITY);
     }
 }
