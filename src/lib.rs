@@ -1134,9 +1134,9 @@ impl f256 {
     }
 
     /// Returns `self` * 2ⁿ
-    pub(crate) fn mul_pow2(&self, n: i32) -> Self {
+    pub(crate) fn mul_pow2(&self, n: u32) -> Self {
         let (sign, exp, signif) = split_f256_enc(self);
-        f256::encode(sign, exp + n, signif)
+        f256::encode(sign, exp + n as i32, signif)
     }
 
     /// Fused multiply-add.
@@ -1629,5 +1629,24 @@ mod ulp_tests {
         let f = f256::MIN_POSITIVE - f256::MIN_GT_ZERO;
         assert_eq!(f.ulp(), f256::MIN_GT_ZERO);
         assert_eq!(f256::MIN_GT_ZERO.ulp(), f256::MIN_GT_ZERO);
+    }
+}
+
+#[cfg(test)]
+mod mul_pow2_tests {
+    use super::*;
+
+    #[test]
+    fn test_normal() {
+        let f = f256::TEN.mul_pow2(4);
+        assert_eq!(f, f256::from(160));
+        let g = f256::from(0.0793).mul_pow2(3);
+        assert_eq!(g, f256::from(0.6344));
+    }
+
+    #[test]
+    fn test_subnormal() {
+        let f = f256::MIN_POSITIVE - f256::MIN_GT_ZERO;
+        assert_eq!(f.mul_pow2(2), f * (f256::TWO * f256::TWO));
     }
 }

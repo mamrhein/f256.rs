@@ -69,7 +69,7 @@ mod sin_cos_tests {
             (f256::NEG_ONE, f256::ZERO),
         ];
         for i in 0_u32..=4_u32 {
-            let eps = f256::EPSILON.mul_pow2(i as i32 / 4);
+            let eps = f256::EPSILON.mul_pow2(i / 4);
             let f = f256::from(i) * FRAC_PI_2;
             let (sin, cos) = f.sin_cos();
             let (exact_sin, exact_cos) = EXACT[(i % 4) as usize];
