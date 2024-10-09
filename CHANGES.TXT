@@ -1,5 +1,7 @@
 Version   Changes
 --------  --------------------------------------------------------------------
+ 0.5.0    Added fns f256::mul2, mul_pow2, f256::div2, f256::div_pow2.
+
  0.4.0    Added trigonometric functions asin, acos and atan.
           Set minimal rust version to 1.74.1.
 

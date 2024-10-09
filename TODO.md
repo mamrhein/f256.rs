@@ -8,10 +8,10 @@
 
 ### Special operators
 
-* Multiplication by 2 (mul2)
-* Division by 2 (div2)
-* Multiplication by a positive integer power of 2 (mul_pow2)
-* Division by a positive integer power of 2 (div_pow2)
+* ~~Multiplication by 2 (mul2)~~
+* ~~Division by 2 (div2)~~
+* ~~Multiplication by a positive integer power of 2 (mul_pow2)~~
+* ~~Division by a positive integer power of 2 (div_pow2)~~
 * ~~Squaring (square)~~
 
 ### Fused operators
