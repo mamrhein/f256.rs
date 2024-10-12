@@ -75,7 +75,7 @@ fn div_signifs(x: &U256, y: &U256) -> (U256, i32) {
     (quot, exp_adj)
 }
 
-/// Representation of the number signum * signif * 2^(exp-254).
+/// Representation of the number signum ⋅ signif ⋅ 2⁻²⁵⁴ ⋅ 2ᵉ.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct BigFloat {
     pub(crate) signum: i32,
@@ -602,8 +602,8 @@ impl BigFloat {
 }
 
 impl From<&U256> for BigFloat {
-    /// Convert a raw u256 into a Float, without any modification, i.e
-    /// interptret the given value i as i * 2⁻²⁵⁵
+    /// Convert a raw U256 into a Float, without any modification, i.e
+    /// interptret the given value ui as ui⋅2⁻²⁵⁴
     #[inline(always)]
     fn from(ui: &U256) -> Self {
         Self {
