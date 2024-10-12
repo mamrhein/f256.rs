@@ -369,8 +369,7 @@ impl f256 {
     /// Returns the biased binary exponent of `self`.
     #[inline]
     pub(crate) const fn biased_exponent(&self) -> u32 {
-        let self1 = &self.bits;
-        ((self1.hi.0 & HI_EXP_MASK) >> HI_FRACTION_BITS) as u32
+        ((self.bits.hi.0 & HI_EXP_MASK) >> HI_FRACTION_BITS) as u32
     }
 
     /// Returns the quantum exponent of `self`.
@@ -405,9 +404,7 @@ impl f256 {
     /// Returns the fraction of `self`.
     #[inline]
     pub(crate) const fn fraction(&self) -> U256 {
-        let self1 = &self.bits;
-        let self2 = &self.bits;
-        U256::new(self2.hi.0 & HI_FRACTION_MASK, self1.lo.0)
+        U256::new(self.bits.hi.0 & HI_FRACTION_MASK, self.bits.lo.0)
     }
 
     /// Returns the integral significand of `self`.
@@ -420,9 +417,10 @@ impl f256 {
         );
         let hidden_one =
             ((self.biased_exponent() != 0) as u128) << HI_FRACTION_BITS;
-        let self1 = &self.bits;
-        let self2 = &self.bits;
-        U256::new((self2.hi.0 & HI_FRACTION_MASK) | hidden_one, self1.lo.0)
+        U256::new(
+            (self.bits.hi.0 & HI_FRACTION_MASK) | hidden_one,
+            self.bits.lo.0,
+        )
     }
 
     /// Returns the significand of `self`.
@@ -436,9 +434,8 @@ impl f256 {
             return *self;
         }
         let mut biased_exp = EXP_BIAS;
-        let self1 = &self.bits;
-        let self2 = &self.bits;
-        let mut bits = U256::new((self2.hi.0 & HI_FRACTION_MASK), self1.lo.0);
+        let mut bits =
+            U256::new((self.bits.hi.0 & HI_FRACTION_MASK), self.bits.lo.0);
         if self.biased_exponent() == 0 {
             // self is subnormal
             let shift = (bits.leading_zeros() - EXP_BITS);
