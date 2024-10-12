@@ -1369,6 +1369,14 @@ pub(crate) const fn exp_bits(abs_bits: &U256) -> u32 {
     (abs_bits.hi.0 >> HI_FRACTION_BITS) as u32
 }
 
+/// Returns the unbiased exponent from `abs_bits`.
+#[inline(always)]
+pub(crate) const fn exp(abs_bits: &U256) -> i32 {
+    debug_assert!(!abs_bits.is_zero());
+    let mut exp = (abs_bits.hi.0 >> HI_FRACTION_BITS) as i32;
+    exp + (exp == 0) as i32 - EXP_BIAS as i32
+}
+
 /// Returns the fraction from `abs_bits`.
 #[inline(always)]
 pub(crate) const fn fraction(abs_bits: &U256) -> U256 {
