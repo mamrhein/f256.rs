@@ -264,12 +264,34 @@ impl BigFloat {
     /// Construct a `BigFloat` value f from sign s, quantum exponent t and
     /// integral significand c, so that f = (-1)ˢ × 2ᵗ × c
     #[must_use]
-    pub fn from_sign_exp_signif(s: u32, t: i32, c: (u128, u128)) -> Self {
+    pub(crate) fn from_sign_exp_signif(
+        s: u32,
+        t: i32,
+        c: (u128, u128),
+    ) -> Self {
         debug_assert!(s == 0 || s == 1);
         if c.0 == 0 && c.1 == 0 {
             return Self::ZERO;
         }
-        Self::new([1, -1][s as usize], t + Self::FRACTION_BITS as i32, c)
+        let (signif, exp) = match c.0.leading_zeros() {
+            0 => (U256::new(c.0, c.1) >> 1, t + 1),
+            1 => (U256::new(c.0, c.1), t),
+            lz @ 2..=127 => {
+                let sh = lz - 1;
+                (U256::new(c.0, c.1) << sh, t + sh as i32)
+            }
+            128 => {
+                let sh = 127 + c.1.leading_zeros();
+                (U256::new(c.0, c.1) >> sh, t + sh as i32)
+            }
+            _ => unreachable!(),
+        };
+        debug_assert!(signif.hi.0.leading_zeros() == 1);
+        Self {
+            signum: [1, -1][s as usize],
+            exp: exp + Self::FRACTION_BITS as i32,
+            signif,
+        }
     }
 
     // TODO: remove (inline) this fn when trait fns can be constant!
