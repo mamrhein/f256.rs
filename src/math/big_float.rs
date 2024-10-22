@@ -278,11 +278,11 @@ impl BigFloat {
             1 => (U256::new(c.0, c.1), t),
             lz @ 2..=127 => {
                 let sh = lz - 1;
-                (U256::new(c.0, c.1) << sh, t + sh as i32)
+                (U256::new(c.0, c.1) << sh, t - sh as i32)
             }
             128 => {
                 let sh = 127 + c.1.leading_zeros();
-                (U256::new(c.0, c.1) >> sh, t + sh as i32)
+                (U256::new(c.0, c.1) << sh, t - sh as i32)
             }
             _ => unreachable!(),
         };
