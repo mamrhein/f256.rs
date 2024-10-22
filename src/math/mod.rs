@@ -9,10 +9,12 @@
 
 mod big_float;
 mod circular_fns;
+mod feynman;
 mod fp509;
+mod log;
 mod sqrt;
 
 use big_float::BigFloat;
 use fp509::FP509;
 
-use super::U256;
+use super::{BigUInt, U256};

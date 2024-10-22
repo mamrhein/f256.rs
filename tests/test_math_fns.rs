@@ -153,4 +153,9 @@ mod random_math_fn_tests {
     fn test_acos() {
         run_tests(f256::acos, 0, "test_acos.txt");
     }
+
+    #[test]
+    fn test_ln() {
+        run_tests(f256::ln, 0, "test_ln_normal.txt");
+    }
 }
