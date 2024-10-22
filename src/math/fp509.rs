@@ -205,7 +205,9 @@ impl From<&FP509> for BigFloat {
             }
             // nlz > N = 257 => shift left
             258..=511 => fp_abs_signif <<= nlz - N,
-            _ => {}
+            _ => {
+                return BigFloat::ZERO;
+            }
         };
         Self::new(signum, exp, (fp_abs_signif.lo.hi.0, fp_abs_signif.lo.lo.0))
     }
