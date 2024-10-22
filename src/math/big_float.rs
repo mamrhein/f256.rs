@@ -623,6 +623,17 @@ impl BigFloat {
     }
 }
 
+impl From<i32> for BigFloat {
+    #[inline(always)]
+    fn from(i: i32) -> Self {
+        BigFloat::from_sign_exp_signif(
+            i.is_negative() as u32,
+            0,
+            (0_u128, i.abs() as u128),
+        )
+    }
+}
+
 impl From<&U256> for BigFloat {
     /// Convert a raw U256 into a Float, without any modification, i.e
     /// interptret the given value ui as ui⋅2⁻²⁵⁴
