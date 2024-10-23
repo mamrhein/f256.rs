@@ -129,8 +129,8 @@ where
                 d *= &n;
                 t -= &d;
             } else {
-                let u = &t + rhs;
-                if u < *self {
+                let (u, ovl) = t.overflowing_add(&rhs);
+                if ovl {
                     let mut d = self - &t;
                     let (n, _) = d.div_rem(*rhs);
                     debug_assert!(n.hi.is_zero());
