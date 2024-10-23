@@ -71,6 +71,7 @@ where
         + for<'a> MulAssign<&'a Self>
         + PartialEq
         + PartialOrd
+        + Ord
         + Rem<Output = Self>
         + Shl<u32, Output = Self>
         + ShlAssign<u32>

@@ -8,6 +8,7 @@
 // $Revision$
 
 use core::{
+    cmp::Ordering,
     convert::From,
     ops::{Div, Rem},
 };
@@ -119,26 +120,30 @@ where
             // trim the estimate
             let mut t = *rhs;
             t *= &quot;
-            if t > *self {
-                let mut d = &t - self;
-                let (mut n, _) = d.div_rem(*rhs);
-                n.incr();
-                debug_assert!(n.hi.is_zero());
-                quot -= &n;
-                d = *rhs;
-                d *= &n;
-                t -= &d;
-            } else {
-                let (u, ovl) = t.overflowing_add(&rhs);
-                if ovl {
-                    let mut d = self - &t;
-                    let (n, _) = d.div_rem(*rhs);
+            match (&t).cmp(&self) {
+                Ordering::Greater => {
+                    let mut d = &t - self;
+                    let (mut n, _) = d.div_rem(*rhs);
+                    n.incr();
                     debug_assert!(n.hi.is_zero());
-                    quot += &n;
+                    quot -= &n;
                     d = *rhs;
                     d *= &n;
-                    t += &d;
+                    t -= &d;
                 }
+                Ordering::Less => {
+                    let (u, ovl) = t.overflowing_add(&rhs);
+                    if ovl {
+                        let mut d = self - &t;
+                        let (n, _) = d.div_rem(*rhs);
+                        debug_assert!(n.hi.is_zero());
+                        quot += &n;
+                        d = *rhs;
+                        d *= &n;
+                        t += &d;
+                    }
+                }
+                Ordering::Equal => return (quot, UInt::<SubUInt>::ZERO),
             }
             let rem = self - &t;
             (quot, rem)
