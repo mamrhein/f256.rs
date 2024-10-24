@@ -9,63 +9,63 @@
 
 use core::ops::Neg;
 
-use super::{two_over_pi::get_256_bits, BigFloat, FP509, U256};
+use super::{two_over_pi::get_256_bits, BigFloat, FP492, U256};
 use crate::{
     consts::TAU, f256, BigUInt, HiLo, FRACTION_BITS, SIGNIFICAND_BITS, TWO,
     U512,
 };
 
-const FP_FRAC_PI_4: FP509 = FP509::new(
-    0x1921fb54442d18469898cc51701b839a,
-    0x252049c1114cf98e804177d4c7627364,
-    0x4a29410f31c6809bbdf2a33679a74863,
-    0x6605614dbe4be286e9fc26adadaa3849,
+const FP_FRAC_PI_4: FP492 = FP492::new(
+    0x00000c90fdaa22168c234c4c6628b80d,
+    0xc1cd129024e088a67cc74020bbea63b1,
+    0x39b22514a08798e3404ddef9519b3cd3,
+    0xa431b302b0a6df25f14374fe1356d6d5,
 );
-const FP_FRAC_PI_2: FP509 = FP509::new(
-    0x3243f6a8885a308d313198a2e0370734,
-    0x4a4093822299f31d0082efa98ec4e6c8,
-    0x9452821e638d01377be5466cf34e90c6,
-    0xcc0ac29b7c97c50dd3f84d5b5b547091,
+const FP_FRAC_PI_2: FP492 = FP492::new(
+    0x00001921fb54442d18469898cc51701b,
+    0x839a252049c1114cf98e804177d4c762,
+    0x73644a29410f31c6809bbdf2a33679a7,
+    0x48636605614dbe4be286e9fc26adadaa,
 );
-const FP_FRAC_3_PI_4: FP509 = FP509::new(
-    0x4b65f1fccc8748d3c9ca64f450528ace,
-    0x6f60dd4333e6ecab80c4677e56275a2c,
-    0xde7bc32d955381d339d7e9a36cf5d92a,
-    0x321023e93ae3a794bdf4740908fea8da,
+const FP_FRAC_3_PI_4: FP492 = FP492::new(
+    0x000025b2f8fe6643a469e4e5327a2829,
+    0x456737b06ea199f37655c06233bf2b13,
+    0xad166f3de196caa9c0e99cebf4d1b67a,
+    0xec95190811f49d71d3ca5efa3a04847f,
 );
-const FP_PI: FP509 = FP509::new(
-    0x6487ed5110b4611a62633145c06e0e68,
-    0x948127044533e63a0105df531d89cd91,
-    0x28a5043cc71a026ef7ca8cd9e69d218d,
-    0x98158536f92f8a1ba7f09ab6b6a8e123,
+const FP_PI: FP492 = FP492::new(
+    0x00003243f6a8885a308d313198a2e037,
+    0x07344a4093822299f31d0082efa98ec4,
+    0xe6c89452821e638d01377be5466cf34e,
+    0x90c6cc0ac29b7c97c50dd3f84d5b5b54,
 );
-const FP_FRAC_5_PI_4: FP509 = FP509::new(
-    0x7da9e8a554e17960fafbfd9730899202,
-    0xb9a170c55680dfc881475727e4ec40f5,
-    0x72ce454bf8e0830ab5bd3010604469f0,
-    0xfe1ae684b77b6ca291ecc1646453196c,
+const FP_FRAC_5_PI_4: FP492 = FP492::new(
+    0x00003ed4f452aa70bcb07d7dfecb9844,
+    0xc9015cd0b862ab406fe440a3ab93f276,
+    0x207ab96722a5fc7041855ade98083022,
+    0x34f87f0d73425bbdb65148f660b2322a,
 );
-const FP_FRAC_7_PI_4_M4: FP509 = FP509::new(
-    0x2feddf4ddd3ba9ee2c2d963a10c09937,
-    0x03e20447791ad2e581ca46d173b127be,
-    0x0720c76a5c6d844231a2767d5392fab7,
-    0xca25a920341331b065e50ebfbfa789fd,
+const FP_FRAC_7_PI_4_M4: FP492 = FP492::new(
+    0x000017f6efa6ee9dd4f71616cb1d0860,
+    0x4c9b81f10223bc8d6972c0e52368b9d8,
+    0x93df039063b52e36c22118d13b3ea9c9,
+    0x7d5be512d4901a0998d832f2875fdfd4,
 );
-const FP_FRAC_9_PI_4_M4: FP509 = FP509::new(
-    0x6231d5f66595da7b5d5f2edcf0f7a06b,
-    0x4e2297c99bb4c602824d367b02760e86,
-    0x9b734988bffa8579ad87bcea46e18b7e,
-    0x96306bbbb0aaf6be39dd5c1b1afbfa8f,
+const FP_FRAC_9_PI_4_M4: FP492 = FP492::new(
+    0x00003118eafb32caed3daeaf976e787b,
+    0xd035a7114be4cdda630141269b3d813b,
+    0x07434db9a4c45ffd42bcd6c3de752370,
+    0xc5bf4b1835ddd8557b5f1ceeae0d8d7e,
 );
 
 // For the input value x, calculate ⌈x/½π⌋ % 4 and x % ½π
-fn fp_reduce(exp: i32, x: &f256) -> (u32, FP509) {
+fn fp_reduce(exp: i32, x: &f256) -> (u32, FP492) {
     debug_assert!(exp >= -1);
     debug_assert!(x.is_sign_positive());
     match exp {
         -1 => {
             // ½ <= |x| < 1
-            let mut fx = FP509::from(x);
+            let mut fx = FP492::from(x);
             if fx <= FP_FRAC_PI_4 {
                 return (0, fx);
             }
@@ -74,13 +74,13 @@ fn fp_reduce(exp: i32, x: &f256) -> (u32, FP509) {
         }
         0 => {
             // 1 <= |x| < 2
-            let mut fx = FP509::from(x);
+            let mut fx = FP492::from(x);
             fx -= &FP_FRAC_PI_2;
             return (1, fx);
         }
         1 => {
             // 2 <= |x| < 4
-            let mut fx = FP509::from(x);
+            let mut fx = FP492::from(x);
             if fx <= FP_FRAC_3_PI_4 {
                 fx -= &FP_FRAC_PI_2;
                 return (1, fx);
@@ -95,24 +95,24 @@ fn fp_reduce(exp: i32, x: &f256) -> (u32, FP509) {
         }
         2 => {
             // 4 <= |x| < 8
-            let mut fx = FP509::from(&(x - f256::from_u64(4)));
+            let mut fx = FP492::from(&(x - f256::from_u64(4)));
             if fx <= FP_FRAC_7_PI_4_M4 {
-                fx += &FP509::TWO;
+                fx += &FP492::TWO;
                 fx -= &FP_PI;
-                fx += &FP509::TWO;
+                fx += &FP492::TWO;
                 fx -= &FP_FRAC_PI_2;
                 return (3, fx);
             } else if fx <= FP_FRAC_9_PI_4_M4 {
                 fx -= &FP_PI;
-                fx += &FP509::TWO;
+                fx += &FP492::TWO;
                 fx -= &FP_PI;
-                fx += &FP509::TWO;
+                fx += &FP492::TWO;
                 return (0, fx);
             } else {
                 fx -= &FP_PI;
-                fx += &FP509::TWO;
+                fx += &FP492::TWO;
                 fx -= &FP_PI;
-                fx += &FP509::TWO;
+                fx += &FP492::TWO;
                 fx -= &FP_FRAC_PI_2;
                 return (1, fx);
             }
@@ -127,7 +127,7 @@ fn fp_reduce(exp: i32, x: &f256) -> (u32, FP509) {
 // Formally verified argument reduction with a fused multiply-add
 // IEEE Trans. Comput. 58(8), 1139–1145 (2009)
 // For the input value x, calculate ⌈x/½π⌋ % 4 and x % ½π
-fn fma_reduce(exp: i32, x: &f256) -> (u32, FP509) {
+fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
     // R = ◯₂₅₅(1/½π) =
     // 0.6366197723675813430755350534900574481378385829618257949906693762355871905369
     const R: BigFloat = BigFloat::new(
@@ -207,8 +207,8 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP509) {
         let q = (&z.signif >> e.unsigned_abs()).lo.0 as u32 & 0x3;
         // Convert (v1 + v2) into a fixed-point number with 509-bit-fraction
         // |v1| <= ½π => v1.exp <= 0
-        let mut fx = FP509::from(&v1);
-        fx += &FP509::from(&v2);
+        let mut fx = FP492::from(&v1);
+        fx += &FP492::from(&v2);
         debug_assert!(fx.abs() < FP_FRAC_PI_4);
         return (q, fx);
     }
@@ -220,7 +220,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP509) {
 // Radian reduction for trigonometric functions
 // SIGNUM Newsletter 18, p. 19–24
 // For the input value x, calculate ⌈x/½π⌋ % 4 and x % ½π
-fn large_val_reduce(e: i32, x: &f256) -> (u32, FP509) {
+fn large_val_reduce(e: i32, x: &f256) -> (u32, FP492) {
     debug_assert!(e >= SIGNIFICAND_BITS as i32 + 1);
 
     let m = x.integral_significand();
@@ -249,12 +249,13 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP509) {
     // The smallest value y can take is ≅ 1.28273769534271073636205477646e-76
     // and has l = 253 leading zero bits after the radix point.
     // So - in the worst - case we need atleast n = l + 2 * P - 1 = 726 bits
-    // for R₁. We use n = 767 and discard the last 256 bits of m⋅R₁ to get a
-    // value with 509 fractional bits.
+    // for R₁. We use n = 750 and discard the last 256 bits of m⋅R₁ to get a
+    // value with 492 fractional bits.
+    let n = 750_u32;
     let idx = e as u32 - SIGNIFICAND_BITS - 1;
-    let mut r1_hi = &get_256_bits(idx) >> 1;
-    let mut r1_mi = get_256_bits(idx + 255);
-    let mut r1_lo = get_256_bits(idx + 511);
+    let mut r1_hi = &get_256_bits(idx) >> (768 - n);
+    let mut r1_mi = get_256_bits(idx + n - 512);
+    let mut r1_lo = get_256_bits(idx + n - 256);
     let (_, tl1) = m.widening_mul(&r1_lo);
     let (tl2, mut th1) = m.widening_mul(&r1_mi);
     let (tl, ovl) = tl1.overflowing_add(&tl2);
@@ -262,12 +263,13 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP509) {
     let (th2, _) = m.widening_mul(&r1_hi);
     let (mut th, _) = th1.overflowing_add(&th2);
     let mut f = U512::from_hi_lo(th, tl);
-    let mut k = (th.hi.0 >> u128::BITS - 3) as u32;
-    th.hi.0 &= (1 << (u128::BITS - 3)) - 1;
-    let mut y = FP509::from(U512::from_hi_lo(th, tl));
-    if y > FP509::ONE_HALF || (y == FP509::ONE_HALF && (k & 1) == 1) {
+    // The integral part has 512 - 492 = 20 bits.
+    let mut k = (th.hi.0 >> u128::BITS - 20) as u32;
+    th.hi.0 &= (1 << (u128::BITS - 20)) - 1;
+    let mut y = FP492::from(U512::from_hi_lo(th, tl));
+    if y > FP492::ONE_HALF || (y == FP492::ONE_HALF && (k & 1) == 1) {
         k += 1;
-        y -= &FP509::ONE;
+        y -= &FP492::ONE;
     };
     y.imul_round(&FP_FRAC_PI_2);
     (k % 4, y)
@@ -275,12 +277,12 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP509) {
 
 /// Calculate ⌈x/½π⌋ % 4 and x % ½π.
 #[inline]
-pub(super) fn reduce(x: &f256) -> (u32, FP509) {
+pub(super) fn reduce(x: &f256) -> (u32, FP492) {
     debug_assert!(x.is_finite() && x.is_sign_positive());
     let x_exp = x.exponent();
     if x_exp <= -2 {
         // |x| < ½ => no need for reduction
-        return (0, FP509::from(x));
+        return (0, FP492::from(x));
     }
     fp_reduce(x_exp, &x)
 }
@@ -294,7 +296,7 @@ mod reduce_tests {
     #[test]
     fn test_frac_pi_4() {
         let f = f256::from(&FP_FRAC_PI_4);
-        let fx = FP509::from(&f);
+        let fx = FP492::from(&f);
         assert!(fx < FP_FRAC_PI_4);
         let (q, r) = reduce(&f);
         assert_eq!(q, 0);
@@ -304,7 +306,7 @@ mod reduce_tests {
     #[test]
     fn test_frac_pi_2() {
         let f = f256::from(&FP_FRAC_PI_2);
-        let mut fx = FP509::from(&f);
+        let mut fx = FP492::from(&f);
         assert!(fx < FP_FRAC_PI_2);
         let (q, r) = reduce(&f);
         assert_eq!(q, 1);
@@ -315,7 +317,7 @@ mod reduce_tests {
     #[test]
     fn test_pi() {
         let f = f256::from(&FP_PI);
-        let mut fx = FP509::from(&f);
+        let mut fx = FP492::from(&f);
         assert!(fx < FP_PI);
         let (q, r) = reduce(&f);
         assert_eq!(q, 2);
@@ -326,7 +328,7 @@ mod reduce_tests {
     #[test]
     fn test_frac_5_pi_4() {
         let f = f256::from(&FP_FRAC_5_PI_4);
-        let mut fx = FP509::from(&f);
+        let mut fx = FP492::from(&f);
         assert!(fx < FP_FRAC_5_PI_4);
         let (q, r) = reduce(&f);
         assert_eq!(q, 2);
@@ -376,7 +378,7 @@ mod reduce_tests {
             -492,
             (
                 0x40f572ce454bf8e0830ab5bd30106044,
-                0x69f0fe1ae684b77b6ca291ecc1646453,
+                0x69f0fe1ae684b77b6ca291ecc1646452,
             ),
         );
         let (q, fx) = reduce(&f);
@@ -451,7 +453,7 @@ mod reduce_tests {
             -498,
             (
                 0x563d1ec38077f1810a728c57851aba2b,
-                0x71bc78f95015c84078d6591b6b74a571,
+                0x71bc78f95015c84078d6591b6b74a540,
             ),
         );
         let (q, fx) = reduce(&f);
@@ -558,7 +560,7 @@ mod reduce_tests {
 
     #[test]
     fn test_nearest_to_multible_of_pi_over_2() {
-        // 6.662454187299314666799247444396908101815741162990142648603179838565345223e54599
+        // 6.66245418729931466679924744439690810181574116299014264860317983856534522e54599
         let f = f256::from_sign_exp_signif(
             0,
             181140,
@@ -573,7 +575,7 @@ mod reduce_tests {
             -507,
             (
                 0x76d31fae1a225dd56b205f183b805391,
-                0x5e8fceff6cdab4a1f14fa390a2f822a5,
+                0x5e8fceff6cdab4a1f14fa390a2f80000,
             ),
         );
         let (q, fx) = reduce(&f);

@@ -9,7 +9,7 @@
 
 use super::{
     approx_cos::approx_cos, approx_sin::approx_sin, reduce::reduce, BigFloat,
-    FP509,
+    FP492,
 };
 use crate::{f256, HI_ABS_MASK};
 

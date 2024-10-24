@@ -20,4 +20,4 @@ mod sin_cos;
 mod tan;
 mod two_over_pi;
 
-use super::{BigFloat, FP509, U256};
+use super::{BigFloat, FP492, U256};

@@ -1,0 +1,65 @@
+roundingwarnings = off;
+display = decimal;
+
+prec = 512;
+
+signum = proc(f) {
+    var s;
+    if (f == 0) then s = 0 else s = f / abs(f);
+    return s;
+};
+
+hex = proc(m) {
+    var d, s, p, n, i;
+    d = 16;
+    A = [|"0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"|];
+    s = "";
+    p = "0x";
+    n = 1;
+    while (n <= 32) do {
+        i = mod(m, d);
+        s = A[i] @ s;
+        m = div(m, d);
+        n = n + 1;
+    };
+    return p @ s;
+};
+
+repr = proc(f) {
+    var m, z, n, r;
+    B = 2^128;
+    m = nearestint(f * X);
+    z = "";
+    n = 1;
+    while (n <= 4) do {
+        r = hex(mod(m, B));
+        z = r @ ",\n" @ z;
+        m = div(m, B);
+        n = n + 1;
+    };
+    return z;
+};
+
+P = 492;
+X = 2^P;
+
+// --- ln(2) et al. -------------------------------------------------------------
+
+LN_2 = round(log(2), P, RN);
+LN_10 = round(log(10), P+2, RN);
+e = exp(1);
+LOG2_E = round(log2(e), P+1, RN);
+LOG10_E = round(log10(e), P, RN);
+
+print("// LN_2 = ◯₄₉₂(ln(2)) =\n//", LN_2);
+print("pub(crate) const LN_2: FP492 = FP492::new(");
+print(repr(LN_2), ");");
+print("// LN_10 = ◯₄₉₂(ln(10)) =\n//", LN_10);
+print("pub(crate) const LN_10: FP492 = FP492::new(");
+print(repr(LN_10), ");");
+print("// LOG2_E = ◯₄₉₂(log2(e)) =\n//", LOG2_E);
+print("pub(crate) const LOG2_E: FP492 = FP492::new(");
+print(repr(LOG2_E), ");");
+print("// LOG10_E = ◯₄₉₂(log10(e)) =\n//", LOG10_E);
+print("pub(crate) const LOG10_E: FP492 = FP492::new(");
+print(repr(LOG10_E), ");");

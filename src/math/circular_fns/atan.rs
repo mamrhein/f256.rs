@@ -9,7 +9,7 @@
 
 use core::cmp::max;
 
-use super::{approx_atan::approx_atan, BigFloat, FP509};
+use super::{approx_atan::approx_atan, BigFloat, FP492};
 use crate::{
     abs_bits, abs_bits_sticky,
     consts::{FRAC_PI_2, FRAC_PI_4, PI},
@@ -24,11 +24,11 @@ const LARGE_CUT_OFF: U256 = U256::new(
 );
 
 // Cut-off for small values
-// 3.444749121093773839689726956186168304612457006116422368206098464464836e-36
+// 3.44474912109377383968972695618616830461246359669623725678161320654548683e-36
 const SMALL_CUT_OFF: f256 = f256 {
     bits: U256::new(
         0x3ff89250bfe1b082f4f9b8d4ce85ca7f,
-        0xcf68624c7d1e08b5846dbf5cd6f14b42,
+        0xcf68624f8a91d242f267bb52b5b4432a,
     ),
 };
 
@@ -56,13 +56,13 @@ impl f256 {
         }
         // Now we have ε < |self| < 2²³⁷.
         if abs_bits_self < Self::ONE.bits {
-            Self::from(&approx_atan(&FP509::from(self)))
+            Self::from(&approx_atan(&FP492::from(self)))
         } else if abs_bits_self > Self::ONE.bits {
             // atan(±x) = ±½π - atan(1/x) for |x| > 1
             let xr = BigFloat::from(self).recip();
             let atan = [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2]
                 [self.sign() as usize]
-                - &BigFloat::from(&approx_atan(&FP509::from(&xr)));
+                - &BigFloat::from(&approx_atan(&FP492::from(&xr)));
             Self::from(&atan)
         } else {
             // atan(±1) = ±¼π
@@ -124,12 +124,12 @@ impl f256 {
         let mut atan = if abs_bits_y < abs_bits_x {
             let mut q = BigFloat::from(self);
             q.idiv(&BigFloat::from(other));
-            BigFloat::from(&approx_atan(&FP509::from(&q)))
+            BigFloat::from(&approx_atan(&FP492::from(&q)))
         } else if abs_bits_y > abs_bits_x {
             let mut q = BigFloat::from(other);
             q.idiv(&BigFloat::from(self));
             [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2][sign_q as usize]
-                - &BigFloat::from(&approx_atan(&FP509::from(&q)))
+                - &BigFloat::from(&approx_atan(&FP492::from(&q)))
         } else {
             [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2][sign_q as usize]
         };

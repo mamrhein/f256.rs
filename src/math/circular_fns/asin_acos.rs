@@ -13,50 +13,50 @@ use crate::{
     f256,
     math::{
         big_float::BigFloat, circular_fns::approx_atan::approx_atan,
-        fp509::FP509,
+        fp509::FP492,
     },
     HI_EXP_MASK, U256,
 };
 
-const FP509_FRAC_PI_2: FP509 = FP509::new(
-    0x3243f6a8885a308d313198a2e0370734,
-    0x4a4093822299f31d0082efa98ec4e6c8,
-    0x9452821e638d01377be5466cf34e90c6,
-    0xcc0ac29b7c97c50dd3f84d5b5b547091,
+const FP492_FRAC_PI_2: FP492 = FP492::new(
+    0x00001921fb54442d18469898cc51701b,
+    0x839a252049c1114cf98e804177d4c762,
+    0x73644a29410f31c6809bbdf2a33679a7,
+    0x48636605614dbe4be286e9fc26adadaa,
 );
-const FP509_NEG_FRAC_PI_2: FP509 = FP509::new(
-    0xcdbc095777a5cf72cece675d1fc8f8cb,
-    0xb5bf6c7ddd660ce2ff7d1056713b1937,
-    0x6bad7de19c72fec8841ab9930cb16f39,
-    0x33f53d6483683af22c07b2a4a4ab8f6f,
+const FP492_NEG_FRAC_PI_2: FP492 = FP492::new(
+    0xffffe6de04abbbd2e7b9676733ae8fe4,
+    0x7c65dadfb63eeeb306717fbe882b389d,
+    0x8c9bb5d6bef0ce397f64420d5cc98658,
+    0xb79c99fa9eb241b41d791603d9525256,
 );
-const FP509_FRAC_PI_4: FP509 = FP509::new(
-    0x1921fb54442d18469898cc51701b839a,
-    0x252049c1114cf98e804177d4c7627364,
-    0x4a29410f31c6809bbdf2a33679a74863,
-    0x6605614dbe4be286e9fc26adadaa3849,
+const FP492_FRAC_PI_4: FP492 = FP492::new(
+    0x00000c90fdaa22168c234c4c6628b80d,
+    0xc1cd129024e088a67cc74020bbea63b1,
+    0x39b22514a08798e3404ddef9519b3cd3,
+    0xa431b302b0a6df25f14374fe1356d6d5,
 );
-const FP509_NEG_FRAC_PI_4: FP509 = FP509::new(
-    0xe6de04abbbd2e7b9676733ae8fe47c65,
-    0xdadfb63eeeb306717fbe882b389d8c9b,
-    0xb5d6bef0ce397f64420d5cc98658b79c,
-    0x99fa9eb241b41d791603d9525255c7b7,
+const FP492_NEG_FRAC_PI_4: FP492 = FP492::new(
+    0xfffff36f0255dde973dcb3b399d747f2,
+    0x3e32ed6fdb1f77598338bfdf44159c4e,
+    0xc64ddaeb5f78671cbfb22106ae64c32c,
+    0x5bce4cfd4f5920da0ebc8b01eca9292b,
 );
 
 /// Computes the arctangent of a number (in radians).
-fn atan(x: &BigFloat) -> FP509 {
+fn atan(x: &BigFloat) -> FP492 {
     let x_abs = x.abs();
     let sign = (x.signum < 0) as usize;
     if x_abs < BigFloat::ONE {
-        approx_atan(&FP509::from(x))
+        approx_atan(&FP492::from(x))
     } else if x_abs > BigFloat::ONE {
         // atan(±x) = ±½π - atan(1/x) for |x| > 1
         let xr = x.recip();
-        &[FP509_FRAC_PI_2, FP509_NEG_FRAC_PI_2][sign]
-            - &approx_atan(&FP509::from(&xr))
+        &[FP492_FRAC_PI_2, FP492_NEG_FRAC_PI_2][sign]
+            - &approx_atan(&FP492::from(&xr))
     } else {
         // atan(±1) = ±¼π
-        [FP509_FRAC_PI_4, FP509_NEG_FRAC_PI_4][sign]
+        [FP492_FRAC_PI_4, FP492_NEG_FRAC_PI_4][sign]
     }
 }
 
@@ -124,7 +124,7 @@ impl f256 {
         // acos(x) = ½π - asin(x) = ½π - atan(x/√(1-x²))
         let mut x = BigFloat::from(self);
         x.idiv(&(BigFloat::ONE - &x.square()).sqrt());
-        Self::from(&(&FP509_FRAC_PI_2 - &atan(&x)))
+        Self::from(&(&FP492_FRAC_PI_2 - &atan(&x)))
     }
 }
 

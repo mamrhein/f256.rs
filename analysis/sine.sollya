@@ -40,7 +40,7 @@ repr = proc(s, m) {
     return z;
 };
 
-P = 509;
+P = 492;
 X = 2^P;
 
 // --- Polynomial approximating sine -----------------------------------------
@@ -56,7 +56,7 @@ while (N >= 0) do {
     s = signum(c);
     m = nearestint(abs(c) * X);
     print("//", s @ " / " @ n @ "! ≈");
-    print("FP509::new(");
+    print("FP492::new(");
     print(repr(s, m), "),");
     N = N - 1;
 };

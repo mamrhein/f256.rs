@@ -56,9 +56,9 @@ mod random_math_fn_tests {
                     let res = op(&x);
                     if err == 0 {
                         assert_eq!(
-                            res, z,
+                            z, res,
                             "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}\nx: \
-                             {x}\nz: {z}\nr: {res}"
+                             {x:e}\nz: {z:e}\nr: {res:e}"
                         );
                     } else {
                         let d = (z - res).abs();

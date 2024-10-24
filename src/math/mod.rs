@@ -15,6 +15,6 @@ mod log;
 mod sqrt;
 
 use big_float::BigFloat;
-use fp509::FP509;
+use fp509::FP492;
 
 use super::{BigUInt, U256};

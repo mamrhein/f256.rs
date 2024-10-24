@@ -7,66 +7,64 @@
 // $Source$
 // $Revision$
 
-use super::{feynman, BigFloat, FP509};
+use super::{feynman, BigFloat, FP492};
 use crate::{exp, f256, norm_signif, BigUInt};
 
-// LN_2 = ◯₂₅₅(ln(2)) =
-// 0.6931471805599453094172321214581765680755001343602552541206800094933936219697
-pub(crate) const LN_2: BigFloat = BigFloat::new(
-    1,
-    -1,
-    (
-        0x58b90bfbe8e7bcd5e4f1d9cc01f97b57,
-        0xa079a193394c5b16c5068badc5d57d16,
-    ),
+// LN_2 = ◯₄₉₂(ln(2)) =
+// 0.693147180559945309417232121458176568075500134360255254120680009493393621\
+// 96969471560586332699641868754200148102057068573368552023575813055703267075\
+// 16657753
+pub(crate) const LN_2: FP492 = FP492::new(
+    0x00000b17217f7d1cf79abc9e3b39803f,
+    0x2f6af40f343267298b62d8a0d175b8ba,
+    0xafa2be7b876206debac98559552fb4af,
+    0xa1b10ed2eae35c138214427573b29117,
 );
-// LN_10 = ◯₂₅₅(ln(10)) =
-// 2.3025850929940456840179914546843642076011014886287729760333279009675726096773
-pub(crate) const LN_10: BigFloat = BigFloat::new(
-    1,
-    1,
-    (
-        0x49aec6eed554560b752b6b15c1698514,
-        0x7147f67ced2efc8741e30f4100f816b9,
-    ),
+// LN_10 = ◯₄₉₂(ln(10)) =
+// 2.302585092994045684017991454684364207601101488628772976033327900967572609\
+// 67735248023599720508959829834196778404228624863340952546508280675666628736\
+// 9077486
+pub(crate) const LN_10: FP492 = FP492::new(
+    0x000024d763776aaa2b05ba95b58ae0b4,
+    0xc28a38a3fb3e76977e43a0f187a0807c,
+    0x0b5ca58bc0b5ec6a0417331c32f00b17,
+    0xc35a0b1889061042f8b6bee3de2100b9,
 );
-// LOG2_E = ◯₂₅₅(log2(e)) =
-// 1.4426950408889634073599246810018921374266459541529859341354494069311092191812
-pub(crate) const LOG2_E: BigFloat = BigFloat::new(
-    1,
-    0,
-    (
-        0x5c551d94ae0bf85ddf43ff68348e9f44,
-        0x75abbd546eb4ad2c45928b3668d09924,
-    ),
+// LOG2_E = ◯₄₉₂(log2(e)) =
+// 1.442695040888963407359924681001892137426645954152985934135449406931109219\
+// 18118507988552662289350634449699751830965254425559310168716835964272066215\
+// 82310518
+pub(crate) const LOG2_E: FP492 = FP492::new(
+    0x0000171547652b82fe1777d0ffda0d23,
+    0xa7d11d6aef551bad2b4b1164a2cd9a34,
+    0x2648fbc3887eeaa2ed9ac49b25eeb82d,
+    0x7c167d52173cc1895213f897f5e06a7c,
 );
-// LOG10_E = ◯₂₅₅(log10(e)) =
-// 0.43429448190325182765112891891660508229439700580366656611445378316586464920887
-pub(crate) const LOG10_E: BigFloat = BigFloat::new(
-    1,
-    -2,
-    (
-        0x6f2dec549b9438ca9aadd557d699ee19,
-        0x1f71a30122e4d1011d1f96a27bc7529e,
-    ),
+// LOG10_E = ◯₄₉₂(log10(e)) =
+// 0.434294481903251827651128918916605082294397005803666566114453783165864649\
+// 20887077472922494933843174831870610674476630373364167928715896390656922106\
+// 466854313
+pub(crate) const LOG10_E: FP492 = FP492::new(
+    0x000006f2dec549b9438ca9aadd557d69,
+    0x9ee191f71a30122e4d1011d1f96a27bc,
+    0x7529e3aa1277d0a0179f94911aac9632,
+    0x3250a8c671decfe9c6e5e37d15c69646,
 );
 
-fn ln(x: &f256) -> BigFloat {
+fn ln(x: &f256) -> FP492 {
     debug_assert!(!x.is_special() && x.is_sign_positive());
     let (mut m, sh) = norm_signif(&x.bits);
     let e = exp(&x.bits) - sh as i32;
     // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 1 < m⋅2⁻ⁿ < 2
-    // m has 19 leading zeroes. By using it as the hi-part of an FP509 value,
-    // we turn m⋅2⁻ⁿ into m⋅2⁻ⁿ⁻¹⁸, so that
-    // x = m⋅2⁻ⁿ⁻¹⁸⋅2ᵉ⁺¹⁸
-    // ln x = ln (m⋅2⁻ⁿ⁻¹⁸) + ln 2ᵉ⁺¹⁸ = ln (m⋅2⁻ⁿ) + (e+18)⋅ln 2
-    // println!("  x: {:?}", FP509::from(&x.significand()));
-    m <<= 17;
-    let m = FP509::new(m.hi.0, m.lo.0, 0_u128, 0_u128);
+    // m has 19 leading zeroes. By using it as the hi-part of an FP492 value,
+    // we turn m⋅2⁻ⁿ into m'⋅2⁻ⁿ⁻²⁵⁶, so that
+    // x = m'⋅2⁻ⁿ⁻²⁵⁶⋅2ᵉ
+    // ln x = ln (m'⋅2⁻ⁿ⁻²⁵⁶) + ln 2ᵉ = ln (m'⋅2⁻ⁿ⁻²⁵⁶) + e⋅ln 2
+    let m = FP492::new(m.hi.0, m.lo.0, 0_u128, 0_u128);
     let ln_m = feynman::feynman(&m);
     let mut ln = LN_2;
-    ln *= &BigFloat::from(e);
-    ln += &BigFloat::from(&ln_m);
+    ln *= &FP492::from(e);
+    ln += &ln_m;
     ln
 }
 
@@ -102,7 +100,8 @@ impl f256 {
             return Self::NAN;
         }
         // log₂ x = ln x ⋅ log₂ e
-        let mut t = ln(&self) * &LOG2_E;
+        let mut t = ln(&self);
+        t *= &LOG2_E;
         Self::from(&t)
     }
 
@@ -113,7 +112,8 @@ impl f256 {
             return Self::NAN;
         }
         // log₁₀ x = ln x ⋅ log₁₀ e
-        let mut t = ln(&self) * &LOG10_E;
+        let mut t = ln(&self);
+        t *= &LOG10_E;
         Self::from(&t)
     }
 }
@@ -159,7 +159,7 @@ mod ln_tests {
     #[test]
     fn test_ln_1_minus_epsilon() {
         let x = f256::ONE - f256::EPSILON;
-        assert_eq!(x.ln(), -f256::EPSILON);
+        assert_eq!(x.ln(), -f256::EPSILON - f256::EPSILON.ulp());
     }
 
     #[test]

@@ -9,7 +9,7 @@
 
 use super::{
     approx_cos::approx_cos, approx_sin::approx_sin, reduce::reduce, BigFloat,
-    FP509,
+    FP492,
 };
 use crate::{f256, HI_ABS_MASK};
 
@@ -94,7 +94,7 @@ mod sin_tests {
                 0xd4afb6f12a8836a249b17fbeb758fa8e,
             ),
         );
-        assert_eq!(f.sin(), sin_f);
+        assert_eq!(f.sin(), sin_f, "{f}\n{}\n{}", f.sin(), sin_f);
         let f = f256::from_sign_exp_signif(
             0,
             -235,
@@ -111,7 +111,7 @@ mod sin_tests {
                 0xc0dd632c3566aef3b1af2c6bd810e0fe,
             ),
         );
-        assert_eq!(f.sin(), sin_f);
+        assert_eq!(f.sin(), sin_f, "{f}\n{}\n{}", f.sin(), sin_f);
         let f = f256::from_sign_exp_signif(
             0,
             -230,
@@ -126,6 +126,23 @@ mod sin_tests {
             (
                 0x00000fffffffffffffffffffffffffff,
                 0xfffffffffffffffffffffffffffffffd,
+            ),
+        );
+        assert_eq!(f.sin(), sin_f, "{f}\n{}\n{}", f.sin(), sin_f);
+        let f = f256::from_sign_exp_signif(
+            0,
+            -236,
+            (
+                0x00001dd7c55c574a05bc3cfce7f8b6a2,
+                0x621b3e52a18d6fb6f7ba91cfa8cde8ef,
+            ),
+        );
+        let sin_f = f256::from_sign_exp_signif(
+            0,
+            -237,
+            (
+                0x00001e9f97e097ab51eacfb059e3245d,
+                0x3ee3796a535e4c29d2039ba678a55710,
             ),
         );
         assert_eq!(f.sin(), sin_f, "{f}\n{}\n{}", f.sin(), sin_f);
@@ -152,5 +169,34 @@ mod sin_tests {
             ),
         );
         assert_eq!(f.sin(), sin_f);
+        // 2.16570771504765655239445414400334979116856541624320036012358643343267191e72080
+        let f = f256::from_sign_exp_signif(
+            0,
+            239209,
+            (
+                0x000019d8cce297b67f216c4c503ced7a,
+                0xc2b9ba4acc896934b14162d8144bc69b,
+            ),
+        );
+        // 8.66266758462195759181693148633759722506161200889060317576189227767715537e-1
+        let sin_f = f256::from_sign_exp_signif(
+            0,
+            -237,
+            (
+                0x00001bb87510a6a0409133589aff0e34,
+                0x84d9e6557596b89f83c0ef5fe227db66,
+            ),
+        );
+        assert_eq!(f.sin(), sin_f);
+        // 1.64760097351429814415521962742312041989746625767819932300237402156549037e72
+        let f = f256::from_sign_exp_signif(
+            0,
+            3,
+            (
+                0x00001dd71d552efac6c6246fb9a1e568,
+                0x0e751b9e3f84e2a77bbc0298a0f4b498,
+            ),
+        );
+        assert_eq!(f.sin(), f256::NEG_ONE);
     }
 }

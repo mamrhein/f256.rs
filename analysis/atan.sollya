@@ -40,7 +40,7 @@ repr = proc(s, m) {
     return z;
 };
 
-P = 509;
+P = 492;
 X = 2^P;
 
 // --- Polynomial approximating atan -----------------------------------------
@@ -57,7 +57,7 @@ while (N >= 0) do {
     s = -1 * s;
     m = nearestint(c * X);
     print("//", n @ ":", s * c);
-    print("FP509::new(");
+    print("FP492::new(");
     print(repr(s, m), "),");
     N = N - 1;
 };
@@ -72,21 +72,21 @@ while (i < 256) do {
     a = ATAN(v);
     m = nearestint(a * X);
     print("// atan(" @ i @ "/256)");
-    print("FP509::new(");
+    print("FP492::new(");
     print(repr(1, m), "),");
     i = i + 1;
 };
 
 print("");
-print("const LIM: FP509 = FP509::new(");
+print("const LIM: FP492 = FP492::new(");
 print(repr(1, nearestint(LIM * X)), ");");
 
 print("");
-print("const FP509_FRAC_PI_2: FP509 = FP509::new(");
+print("const FP492_FRAC_PI_2: FP492 = FP492::new(");
 print(repr(1, nearestint(pi * X / 2)), ");");
-print("const FP509_NEG_FRAC_PI_2: FP509 = FP509::new(");
+print("const FP492_NEG_FRAC_PI_2: FP492 = FP492::new(");
 print(repr(-1, nearestint(pi * X / 2)), ");");
-print("const FP509_FRAC_PI_4: FP509 = FP509::new(");
+print("const FP492_FRAC_PI_4: FP492 = FP492::new(");
 print(repr(1, nearestint(pi * X / 4)), ");");
-print("const FP509_NEG_FRAC_PI_4: FP509 = FP509::new(");
+print("const FP492_NEG_FRAC_PI_4: FP492 = FP492::new(");
 print(repr(-1, nearestint(pi * X / 4)), ");");

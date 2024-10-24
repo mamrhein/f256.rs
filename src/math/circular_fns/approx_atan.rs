@@ -7,2051 +7,2051 @@
 // $Source$
 // $Revision$
 
-use super::{BigFloat, FP509};
+use super::{BigFloat, FP492};
 use crate::f256;
 
 const N: usize = 33;
 
-const COEFFS: [FP509; N] = [
+const COEFFS: [FP492; N] = [
     // 65: 1 / 65
-    FP509::new(
-        0x007e07e07e07e07e07e07e07e07e07e0,
-        0x7e07e07e07e07e07e07e07e07e07e07e,
-        0x07e07e07e07e07e07e07e07e07e07e07,
-        0xe07e07e07e07e07e07e07e07e07e07e0,
+    FP492::new(
+        0x0000003f03f03f03f03f03f03f03f03f,
+        0x03f03f03f03f03f03f03f03f03f03f03,
+        0xf03f03f03f03f03f03f03f03f03f03f0,
+        0x3f03f03f03f03f03f03f03f03f03f03f,
     ),
     // 63: -1 / 63
-    FP509::new(
-        0xff7df7df7df7df7df7df7df7df7df7df,
-        0x7df7df7df7df7df7df7df7df7df7df7d,
-        0xf7df7df7df7df7df7df7df7df7df7df7,
-        0xdf7df7df7df7df7df7df7df7df7df7df,
+    FP492::new(
+        0xffffffbefbefbefbefbefbefbefbefbe,
+        0xfbefbefbefbefbefbefbefbefbefbefb,
+        0xefbefbefbefbefbefbefbefbefbefbef,
+        0xbefbefbefbefbefbefbefbefbefbefbf,
     ),
     // 61: 1 / 61
-    FP509::new(
-        0x00864b8a7de6d1d60864b8a7de6d1d60,
-        0x864b8a7de6d1d60864b8a7de6d1d6086,
-        0x4b8a7de6d1d60864b8a7de6d1d60864b,
-        0x8a7de6d1d60864b8a7de6d1d60864b8a,
+    FP492::new(
+        0x0000004325c53ef368eb04325c53ef36,
+        0x8eb04325c53ef368eb04325c53ef368e,
+        0xb04325c53ef368eb04325c53ef368eb0,
+        0x4325c53ef368eb04325c53ef368eb043,
     ),
     // 59: -1 / 59
-    FP509::new(
-        0xff75270d0456c797dd49c34115b1e5f7,
-        0x5270d0456c797dd49c34115b1e5f7527,
-        0x0d0456c797dd49c34115b1e5f75270d0,
-        0x456c797dd49c34115b1e5f75270d0457,
+    FP492::new(
+        0xffffffba9386822b63cbeea4e1a08ad8,
+        0xf2fba9386822b63cbeea4e1a08ad8f2f,
+        0xba9386822b63cbeea4e1a08ad8f2fba9,
+        0x386822b63cbeea4e1a08ad8f2fba9387,
     ),
     // 57: 1 / 57
-    FP509::new(
-        0x008fb823ee08fb823ee08fb823ee08fb,
-        0x823ee08fb823ee08fb823ee08fb823ee,
-        0x08fb823ee08fb823ee08fb823ee08fb8,
-        0x23ee08fb823ee08fb823ee08fb823ee1,
+    FP492::new(
+        0x00000047dc11f7047dc11f7047dc11f7,
+        0x047dc11f7047dc11f7047dc11f7047dc,
+        0x11f7047dc11f7047dc11f7047dc11f70,
+        0x47dc11f7047dc11f7047dc11f7047dc1,
     ),
     // 55: -1 / 55
-    FP509::new(
-        0xff6b0df6b0df6b0df6b0df6b0df6b0df,
-        0x6b0df6b0df6b0df6b0df6b0df6b0df6b,
-        0x0df6b0df6b0df6b0df6b0df6b0df6b0d,
-        0xf6b0df6b0df6b0df6b0df6b0df6b0df7,
+    FP492::new(
+        0xffffffb586fb586fb586fb586fb586fb,
+        0x586fb586fb586fb586fb586fb586fb58,
+        0x6fb586fb586fb586fb586fb586fb586f,
+        0xb586fb586fb586fb586fb586fb586fb6,
     ),
     // 53: 1 / 53
-    FP509::new(
-        0x009a90e7d95bc609a90e7d95bc609a90,
-        0xe7d95bc609a90e7d95bc609a90e7d95b,
-        0xc609a90e7d95bc609a90e7d95bc609a9,
-        0x0e7d95bc609a90e7d95bc609a90e7d96,
+    FP492::new(
+        0x0000004d4873ecade304d4873ecade30,
+        0x4d4873ecade304d4873ecade304d4873,
+        0xecade304d4873ecade304d4873ecade3,
+        0x04d4873ecade304d4873ecade304d487,
     ),
     // 51: -1 / 51
-    FP509::new(
-        0xff5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f,
-        0x5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f,
-        0x5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f,
-        0x5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f,
+    FP492::new(
+        0xffffffafafafafafafafafafafafafaf,
+        0xafafafafafafafafafafafafafafafaf,
+        0xafafafafafafafafafafafafafafafaf,
+        0xafafafafafafafafafafafafafafafb0,
     ),
     // 49: 1 / 49
-    FP509::new(
-        0x00a72f05397829cbc14e5e0a72f05397,
-        0x829cbc14e5e0a72f05397829cbc14e5e,
-        0x0a72f05397829cbc14e5e0a72f053978,
-        0x29cbc14e5e0a72f05397829cbc14e5e1,
+    FP492::new(
+        0x0000005397829cbc14e5e0a72f053978,
+        0x29cbc14e5e0a72f05397829cbc14e5e0,
+        0xa72f05397829cbc14e5e0a72f0539782,
+        0x9cbc14e5e0a72f05397829cbc14e5e0a,
     ),
     // 47: -1 / 47
-    FP509::new(
-        0xff51b3bea3677d46cefa8d9df51b3bea,
-        0x3677d46cefa8d9df51b3bea3677d46ce,
-        0xfa8d9df51b3bea3677d46cefa8d9df51,
-        0xb3bea3677d46cefa8d9df51b3bea3678,
+    FP492::new(
+        0xffffffa8d9df51b3bea3677d46cefa8d,
+        0x9df51b3bea3677d46cefa8d9df51b3be,
+        0xa3677d46cefa8d9df51b3bea3677d46c,
+        0xefa8d9df51b3bea3677d46cefa8d9df5,
     ),
     // 45: 1 / 45
-    FP509::new(
-        0x00b60b60b60b60b60b60b60b60b60b60,
-        0xb60b60b60b60b60b60b60b60b60b60b6,
-        0x0b60b60b60b60b60b60b60b60b60b60b,
-        0x60b60b60b60b60b60b60b60b60b60b61,
+    FP492::new(
+        0x0000005b05b05b05b05b05b05b05b05b,
+        0x05b05b05b05b05b05b05b05b05b05b05,
+        0xb05b05b05b05b05b05b05b05b05b05b0,
+        0x5b05b05b05b05b05b05b05b05b05b05b,
     ),
     // 43: -1 / 43
-    FP509::new(
-        0xff417d05f417d05f417d05f417d05f41,
-        0x7d05f417d05f417d05f417d05f417d05,
-        0xf417d05f417d05f417d05f417d05f417,
-        0xd05f417d05f417d05f417d05f417d05f,
+    FP492::new(
+        0xffffffa0be82fa0be82fa0be82fa0be8,
+        0x2fa0be82fa0be82fa0be82fa0be82fa0,
+        0xbe82fa0be82fa0be82fa0be82fa0be82,
+        0xfa0be82fa0be82fa0be82fa0be82fa0c,
     ),
     // 41: 1 / 41
-    FP509::new(
-        0x00c7ce0c7ce0c7ce0c7ce0c7ce0c7ce0,
-        0xc7ce0c7ce0c7ce0c7ce0c7ce0c7ce0c7,
-        0xce0c7ce0c7ce0c7ce0c7ce0c7ce0c7ce,
-        0x0c7ce0c7ce0c7ce0c7ce0c7ce0c7ce0c,
+    FP492::new(
+        0x00000063e7063e7063e7063e7063e706,
+        0x3e7063e7063e7063e7063e7063e7063e,
+        0x7063e7063e7063e7063e7063e7063e70,
+        0x63e7063e7063e7063e7063e7063e7064,
     ),
     // 39: -1 / 39
-    FP509::new(
-        0xff2df2df2df2df2df2df2df2df2df2df,
-        0x2df2df2df2df2df2df2df2df2df2df2d,
-        0xf2df2df2df2df2df2df2df2df2df2df2,
-        0xdf2df2df2df2df2df2df2df2df2df2df,
+    FP492::new(
+        0xffffff96f96f96f96f96f96f96f96f96,
+        0xf96f96f96f96f96f96f96f96f96f96f9,
+        0x6f96f96f96f96f96f96f96f96f96f96f,
+        0x96f96f96f96f96f96f96f96f96f96f97,
     ),
     // 37: 1 / 37
-    FP509::new(
-        0x00dd67c8a60dd67c8a60dd67c8a60dd6,
-        0x7c8a60dd67c8a60dd67c8a60dd67c8a6,
-        0x0dd67c8a60dd67c8a60dd67c8a60dd67,
-        0xc8a60dd67c8a60dd67c8a60dd67c8a61,
+    FP492::new(
+        0x0000006eb3e45306eb3e45306eb3e453,
+        0x06eb3e45306eb3e45306eb3e45306eb3,
+        0xe45306eb3e45306eb3e45306eb3e4530,
+        0x6eb3e45306eb3e45306eb3e45306eb3e,
     ),
     // 35: -1 / 35
-    FP509::new(
-        0xff15f15f15f15f15f15f15f15f15f15f,
-        0x15f15f15f15f15f15f15f15f15f15f15,
-        0xf15f15f15f15f15f15f15f15f15f15f1,
-        0x5f15f15f15f15f15f15f15f15f15f15f,
+    FP492::new(
+        0xffffff8af8af8af8af8af8af8af8af8a,
+        0xf8af8af8af8af8af8af8af8af8af8af8,
+        0xaf8af8af8af8af8af8af8af8af8af8af,
+        0x8af8af8af8af8af8af8af8af8af8af8b,
     ),
     // 33: 1 / 33
-    FP509::new(
-        0x00f83e0f83e0f83e0f83e0f83e0f83e0,
-        0xf83e0f83e0f83e0f83e0f83e0f83e0f8,
-        0x3e0f83e0f83e0f83e0f83e0f83e0f83e,
-        0x0f83e0f83e0f83e0f83e0f83e0f83e10,
+    FP492::new(
+        0x0000007c1f07c1f07c1f07c1f07c1f07,
+        0xc1f07c1f07c1f07c1f07c1f07c1f07c1,
+        0xf07c1f07c1f07c1f07c1f07c1f07c1f0,
+        0x7c1f07c1f07c1f07c1f07c1f07c1f07c,
     ),
     // 31: -1 / 31
-    FP509::new(
-        0xfef7bdef7bdef7bdef7bdef7bdef7bde,
-        0xf7bdef7bdef7bdef7bdef7bdef7bdef7,
+    FP492::new(
+        0xffffff7bdef7bdef7bdef7bdef7bdef7,
         0xbdef7bdef7bdef7bdef7bdef7bdef7bd,
         0xef7bdef7bdef7bdef7bdef7bdef7bdef,
+        0x7bdef7bdef7bdef7bdef7bdef7bdef7c,
     ),
     // 29: 1 / 29
-    FP509::new(
-        0x011a7b9611a7b9611a7b9611a7b9611a,
-        0x7b9611a7b9611a7b9611a7b9611a7b96,
-        0x11a7b9611a7b9611a7b9611a7b9611a7,
-        0xb9611a7b9611a7b9611a7b9611a7b961,
+    FP492::new(
+        0x0000008d3dcb08d3dcb08d3dcb08d3dc,
+        0xb08d3dcb08d3dcb08d3dcb08d3dcb08d,
+        0x3dcb08d3dcb08d3dcb08d3dcb08d3dcb,
+        0x08d3dcb08d3dcb08d3dcb08d3dcb08d4,
     ),
     // 27: -1 / 27
-    FP509::new(
-        0xfed097b425ed097b425ed097b425ed09,
-        0x7b425ed097b425ed097b425ed097b425,
-        0xed097b425ed097b425ed097b425ed097,
-        0xb425ed097b425ed097b425ed097b425f,
+    FP492::new(
+        0xffffff684bda12f684bda12f684bda12,
+        0xf684bda12f684bda12f684bda12f684b,
+        0xda12f684bda12f684bda12f684bda12f,
+        0x684bda12f684bda12f684bda12f684be,
     ),
     // 25: 1 / 25
-    FP509::new(
-        0x0147ae147ae147ae147ae147ae147ae1,
-        0x47ae147ae147ae147ae147ae147ae147,
-        0xae147ae147ae147ae147ae147ae147ae,
-        0x147ae147ae147ae147ae147ae147ae14,
+    FP492::new(
+        0x000000a3d70a3d70a3d70a3d70a3d70a,
+        0x3d70a3d70a3d70a3d70a3d70a3d70a3d,
+        0x70a3d70a3d70a3d70a3d70a3d70a3d70,
+        0xa3d70a3d70a3d70a3d70a3d70a3d70a4,
     ),
     // 23: -1 / 23
-    FP509::new(
-        0xfe9bd37a6f4de9bd37a6f4de9bd37a6f,
-        0x4de9bd37a6f4de9bd37a6f4de9bd37a6,
-        0xf4de9bd37a6f4de9bd37a6f4de9bd37a,
-        0x6f4de9bd37a6f4de9bd37a6f4de9bd38,
+    FP492::new(
+        0xffffff4de9bd37a6f4de9bd37a6f4de9,
+        0xbd37a6f4de9bd37a6f4de9bd37a6f4de,
+        0x9bd37a6f4de9bd37a6f4de9bd37a6f4d,
+        0xe9bd37a6f4de9bd37a6f4de9bd37a6f5,
     ),
     // 21: 1 / 21
-    FP509::new(
-        0x01861861861861861861861861861861,
-        0x86186186186186186186186186186186,
-        0x18618618618618618618618618618618,
-        0x61861861861861861861861861861862,
+    FP492::new(
+        0x000000c30c30c30c30c30c30c30c30c3,
+        0x0c30c30c30c30c30c30c30c30c30c30c,
+        0x30c30c30c30c30c30c30c30c30c30c30,
+        0xc30c30c30c30c30c30c30c30c30c30c3,
     ),
     // 19: -1 / 19
-    FP509::new(
-        0xfe50d79435e50d79435e50d79435e50d,
-        0x79435e50d79435e50d79435e50d79435,
-        0xe50d79435e50d79435e50d79435e50d7,
-        0x9435e50d79435e50d79435e50d79435e,
+    FP492::new(
+        0xffffff286bca1af286bca1af286bca1a,
+        0xf286bca1af286bca1af286bca1af286b,
+        0xca1af286bca1af286bca1af286bca1af,
+        0x286bca1af286bca1af286bca1af286bd,
     ),
     // 17: 1 / 17
-    FP509::new(
-        0x01e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1,
-        0xe1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1,
-        0xe1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1,
-        0xe1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e2,
+    FP492::new(
+        0x000000f0f0f0f0f0f0f0f0f0f0f0f0f0,
+        0xf0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0,
+        0xf0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0,
+        0xf0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f1,
     ),
     // 15: -1 / 15
-    FP509::new(
-        0xfddddddddddddddddddddddddddddddd,
-        0xdddddddddddddddddddddddddddddddd,
-        0xdddddddddddddddddddddddddddddddd,
-        0xddddddddddddddddddddddddddddddde,
+    FP492::new(
+        0xfffffeeeeeeeeeeeeeeeeeeeeeeeeeee,
+        0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee,
+        0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee,
+        0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeef,
     ),
     // 13: 1 / 13
-    FP509::new(
-        0x02762762762762762762762762762762,
-        0x76276276276276276276276276276276,
-        0x27627627627627627627627627627627,
-        0x62762762762762762762762762762762,
+    FP492::new(
+        0x0000013b13b13b13b13b13b13b13b13b,
+        0x13b13b13b13b13b13b13b13b13b13b13,
+        0xb13b13b13b13b13b13b13b13b13b13b1,
+        0x3b13b13b13b13b13b13b13b13b13b13b,
     ),
     // 11: -1 / 11
-    FP509::new(
-        0xfd1745d1745d1745d1745d1745d1745d,
-        0x1745d1745d1745d1745d1745d1745d17,
-        0x45d1745d1745d1745d1745d1745d1745,
-        0xd1745d1745d1745d1745d1745d1745d1,
+    FP492::new(
+        0xfffffe8ba2e8ba2e8ba2e8ba2e8ba2e8,
+        0xba2e8ba2e8ba2e8ba2e8ba2e8ba2e8ba,
+        0x2e8ba2e8ba2e8ba2e8ba2e8ba2e8ba2e,
+        0x8ba2e8ba2e8ba2e8ba2e8ba2e8ba2e8c,
     ),
     // 9: 1 / 9
-    FP509::new(
-        0x038e38e38e38e38e38e38e38e38e38e3,
-        0x8e38e38e38e38e38e38e38e38e38e38e,
-        0x38e38e38e38e38e38e38e38e38e38e38,
-        0xe38e38e38e38e38e38e38e38e38e38e4,
+    FP492::new(
+        0x000001c71c71c71c71c71c71c71c71c7,
+        0x1c71c71c71c71c71c71c71c71c71c71c,
+        0x71c71c71c71c71c71c71c71c71c71c71,
+        0xc71c71c71c71c71c71c71c71c71c71c7,
     ),
     // 7: -1 / 7
-    FP509::new(
-        0xfb6db6db6db6db6db6db6db6db6db6db,
-        0x6db6db6db6db6db6db6db6db6db6db6d,
-        0xb6db6db6db6db6db6db6db6db6db6db6,
+    FP492::new(
+        0xfffffdb6db6db6db6db6db6db6db6db6,
         0xdb6db6db6db6db6db6db6db6db6db6db,
+        0x6db6db6db6db6db6db6db6db6db6db6d,
+        0xb6db6db6db6db6db6db6db6db6db6db7,
     ),
     // 5: 1 / 5
-    FP509::new(
-        0x06666666666666666666666666666666,
-        0x66666666666666666666666666666666,
-        0x66666666666666666666666666666666,
-        0x66666666666666666666666666666666,
+    FP492::new(
+        0x00000333333333333333333333333333,
+        0x33333333333333333333333333333333,
+        0x33333333333333333333333333333333,
+        0x33333333333333333333333333333333,
     ),
     // 3: -1 / 3
-    FP509::new(
-        0xf5555555555555555555555555555555,
-        0x55555555555555555555555555555555,
-        0x55555555555555555555555555555555,
-        0x55555555555555555555555555555555,
+    FP492::new(
+        0xfffffaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+        0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+        0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+        0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab,
     ),
     // 1: 1
-    FP509::new(
-        0x20000000000000000000000000000000,
+    FP492::new(
+        0x00001000000000000000000000000000,
         0x00000000000000000000000000000000,
         0x00000000000000000000000000000000,
         0x00000000000000000000000000000000,
     ),
 ];
 
-const ATANS: [FP509; 256] = [
+const ATANS: [FP492; 256] = [
     // atan(0/256)
-    FP509::new(
+    FP492::new(
         0x00000000000000000000000000000000,
         0x00000000000000000000000000000000,
         0x00000000000000000000000000000000,
         0x00000000000000000000000000000000,
     ),
     // atan(1/256)
-    FP509::new(
-        0x001ffff5555bbbb72976255f6d6da9ef,
-        0xc2cf83175d73792af1244915a4d057de,
-        0xcdad10d01ec4b9bf7ac48a1acc24deb5,
-        0x3b13d77c8cf7c75c28e34a6b9001ead8,
+    FP492::new(
+        0x0000000ffffaaaaddddb94bb12afb6b6,
+        0xd4f7e167c18baeb9bc957892248ad268,
+        0x2bef66d688680f625cdfbd62450d6612,
+        0x6f5a9d89ebbe467be3ae1471a535c801,
     ),
     // atan(2/256)
-    FP509::new(
-        0x003fffaaab77752e5a0188d47eef982b,
-        0xd1da15a805c68bc006a0f455d9fbb394,
-        0x24223a10251791eb2df396f8b58949ca,
-        0x598ef21db2e2fc3caae1e53f1af35c55,
+    FP492::new(
+        0x0000001fffd555bbba972d00c46a3f77,
+        0xcc15e8ed0ad402e345e003507a2aecfd,
+        0xd9ca12111d08128bc8f596f9cb7c5ac4,
+        0xa4e52cc7790ed9717e1e5570f29f8d7a,
     ),
     // atan(3/256)
-    FP509::new(
-        0x005ffee006130c268dafe8af7dcb4b6e,
-        0x2de7685c837dbbb1c29b61d0f589a3f5,
-        0xbb8957091d7d47c8f3cc116b9225297d,
-        0xa8d5ed77fc830c604366e863ac3d1ea3,
+    FP492::new(
+        0x0000002fff700309861346d7f457bee5,
+        0xa5b716f3b42e41beddd8e14db0e87ac4,
+        0xd1faddc4ab848ebea3e479e608b5c912,
+        0x94bed46af6bbfe41863021b37431d61f,
     ),
     // atan(4/256)
-    FP509::new(
-        0x007ffd556eedca6addf3c62b200afbb0,
-        0x241077b2e086f77a3034afc0193ab0e5,
-        0xd46d43bd30b1a3caed1a1326c50dd374,
-        0x97957c02cf2f5a9290b4371f69bf3843,
+    FP492::new(
+        0x0000003ffeaab776e5356ef9e3159005,
+        0x7dd812083bd970437bbd181a57e00c9d,
+        0x5872ea36a1de9858d1e5768d09936286,
+        0xe9ba4bcabe016797ad49485a1b8fb4e0,
     ),
     // atan(5/256)
-    FP509::new(
-        0x009ffacaf8c537fdbd82a792609a7fa4,
-        0xffa60d604a401d620ac66b4b146264f0,
-        0x871a26c898bbc6322e69a45422cb4d4b,
-        0x46527862240d40f0ad6a551334b41972,
+    FP492::new(
+        0x0000004ffd657c629bfedec153c9304d,
+        0x3fd27fd306b025200eb1056335a58a31,
+        0x3278438d13644c5de3191734d22a1165,
+        0xa6a5a3293c311206a07856b52a899a5a,
     ),
     // atan(6/256)
-    FP509::new(
-        0x00bff700c252e1ad79cec07eb956a4a3,
-        0x71ba9f702d55db5458939a42a9586122,
-        0x6dc423ca71344499e6d4f5ad3817df0e,
-        0x15391f55797404339074e6c73411dbe9,
+    FP492::new(
+        0x0000005ffb80612970d6bce7603f5cab,
+        0x5251b8dd4fb816aaedaa2c49cd2154ac,
+        0x309136e211e5389a224cf36a7ad69c0b,
+        0xef870a9c8faabcba0219c83a73639a09,
     ),
     // atan(7/256)
-    FP509::new(
-        0x00dff1b6f948b88e1e41388a9eff195f,
-        0x9968f34b8c2e349753555fdfe05ffb67,
-        0x8c64a6810a9310fb58c9979382ebd09f,
-        0x90ea1e7454a039411af552e6b88d17f0,
+    FP492::new(
+        0x0000006ff8db7ca45c470f209c454f7f,
+        0x8cafccb479a5c6171a4ba9aaafeff02f,
+        0xfdb3c63253408549887dac64cbc9c175,
+        0xe84fc8750f3a2a501ca08d7aa9735c47,
     ),
     // atan(8/256)
-    FP509::new(
-        0x00ffeaaddd4bb12542779d776dda8c62,
-        0x13806d0294c0db881647017db44d6106,
-        0x0765523eb12fcbf3a1e505febef487c5,
-        0xa2790d24f84ed5f8826b192b8de6c520,
+    FP492::new(
+        0x0000007ff556eea5d892a13bcebbb6ed,
+        0x463109c036814a606dc40b2380beda26,
+        0xb08303b2a91f5897e5f9d0f282ff5f7a,
+        0x43e2d13c86927c276afc41358c95c6f3,
     ),
     // atan(9/256)
-    FP509::new(
-        0x011fe1a5c2ec4976218247a3f132d145,
-        0x549fee8bc378d0570703a6b326f3dc97,
-        0xda37802acebf2d048e9f9241b53b9a4d,
-        0xc46f93b5e532e9cd7f8fc39190f39145,
+    FP492::new(
+        0x0000008ff0d2e17624bb10c123d1f899,
+        0x68a2aa4ff745e1bc682b8381d3599379,
+        0xee4bed1bc015675f9682474fc920da9d,
+        0xcd26e237c9daf29974e6bfc7e1c8c87a,
     ),
     // atan(10/256)
-    FP509::new(
-        0x013fd65f169c9d917230a716461b4e5e,
-        0xc309d9936441b71180e53273affa5b40,
-        0x4141d05d2fadf5832652e3d1745802be,
-        0x95de8934dddcd71a532783d0cb3a42c3,
+    FP492::new(
+        0x0000009feb2f8b4e4ec8b918538b230d,
+        0xa72f6184ecc9b220db88c0729939d7fd,
+        0x2da020a0e82e97d6fac1932971e8ba2c,
+        0x015f4aef449a6eee6b8d2993c1e8659d,
     ),
     // atan(11/256)
-    FP509::new(
-        0x015fc89a5fa3b2d4aedcefd39fe62e29,
-        0x078c9aab6a4b4e5556d7b04ecf8518d4,
-        0x536040b0ebe5c2479d89601b3f95ea7e,
-        0xc15be682f9323640b126c5c7f6058b28,
+    FP492::new(
+        0x000000afe44d2fd1d96a576e77e9cff3,
+        0x171483c64d55b525a72aab6bd82767c2,
+        0x8c6a29b0205875f2e123cec4b00d9fca,
+        0xf53f60adf3417c991b20589362e3fb03,
     ),
     // atan(12/256)
-    FP509::new(
-        0x017fb818430da29f9e441c21ac3beadd,
-        0x8e3bbbac9f00fe4114ee624042fbcf2e,
-        0xd4b312c4c87377e3dda112970ce2e02f,
-        0xb3629dad1aeab66dc4af61c1c2c58f21,
+    FP492::new(
+        0x000000bfdc0c2186d14fcf220e10d61d,
+        0xf56ec71dddd64f807f208a773120217d,
+        0xe7976a5989626439bbf1eed0894b8671,
+        0x7017d9b14ed68d755b36e257b0e0e163,
     ),
     // atan(13/256)
-    FP509::new(
-        0x019fa49986984df4c8a41ebc2af072b7,
-        0x4b08e041adfbb67db6538cb69cdb01e7,
-        0x51fc00cb23ce0fffc04e919fa3e1a30f,
-        0x05ae1b595bf7656820d152de3c6ed7a0,
+    FP492::new(
+        0x000000cfd24cc34c26fa64520f5e1578,
+        0x395ba5847020d6fddb3edb29c65b4e6d,
+        0x80f3a8fe006591e707ffe02748cfd1f0,
+        0xd18782d70dacadfbb2b41068a96f1e37,
     ),
     // atan(14/256)
-    FP509::new(
-        0x01bf8ddf139c4439d8072d3560161d75,
-        0x934a3e53d2b497ca01a367cb951328c6,
-        0xb6bff8ba0af5f178d7c000a73a89e59c,
-        0xe5df21ba0e947fadddeb58f810c21968,
+    FP492::new(
+        0x000000dfc6ef89ce221cec03969ab00b,
+        0x0ebac9a51f29e95a4be500d1b3e5ca89,
+        0x94635b5ffc5d057af8bc6be000539d44,
+        0xf2ce72ef90dd074a3fd6eef5ac7c0861,
     ),
     // atan(15/256)
-    FP509::new(
-        0x01df73a9f9f1881f6d7251df7a1a5f9f,
-        0xedeb3a33d81fb51cf4b05a75d40f78be,
-        0xc0190ca069434dd6d0910fa78a899c21,
-        0x5a33bc55331b9fa9e793a9a01a2ecdaa,
+    FP492::new(
+        0x000000efb9d4fcf8c40fb6b928efbd0d,
+        0x2fcff6f59d19ec0fda8e7a582d3aea07,
+        0xbc5f600c865034a1a6eb684887d3c544,
+        0xce10ad19de2a998dcfd4f3c9d4d00d17,
     ),
     // atan(16/256)
-    FP509::new(
-        0x01ff55bb72cfde9c6d964f25b81c5c1a,
-        0xa26338259eb3a965b870f53f00789715,
-        0xda04920128e7d36fa927fc524d58e900,
-        0x76280967cc4b4981484a43bd29de550b,
+    FP492::new(
+        0x000000ffaaddb967ef4e36cb2792dc0e,
+        0x2e0d51319c12cf59d4b2dc387a9f803c,
+        0x4b8aed0249009473e9b7d493fe2926ac,
+        0x74803b1404b3e625a4c0a42521de94ef,
     ),
     // atan(17/256)
-    FP509::new(
-        0x021f33d4e3aa54dedf960113c9db1233,
-        0xb19f699da91f47d80d2038a328ef680c,
-        0x38d737f22cca24f88e9fb7d671e38ee6,
-        0xebb72442aac6c217209bffee06226ad5,
+    FP492::new(
+        0x0000010f99ea71d52a6f6fcb0089e4ed,
+        0x8919d8cfb4ced48fa3ec06901c519477,
+        0xb4061c6b9bf91665127c474fdbeb38f1,
+        0xc77375db92215563610b904dfff70311,
     ),
     // atan(18/256)
-    FP509::new(
-        0x023f0db7e105ab1bda88e233441fb61f,
-        0xca53aab183c2b48e9c8700a159cca170,
-        0xbe7f78ed0ffbb0bbf28fbf8a409af810,
-        0xccab99fcfdfe064d60a16d86339c3497,
+    FP492::new(
+        0x0000011f86dbf082d58ded447119a20f,
+        0xdb0fe529d558c1e15a474e438050ace6,
+        0x50b85f3fbc7687fdd85df947dfc5204d,
+        0x7c086655ccfe7eff0326b050b6c319ce,
     ),
     // atan(19/256)
-    FP509::new(
-        0x025ee326314953404ff45de6e6007cb9,
-        0x5444a33d8a316533401cdf74780e25ea,
-        0x9c725f444b9efab41cc142c2d6105e81,
-        0x5f0658125e4f3110485e8416f5408c6b,
+    FP492::new(
+        0x0000012f719318a4a9a027fa2ef37300,
+        0x3e5caa22519ec518b299a00e6fba3c07,
+        0x12f54e392fa225cf7d5a0e60a1616b08,
+        0x2f40af832c092f279888242f420b7aa0,
     ),
     // atan(20/256)
-    FP509::new(
-        0x027eb3e1cf8ab3ad6267142efc239b37,
-        0xd93d661f697e6f219b8d6c2fa9303110,
-        0x40f196120da7867686d5e2d87dc2fde0,
-        0x51dad4de792fadb7f4b467bcadece1a4,
+    FP492::new(
+        0x0000013f59f0e7c559d6b1338a177e11,
+        0xcd9bec9eb30fb4bf3790cdc6b617d498,
+        0x18882078cb0906d3c33b436af16c3ee1,
+        0x7ef028ed6a6f3c97d6dbfa5a33de56f6,
     ),
     // atan(21/256)
-    FP509::new(
-        0x029e7facee525f640234d89925e765e3,
-        0x7c9a8bd53d42e909a7dde62bfc3cd243,
-        0x156c70cca9e235a936edbf694cc7c505,
-        0x21626235ddc5f2aae637f8cf2d3a1364,
+    FP492::new(
+        0x0000014f3fd677292fb2011a6c4c92f3,
+        0xb2f1be4d45ea9ea17484d3eef315fe1e,
+        0x69218ab6386654f11ad49b76dfb4a663,
+        0xe28290b1311aeee2f955731bfc67969d,
     ),
     // atan(22/256)
-    FP509::new(
-        0x02be4649fa5af64c546d220098c6fd59,
-        0xce6bf418a3815f5830a217c1d5a2116a,
-        0x86c1c2187d2e683d18147130fe2f45e4,
-        0x2777fc5a5b32fd2786ead85f28b47688,
+    FP492::new(
+        0x0000015f2324fd2d7b262a3691004c63,
+        0x7eace735fa0c51c0afac18510be0ead1,
+        0x08b54360e10c3e97341e8c0a38987f17,
+        0xa2f213bbfe2d2d997e93c3756c2f945a,
     ),
     // atan(23/256)
-    FP509::new(
-        0x02de077b9d49619d81fe35da0bd06bfb,
-        0x29245e6af63bae8b96299a9c05a11d17,
-        0x1edfd551c5d4805744c44c9c5c27572e,
-        0x977e0f9ba157e72f1262994c9fc8aab2,
+    FP492::new(
+        0x0000016f03bdcea4b0cec0ff1aed05e8,
+        0x35fd94922f357b1dd745cb14cd4e02d0,
+        0x8e8b8f6feaa8e2ea402ba262264e2e13,
+        0xab974bbf07cdd0abf39789314ca64fe4,
     ),
     // atan(24/256)
-    FP509::new(
-        0x02fdc304c05e21d1824d59f9e133e0d9,
-        0xd9f82a11e60ab8370caccfc0b1867c01,
-        0x68a8e99054926648d8e00d8d79f89dda,
-        0x160a6c5ba28f995a1ec396a41d3dec75,
+    FP492::new(
+        0x0000017ee182602f10e8c126acfcf099,
+        0xf06cecfc1508f3055c1b865667e058c3,
+        0x3e00b45474c82a4933246c7006c6bcfc,
+        0x4eed0b05362dd147ccad0f61cb520e9f,
     ),
     // atan(25/256)
-    FP509::new(
-        0x031d78a88f1f6505cca2032b4932ea1b,
-        0xd8f16ec470721363d7b0de76c478991a,
-        0x03729fcb7abbf9d7671b3b65cdf0d3cf,
-        0x44acd58d3a8f98b0469e25696952a45f,
+    FP492::new(
+        0x0000018ebc54478fb282e6510195a499,
+        0x750dec78b762383909b1ebd86f3b623c,
+        0x4c8d01b94fe5bd5dfcebb38d9db2e6f8,
+        0x69e7a2566ac69d47cc58234f12b4b4a9,
     ),
     // atan(26/256)
-    FP509::new(
-        0x033d282a79fb9e2d19970eb4e23f02a3,
-        0xd3f521944e4ffd8951923cdc649e9d07,
-        0x383b17ed4fd65eb520eeabebdb875c11,
-        0xb773fcf2fb72ab9b256ba58eeed6db27,
+    FP492::new(
+        0x0000019e94153cfdcf168ccb875a711f,
+        0x8151e9fa90ca2727fec4a8c91e6e324f,
+        0x4e839c1d8bf6a7eb2f5a907755f5edc3,
+        0xae08dbb9fe797db955cd92b5d2c7776b,
     ),
     // atan(27/256)
-    FP509::new(
-        0x035cd14e38e4570700539a442e76dcb7,
-        0xf77fc9153b11d742258e1747cf3035d4,
-        0x3dd104e2a01732379534a15b0b2f6faf,
-        0x1f433e285a5962908da569648d7f8d2e,
+    FP492::new(
+        0x000001ae68a71c722b838029cd22173b,
+        0x6e5bfbbfe48a9d88eba112c70ba3e798,
+        0x1aea1ee88271500b991bca9a50ad8597,
+        0xb7d78fa19f142d2cb14846d2b4b246c0,
     ),
     // atan(28/256)
-    FP509::new(
-        0x037c73d7cde0f86fbdc794d02cc39767,
-        0xba435f943a46884fb6361c17ad0cc9ee,
-        0x92366de23c21d0bdd7e580e5d352e085,
-        0x79caaa8141efa900cf6ac706613266be,
+    FP492::new(
+        0x000001be39ebe6f07c37dee3ca681661,
+        0xcbb3dd21afca1d234427db1b0e0bd686,
+        0x64f7491b36f11e10e85eebf2c072e9a9,
+        0x7042bce55540a0f7d48067b563833099,
     ),
     // atan(29/256)
-    FP509::new(
-        0x039c0f8b879946444e3990964629a518,
-        0x32cf73bb04f8fca0b6da8a1f4b9689a7,
-        0xc29967b511a5dad59f8a8d81cee0f704,
-        0xa992983438159518b3c7eb6da85890c0,
+    FP492::new(
+        0x000001ce07c5c3cca322271cc84b2314,
+        0xd28c1967b9dd827c7e505b6d450fa5cb,
+        0x44d3e14cb3da88d2ed6acfc546c0e770,
+        0x7b8254c94c1a1c0aca8c59e3f5b6d42c,
     ),
     // atan(30/256)
-    FP509::new(
-        0x03bba42e03d74dcca77fe6bb7f2bf56b,
-        0x322162d35e686b6516d1de92f378190e,
-        0x20517f458cfae9d3c8dc09d989acbd12,
-        0xd5a537d911aaa12810b3ae06e6af94e3,
+    FP492::new(
+        0x000001ddd21701eba6e653bff35dbf95,
+        0xfab59910b169af3435b28b68ef4979bc,
+        0x0c871028bfa2c67d74e9e46e04ecc4d6,
+        0x5e896ad29bec88d550940859d7037358,
     ),
     // atan(31/256)
-    FP509::new(
-        0x03db31843200875ec5a67a6d384ed529,
-        0x1d3c6db08cacf3083faebd41ced81721,
-        0x4df67c3957133232b0612c7eb76cea16,
-        0xa5c6f4bfd945aae12f2a77ff2fc4bda9,
+    FP492::new(
+        0x000001ed98c2190043af62d33d369c27,
+        0x6a948e9e36d8465679841fd75ea0e76c,
+        0x0b90a6fb3e1cab8999195830963f5bb6,
+        0x750b52e37a5feca2d57097953bff97e2,
     ),
     // atan(32/256)
-    FP509::new(
-        0x03fab7535585edb8cb225e627cfa223b,
-        0xde2ce55f65766b648bb24d5df7edb05d,
-        0xa35340200807670994ffe9754788d35c,
-        0x7575cf2627ca6beff4a9b3622afe11be,
+    FP492::new(
+        0x000001fd5ba9aac2f6dc65912f313e7d,
+        0x111def1672afb2bb35b245d926aefbf6,
+        0xd82ed1a9a0100403b384ca7ff4baa3c4,
+        0x69ae3abae79313e535f7fa54d9b1157f,
     ),
     // atan(33/256)
-    FP509::new(
-        0x041a3561084acf661d2d7cfe6402ed6e,
-        0x9f971f7dacb5fdb6963787347f589996,
-        0x3f9c01c8c586a0266f27cedd37dd2c77,
-        0xcfbedb1d229df90eaaa8fda48d4f5c00,
+    FP492::new(
+        0x0000020d1ab0842567b30e96be7f3201,
+        0x76b74fcb8fbed65afedb4b1bc39a3fac,
+        0x4ccb1fce00e462c350133793e76e9bee,
+        0x963be7df6d8e914efc8755547ed246a8,
     ),
     // atan(34/256)
-    FP509::new(
-        0x0439ab733d0220628e5ce44672f2c72d,
-        0x09b0f5ef1f01228510df0eb0c095066c,
-        0xbd4926ac3cc55883c42ff19754af0e18,
-        0x7b686e5f2528e93250242ec511cec77f,
+    FP492::new(
+        0x0000021cd5b99e811031472e72233979,
+        0x639684d87af78f809142886f8758604a,
+        0x83365ea493561e62ac41e217f8cbaa57,
+        0x870c3db4372f929474992812176288e7,
     ),
     // atan(35/256)
-    FP509::new(
-        0x0459195041821416bcee8ae7ea91abc6,
-        0x0c5253b6eeff1270ff27618b78d1f4d3,
-        0x7c44c6ea6fb7e090909a0a9a053d3e52,
-        0xf65be7951682285106c5e00a4c77ab77,
+    FP492::new(
+        0x0000022c8ca820c10a0b5e774573f548,
+        0xd5e3062929db777f89387f93b0c5bc68,
+        0xfa69be22637537dbf048484d054d029e,
+        0x9f297b2df3ca8b4114288362f005263c,
     ),
     // atan(36/256)
-    FP509::new(
-        0x04787ebec10dc9b92de9bac94c1d057c,
-        0xcf150ad614fe006473005883817d208d,
-        0x1b0d02bcf303e81b5ed0ec4b199eab0d,
-        0xcf849efb6d4e04e20584bace1a4c41ea,
+    FP492::new(
+        0x0000023c3f5f6086e4dc96f4dd64a60e,
+        0x82be678a856b0a7f003239802c41c0be,
+        0x90468d86815e7981f40daf6876258ccf,
+        0x5586e7c24f7db6a7027102c25d670d26,
     ),
     // atan(37/256)
-    FP509::new(
-        0x0497db85c694d717c6d7bde1a31079c3,
-        0x95ae342442076e7200532e183333c011,
-        0x2bbe5a7c16b073f8e7b900cf883bd0d6,
-        0x219ff0022fb037aecf5b46b8a4532042,
+    FP492::new(
+        0x0000024bedc2e34a6b8be36bdef0d188,
+        0x3ce1cad71a122103b7390029970c1999,
+        0xe00895df2d3e0b5839fc73dc8067c41d,
+        0xe86b10cff80117d81bd767ada35c522a,
     ),
     // atan(38/256)
-    FP509::new(
-        0x04b72f6cbee87fcc794382ab0a9a29f9,
-        0x5681fa4e35878c271c43dfe58123fe42,
-        0x5226b773212741c6be47e5a5e825de93,
-        0x105a8d2bef1d78feea6a59e3901d49af,
+    FP492::new(
+        0x0000025b97b65f743fe63ca1c155854d,
+        0x14fcab40fd271ac3c6138e21eff2c091,
+        0xff2129135bb99093a0e35f23f2d2f412,
+        0xef49882d4695f78ebc7f75352cf1c80f,
     ),
     // atan(39/256)
-    FP509::new(
-        0x04d67a3b7ae668e5a028b1b9fb39c57a,
-        0x616b7a48b6aefd840790ad0a3fb8870f,
-        0xb9accfa30fd88536dc275a209660fbe0,
-        0x98c2d28b83812db358634b0a9288b143,
+    FP492::new(
+        0x0000026b3d1dbd733472d01458dcfd9c,
+        0xe2bd30b5bd245b577ec203c856851fdc,
+        0x4387dcd667d187ec429b6e13ad104b30,
+        0x7df04c616945c1c096d9ac31a5854944,
     ),
     // atan(40/256)
-    FP509::new(
-        0x04f5bbba31989b161a3b0ce9281b07f4,
-        0x2bba97a7c5d6e946e265e0525a14780b,
-        0x6dac1d47778d549f9bc936b61515b947,
-        0xf769014838dfb58e549a45ced7c5a276,
+    FP492::new(
+        0x0000027adddd18cc4d8b0d1d8674940d,
+        0x83fa15dd4bd3e2eb74a37132f0292d0a,
+        0x3c05b6d60ea3bbc6aa4fcde49b5b0a8a,
+        0xdca3fbb480a41c6fdac72a4d22e76be3,
     ),
     // atan(41/256)
-    FP509::new(
-        0x0514f3b1824aa791f653b3a5a78b70b1,
-        0xfb2a0105322cb94e4f21a978877a0338,
-        0x826765661aadade87e4844eb6cbd90a3,
-        0x6c5e55152ca6c2be85fd3bdfdc8ee9fc,
+    FP492::new(
+        0x0000028a79d8c12553c8fb29d9d2d3c5,
+        0xb858fd95008299165ca72790d4bc43bd,
+        0x019c4133b2b30d56d6f43f242275b65e,
+        0xc851b62f2a8a9653615f42fe9defee47,
     ),
     // atan(42/256)
-    FP509::new(
-        0x053421ea7693c5d1f323f1adf157983e,
-        0xf0bf041414c052e9ee3cf68fa7f96a9a,
-        0x02d06cb4a403b9f499c1eb6baf84f7b9,
-        0x0c61d32cfa592cd514928ee556494fc1,
+    FP492::new(
+        0x0000029a10f53b49e2e8f991f8d6f8ab,
+        0xcc1f785f820a0a602974f71e7b47d3fc,
+        0xb54d0168365a5201dcfa4ce0f5b5d7c2,
+        0x7bdc8630e9967d2c966a8a494772ab25,
     ),
     // atan(43/256)
-    FP509::new(
-        0x0553462e8455c2918282f28840737595,
-        0x2a5ed187a30c0ffd7f33147df89ef2c0,
-        0xef1710953fdff502ac1693ec2dd060d5,
-        0x25772b25b30e38056a3ef3acce5420af,
+    FP492::new(
+        0x000002a9a317422ae148c14179442039,
+        0xbaca952f68c3d18607febf998a3efc4f,
+        0x7960778b884a9feffa81560b49f616e8,
+        0x306a92bb9592d9871c02b51f79d6672a,
     ),
     // atan(44/256)
-    FP509::new(
-        0x057260478fb09a77d5aa69ff78616f4c,
-        0xa169f36ea8d835a660fb1b299e93dea6,
-        0x04a298e2bd6cf91b949fadb498739b3e,
-        0x37f01bbb60202cf161a8cc3b6e044fa7,
+    FP492::new(
+        0x000002b93023c7d84d3bead534ffbc30,
+        0xb7a650b4f9b7546c1ad3307d8d94cf49,
+        0xef5302514c715eb67c8dca4fd6da4c39,
+        0xcd9f1bf80dddb0101678b0d4661db702,
     ),
     // atan(45/256)
-    FP509::new(
-        0x05916fffecea9cfc159293107a698de2,
-        0x231fbbea98da5012c889d51a56ecdb85,
-        0x9b64b253476096409761e774623158d1,
-        0x32a7e3d79ac5b74efd65ce3a6e90b5cf,
+    FP492::new(
+        0x000002c8b7fff6754e7e0ac949883d34,
+        0xc6f1118fddf54c6d28096444ea8d2b76,
+        0x6dc2cdb25929a3b04b204bb0f3ba3118,
+        0xac689953f1ebcd62dba77eb2e71d3748,
     ),
     // atan(46/256)
-    FP509::new(
-        0x05b07522624cf636b55ac4fe1deca934,
-        0x169ff7190f210787c385224fe431569b,
-        0x2f1df0702f1d943c7744d06343d30a08,
-        0x5729ffda8cfa4fd423fec4e6976fb63c,
+    FP492::new(
+        0x000002d83a9131267b1b5aad627f0ef6,
+        0x549a0b4ffb8c879083c3e1c29127f218,
+        0xab4d978ef838178eca1e3ba26831a1e9,
+        0x85042b94ffed467d27ea11ff62734bb8,
     ),
     // atan(47/256)
-    FP509::new(
-        0x05cf6f7a29f480752978495accd1abe0,
-        0xf16c44852efed81434984332c0125a69,
-        0xa59563a482fd61a45ffee28f8c8868e0,
-        0xe36b53560e016caefb5055fd614ac3ed,
+    FP492::new(
+        0x000002e7b7bd14fa403a94bc24ad6668,
+        0xd5f078b62242977f6c0a1a4c21996009,
+        0x2d34d2cab1d2417eb0d22fff7147c644,
+        0x347071b5a9ab0700b6577da82afeb0a5,
     ),
     // atan(48/256)
-    FP509::new(
-        0x05ee5ed2f396c089a3d85a7c40e4e3a4,
-        0x3c9d6806b41c51595782d35278f3eb96,
-        0x8cb88230742628e8145c1c6fa7eb805e,
-        0x7c6a8c08211abbf00550368b6a9f18a8,
+    FP492::new(
+        0x000002f72f6979cb6044d1ec2d3e2072,
+        0x71d21e4eb4035a0e28acabc169a93c79,
+        0xf5cb465c41183a1314740a2e0e37d3f5,
+        0xc02f3e354604108d5df802a81b45b550,
     ),
     // atan(49/256)
-    FP509::new(
-        0x060d42f8e63af1f52b7666a31b79841f,
-        0x707552b2415bccda9db8b32471174deb,
-        0xff242f844bd67a5bf147102cb1598ff2,
-        0xc91e4d8837e12abf657ff799dfdfa861,
+    FP492::new(
+        0x00000306a17c731d78fa95bb33518dbc,
+        0xc20fb83aa95920ade66d4edc5992388b,
+        0xa6f5ff9217c225eb3d2df8a3881658ac,
+        0xc7f9648f26c41bf0955fb2bffbcceff0,
     ),
     // atan(50/256)
-    FP509::new(
-        0x062c1bb8a1e70a2ee732cfcf73b0be58,
-        0xb4f2fb2186728017bdd73a7ef46da1c1,
-        0x937455229f1b4a9d0a6e8ef4a14f406f,
-        0x40c8b0c7c3b147149a043821a877e683,
+    FP492::new(
+        0x000003160ddc50f38517739967e7b9d8,
+        0x5f2c5a797d90c339400bdeeb9d3f7a36,
+        0xd0e0c9ba2a914f8da54e8537477a50a7,
+        0xa037a0645863e1d8a38a4d021c10d43c,
     ),
     // atan(51/256)
-    FP509::new(
-        0x064ae8df41409c6f2c212f00b89c3d8e,
-        0x37fa7d1d221df6596f082ed49ac42691,
-        0xdbecd6dea83dee8d66e245e1ae695b58,
-        0x6445ed603b1b9d38bcbec0927913d6c2,
+    FP492::new(
+        0x00000325746fa0a04e37961097805c4e,
+        0x1ec71bfd3e8e910efb2cb784176a4d62,
+        0x1348edf66b6f541ef746b37122f0d734,
+        0xadac3222f6b01d8dce9c5e5f60493c8a,
     ),
     // atan(52/256)
-    FP509::new(
-        0x0669aa3a5b2189873d8079ed0d237759,
-        0xd55f893260de13b0df82f2db444499e1,
-        0x47ca0c034c98a036909eddbfc3706ad7,
-        0x54b0305e7639a446f7ec8dff0bba33b7,
+    FP492::new(
+        0x00000334d51d2d90c4c39ec03cf68691,
+        0xbbaceaafc499306f09d86fc1796da222,
+        0x4cf0a3e50601a64c501b484f6edfe1b8,
+        0x356baa58182f3b1cd2237bf646ff85dd,
     ),
     // atan(53/256)
-    FP509::new(
-        0x06885f980420696f210759f50c8c79e7,
-        0x71b14f5af0cc9b3b09c1f36112524e0e,
-        0x29b27dc9732796b2311af4d92697b277,
-        0xa3d8045bb9fae34b68cd5f5eb20f3727,
+    FP492::new(
+        0x000003442fcc021034b79083acfa8646,
+        0x3cf3b8d8a7ad78664d9d84e0f9b08929,
+        0x270714d93ee4b993cb59188d7a6c934b,
+        0xd93bd1ec022ddcfd71a5b466afaf5908,
     ),
     // atan(54/256)
-    FP509::new(
-        0x06a708c6d00c9e50e8bbe89cca8550eb,
-        0x0d213828a278f1ccb05d91a12eb7a7d4,
-        0x53e49e5d16281b3dc4959a65295f366f,
-        0x5dce86cb0ddc778e890585c117127c3a,
+    FP492::new(
+        0x00000353846368064f28745df44e6542,
+        0xa87586909c14513c78e6582ec8d0975b,
+        0xd3ea29f24f2e8b140d9ee24acd3294af,
+        0x9b37aee7436586ee3bc74482c2e08b89,
     ),
     // atan(55/256)
-    FP509::new(
-        0x06c5a595d35e02f3d2a381f52cc67e91,
-        0x593e9cd58301db5f0770f03274370294,
-        0x13257c1e0fb00a5b523b3d54bb43a020,
-        0x49c3c3f19b4f6fe9b53c45e007957b15,
+    FP492::new(
+        0x00000362d2cae9af0179e951c0fa9663,
+        0x3f48ac9f4e6ac180edaf83b878193a1b,
+        0x814a0992be0f07d8052da91d9eaa5da1,
+        0xd01024e1e1f8cda7b7f4da9e22f003cb,
     ),
     // atan(56/256)
-    FP509::new(
-        0x06e435d4a498288117b10d2e0e5aa978,
-        0x1432289469d25892aab10378cbfc2147,
-        0x6218d57a026ee03aa54fac56b7759cbb,
-        0x037ef118f37c6c26babe5e45c5b2a7df,
+    FP492::new(
+        0x000003721aea524c14408bd88697072d,
+        0x54bc0a19144a34e92c49555881bc65fe,
+        0x10a3b10c6abd0137701d52a7d62b5bba,
+        0xce5d81bf788c79be36135d5f2f22e2d9,
     ),
     // atan(57/256)
-    FP509::new(
-        0x0702b9535da119afb3240aa0d924277d,
-        0xb25e6178a60451a7217d24f8effe0759,
-        0x9ef04afce804746a9e56db678117f10d,
-        0x9e655aeab454791dce379f71e16b96a1,
+    FP492::new(
+        0x000003815ca9aed08cd7d99205506c92,
+        0x13bed92f30bc530228d390be927c77ff,
+        0x03accf78257e74023a354f2b6db3c08b,
+        0xf886cf32ad755a2a3c8ee71bcfb8f0b6,
     ),
     // atan(58/256)
-    FP509::new(
-        0x07212fe29d0b9b7352117cbe8aecdaa4,
-        0x32d3ef3858475eae6c60501baa8d6fc1,
-        0x00ef5217129f114526b08b56ddf7da97,
-        0xe0b8fa864966eaf71117470906932bf4,
+    FP492::new(
+        0x0000039097f14e85cdb9a908be5f4576,
+        0x6d521969f79c2c23af573630280dd546,
+        0xb7e08077a90b894f88a2935845ab6efb,
+        0xed4bf05c7d4324b3757b888ba384834a,
     ),
     // atan(59/256)
-    FP509::new(
-        0x073f99538754e5547b9a3f71eafb58ec,
-        0xd9847e7623f08f898b913dd6468b3489,
-        0x7c92fc4c5f69380b2c1045f23c1bb9a0,
-        0x612f0cbbac6e295695b18659e121fac8,
+    FP492::new(
+        0x0000039fcca9c3aa72aa3dcd1fb8f57d,
+        0xac766cc23f3b11f847c4c5c89eeb2345,
+        0x9a44be497e262fb49c05960822f91e0d,
+        0xdcd03097865dd63714ab4ad8c32cf091,
     ),
     // atan(60/256)
-    FP509::new(
-        0x075df577c815cd9c648d1534597debc7,
-        0x3d89676150197f802f36d0cfd144ed80,
-        0xc3c9c97a2ac1ec40b7187cebfaf94d97,
-        0x9894ea45708778efdf2ddfdeb39498ba,
+    FP492::new(
+        0x000003aefabbe40ae6ce32468a9a2cbe,
+        0xf5e39ec4b3b0a80cbfc0179b6867e8a2,
+        0x76c061e4e4bd1560f6205b8c3e75fd7c,
+        0xa6cbcc4a7522b843bc77ef96efef59ca,
     ),
     // atan(61/256)
-    FP509::new(
-        0x077c44219327677d4fce9588170feca1,
-        0x238d157d316f4e7863a19773ee220b0d,
-        0x5d880c8937fa12642431403b15d5383f,
-        0xace749f2993a39cfb5b91d71773149d6,
+    FP492::new(
+        0x000003be2210c993b3bea7e74ac40b87,
+        0xf65091c68abe98b7a73c31d0cbb9f711,
+        0x0586aec406449bfd09321218a01d8aea,
+        0x9c1fd673a4f94c9d1ce7dadc8eb8bb99,
     ),
     // atan(62/256)
-    FP509::new(
-        0x079a8523a5bb135866b22029f7650340,
-        0xe677edb5e97ff239e2722f3680223a3f,
-        0x754c862931c04ef07b7ba6fdb8876d85,
-        0x3bcb87d05432c7580b21ee93a9887acb,
+    FP492::new(
+        0x000003cd4291d2dd89ac33591014fbb2,
+        0x81a0733bf6daf4bff91cf139179b4011,
+        0x1d1fbaa6431498e027783dbdd37edc43,
+        0xb6c29de5c3e82a1963ac0590f749d4c4,
     ),
     // atan(63/256)
-    FP509::new(
-        0x07b8b851476603332c47b9dca2b7a847,
-        0x923afb59b67ad958c492f5ea65363c1e,
-        0x61333f29d6514135b54ba5c98fd66df9,
-        0x8e02636f64c5d97bfee9ee2a446328c4,
+    FP492::new(
+        0x000003dc5c28a3b301999623dcee515b,
+        0xd423c91d7dacdb3d6cac62497af5329b,
+        0x1e0f30999f94eb28a09adaa5d2e4c7eb,
+        0x36fcc70131b7b262ecbdff74f7152232,
     ),
     // atan(64/256)
-    FP509::new(
-        0x07d6dd7e4b203758ab6e3cf7afbd10bf,
-        0x2d53fd481c459c1b5bd1d3b3e4a24d3b,
-        0x2c95c928b3472bb2982df462dd2c18d1,
-        0xf1e15e113838f27cd07a0e1d581ccc1c,
+    FP492::new(
+        0x000003eb6ebf25901bac55b71e7bd7de,
+        0x885f96a9fea40e22ce0dade8e9d9f251,
+        0x269d964ae49459a395d94c16fa316e96,
+        0x0c68f8f0af089c1c793e683d070eac0e,
     ),
     // atan(65/256)
-    FP509::new(
-        0x07f4f47f1036f904dc51bce8717a9e56,
-        0xe689efd436bb31a2dbe9ee3335868fa7,
-        0x1da63901da916d7ef90b613ca46709ec,
-        0x770668e16067465f06f1f2c21beaaa03,
+    FP492::new(
+        0x000003fa7a3f881b7c826e28de7438bd,
+        0x4f2b7344f7ea1b5d98d16df4f7199ac3,
+        0x47d38ed31c80ed48b6bf7c85b09e5233,
+        0x84f63b833470b033a32f8378f9610df5,
     ),
     // atan(66/256)
-    FP509::new(
-        0x0812fd288332dad31a412f9a0b70b4a5,
-        0xe253a023b59c459de7d56425c774ec30,
-        0x5b4bfb16e97a603dcaa45b92bba4de2c,
-        0xf03a4bb246df522cee032ef6c45bd974,
+    FP492::new(
+        0x000004097e9441996d698d2097cd05b8,
+        0x5a52f129d011dace22cef3eab212e3ba,
+        0x76182da5fd8b74bd301ee5522dc95dd2,
+        0x6f16781d25d9236fa9167701977b622e,
     ),
     // atan(67/256)
-    FP509::new(
-        0x0830f7501eb1487a8227c93aaf3fc2d4,
-        0x1fe3fbb5e3fa9a7180cbfa31e7fce131,
-        0x4e2a88e54c47568fdb1b0e4f614fab98,
-        0x8e42e0889152568875744d5a451880a3,
+    FP492::new(
+        0x000004187ba80f58a43d4113e49d579f,
+        0xe16a0ff1fddaf1fd4d38c065fd18f3fe,
+        0x7098a7154472a623ab47ed8d8727b0a7,
+        0xd5cc4721704448a92b443aba26ad228c,
     ),
     // atan(68/256)
-    FP509::new(
-        0x084ee2cbec31b12c5c8e721970cabd3a,
-        0x2ae250aa0b6fd05b0e848619404b3045,
-        0x05c168a6653fb9ebd71cd6c84466cad5,
-        0x87ddc8ae607fa3d85f4180041f65e65c,
+    FP492::new(
+        0x000004277165f618d8962e47390cb865,
+        0x5e9d1571285505b7e82d8742430ca025,
+        0x982282e0b453329fdcf5eb8e6b642233,
+        0x656ac3eee457303fd1ec2fa0c0020fb3,
     ),
     // atan(69/256)
-    FP509::new(
-        0x086cbf7284d659a8f862f7ab47d5c176,
-        0xf35e7fa8140bc5c1afc17c102ef94d6e,
-        0xfd83e29136362d644e877baee35b85f0,
-        0x8a0c856b19e0d7d6935a5ee96b2cea33,
+    FP492::new(
+        0x000004365fb9426b2cd47c317bd5a3ea,
+        0xe0bb79af3fd40a05e2e0d7e0be08177c,
+        0xa6b77ec1f1489b1b16b22743bdd771ad,
+        0xc2f8450642b58cf06beb49ad2f74b596,
     ),
     // atan(70/256)
-    FP509::new(
-        0x088a8d1b1218e4d646e46df108c27903,
-        0x52f3b34317414487b0eda9fd41abd105,
-        0xea966337f81d915fecb6a958b152ff27,
-        0x24cf597388da7772f467a9d006c6d609,
+    FP492::new(
+        0x00000445468d890c726b237236f88461,
+        0x3c81a979d9a18ba0a243d876d4fea0d5,
+        0xe882f54b319bfc0ec8aff65b54ac58a9,
+        0x7f939267acb9c46d3bb97a33d4e80363,
     ),
     // atan(71/256)
-    FP509::new(
-        0x08a84b9d4e72a350d28b00c6b9b0c211,
-        0x697e2e4da005b7dc67f389f2a916ec51,
-        0x679afd366e74ccf3b26030d6833889e1,
-        0xb73c233c1be7dd7cdf38ff83e4a5378a,
+    FP492::new(
+        0x0000045425cea73951a8694580635cd8,
+        0x6108b4bf1726d002dbee33f9c4f9548b,
+        0x7628b3cd7e9b373a6679d930186b419c,
+        0x44f0db9e119e0df3eebe6f9c7fc1f253,
     ),
     // atan(72/256)
-    FP509::new(
-        0x08c5fad185f8bc130ca4748b1bf88298,
-        0xd0fd2e29bc1a4fbcfca4ebbad508a04e,
-        0x8515edb2b719044dbdbe6635b5c51868,
-        0x0ad758623cece69e93f9801507754100,
+    FP492::new(
+        0x00000462fd68c2fc5e0986523a458dfc,
+        0x414c687e9714de0d27de7e5275dd6a84,
+        0x5027428af6d95b8c8226dedf331adae2,
+        0x8c34056bac311e76734f49fcc00a83bb,
     ),
     // atan(73/256)
-    FP509::new(
-        0x08e39a9096ec41e826538734d0d24d81,
-        0xa2262e81deb73bdbd1b137de85bd2bb5,
-        0xae964a45db5f3efca453df2d2e5bb64d,
-        0x20fdc650656b9032ec14f222ca18d5f7,
+    FP492::new(
+        0x00000471cd484b7620f41329c39a6869,
+        0x26c0d1131740ef5b9dede8d89bef42de,
+        0x95dad74b2522edaf9f7e5229ef96972d,
+        0xdb26907ee32832b5c819760a7911650c,
     ),
     // atan(74/256)
-    FP509::new(
-        0x09012ab3f23e4aee7cdcd70bd6f19982,
-        0x3e55be15d40c0c9422be410328a28df3,
-        0x969d0257d641298c5c19db2b14a11f57,
-        0xdcd5a89f5c01227d36947a4129bad2d5,
+    FP492::new(
+        0x000004809559f91f25773e6e6b85eb78,
+        0xccc11f2adf0aea06064a115f20819451,
+        0x46f9cb4e812beb2094c62e0ced958a50,
+        0x8fabee6ad44fae00913e9b4a3d2094dd,
     ),
     // atan(75/256)
-    FP509::new(
-        0x091eab159c0820f1d67474efffbbd7d3,
-        0x341a1219e8ac96559530bf4f9248958f,
-        0xb4fd16b4c284f984bcfb259927308085,
-        0x510e3df5dc42d75d2054f4021e575cbd,
+    FP492::new(
+        0x0000048f558ace041078eb3a3a77ffdd,
+        0xebe99a0d090cf4564b2aca985fa7c924,
+        0x4ac7da7e8b5a61427cc25e7d92cc9398,
+        0x4042a8871efaee216bae902a7a010f2c,
     ),
     // atan(76/256)
-    FP509::new(
-        0x093c1b902bf7a2df1064592406fe1447,
-        0xa447c219f20d6322c7af1667473086f3,
-        0xeeeaa1fe7a9c55ed8a222ee93299cce5,
-        0xe7351b58625ee1e0a9910e049e5ba75e,
+    FP492::new(
+        0x0000049e0dc815fbd16f88322c92037f,
+        0x0a23d223e10cf906b19163d78b33a398,
+        0x4379f77550ff3d4e2af6c5111774994c,
+        0xe672f39a8dac312f70f054c887024f2e,
     ),
     // atan(77/256)
-    FP509::new(
-        0x09597bfecdaff101423cfc1c2d442915,
-        0x5e99e34a55bd89de17823b099f6e97a7,
-        0xa7b69779908805a5a3c5583abe24da7c,
-        0x5678aeee260b066365341bfc407a1147,
+    FP492::new(
+        0x000004acbdff66d7f880a11e7e0e16a2,
+        0x148aaf4cf1a52adec4ef0bc11d84cfb7,
+        0x4bd3d3db4bbcc84402d2d1e2ac1d5f12,
+        0x6d3e2b3c577713058331b29a0dfe203d,
     ),
     // atan(78/256)
-    FP509::new(
-        0x0976cc3d411e7f1b91258ea012c9a1bc,
-        0x69f3c7de4985738bd5a94c399d23de5d,
-        0x6c54d436daf7e5ecfe22accd26002f78,
-        0x3fb90aef00921514e1953643eafb411a,
+    FP492::new(
+        0x000004bb661ea08f3f8dc892c7500964,
+        0xd0de34f9e3ef24c2b9c5ead4a61cce91,
+        0xef2eb62a6a1b6d7bf2f67f1156669300,
+        0x17bc1fdc857780490a8a70ca9b21f57e,
     ),
     // atan(79/256)
-    FP509::new(
-        0x09940c27dac4a8cad41eacd8c1a1ba43,
-        0x143ef828bb3488d058ea1104ac133e02,
-        0x787a44236d901a897bd3a37797ea7e83,
-        0x527d51b5331a2950af43f3c84ee00a95,
+    FP492::new(
+        0x000004ca0613ed6254656a0f566c60d0,
+        0xdd218a1f7c145d9a44682c7508825609,
+        0x9f013c3d2211b6c80d44bde9d1bbcbf5,
+        0x3f41a93ea8da998d14a857a1f9e42770,
     ),
     // atan(80/256)
-    FP509::new(
-        0x09b13b9b83f5e5e69c5abb498d27af32,
-        0x808a48f850b2f55fff5a5900c1304c7a,
-        0xed338d324a9ddf7e644067ef468c8745,
-        0x904ce89259d4d52dbbb1c058d2f69390,
+    FP492::new(
+        0x000004d89dcdc1faf2f34e2d5da4c693,
+        0xd7994045247c28597aafffad2c806098,
+        0x263d7699c699254eefbf322033f7a346,
+        0x43a2c82674492cea6a96ddd8e02c697b,
     ),
     // atan(81/256)
-    FP509::new(
-        0x09ce5a75bb0abdda164b4bbd71d91611,
-        0x4354d6381d1590d56f054441794e1db7,
-        0x2908cee07b30a0a778c7b029b138048f,
-        0xe481031470ee091bc5e23f13eed47143,
+    FP492::new(
+        0x000004e72d3add855eed0b25a5deb8ec,
+        0x8b08a1aa6b1c0e8ac86ab782a220bca7,
+        0x0edb948467703d985053bc63d814d89c,
+        0x0247f240818a3877048de2f11f89f76a,
     ),
     // atan(82/256)
-    FP509::new(
-        0x09eb689493889a226f9483992b13d19c,
-        0x331ccbdbe5669c6d5075511b28ac2bc5,
-        0x02249f688591c9e231e81451eb1459dd,
-        0xcb11bd7126a03780b0f204e3c05a2e79,
+    FP492::new(
+        0x000004f5b44a49c44d1137ca41cc9589,
+        0xe8ce198e65edf2b34e36a83aa88d9456,
+        0x15e281124fb442c8e4f118f40a28f58a,
+        0x2ceee588deb893501bc058790271e02d,
     ),
     // atan(83/256)
-    FP509::new(
-        0x0a0865d6b63e9949e6e8a3d895db7ace,
-        0x39ad2e0afc5a180faab961b1e2f84f7c,
-        0xefe21b177901dbd5e98237e78925ccb5,
-        0xe4f77b0dbddfe37ccaeec71413cd5d41,
+    FP492::new(
+        0x0000050432eb5b1f4ca4f37451ec4aed,
+        0xbd671cd697057e2d0c07d55cb0d8f17c,
+        0x27be77f10d8bbc80edeaf4c11bf3c492,
+        0xe65af27bbd86deeff1be6577638a09e7,
     ),
     // atan(84/256)
-    FP509::new(
-        0x0a25521b615784d454378754988b8d9e,
-        0x34e8278a4345d860bda441337ceb03b6,
-        0x3db3d83b44d9ef5519e20445e9e76b7b,
-        0xcd87cec6674920fca8a5ee6e1451c106,
+    FP492::new(
+        0x00000512a90db0abc26a2a1bc3aa4c45,
+        0xc6cf1a7413c521a2ec305ed22099be75,
+        0x81db1ed9ec1da26cf7aa8cf10222f4f3,
+        0xb5bde6c3e76333a4907e5452f7370a29,
     ),
     // atan(85/256)
-    FP509::new(
-        0x0a422d4268610da3c514eac78d4b28c8,
-        0xb9629add4c41ef4718fb34e2e284e0e7,
-        0xc20bdd91da60234419eb23a259ba31b3,
-        0xef2c02a0fa52260a07bdfd8e2de23340,
+    FP492::new(
+        0x0000052116a1343086d1e28a7563c6a5,
+        0x94645cb14d6ea620f7a38c7d9a717142,
+        0x7073e105eec8ed3011a20cf591d12cdd,
+        0x18d9f79601507d29130503defec716f1,
     ),
     // atan(86/256)
-    FP509::new(
-        0x0a5ef72c34487361b23883dd58a93abf,
-        0x402914db410cc323e2f259b477e2986e,
-        0xc437d0883be7e4b83ccfc555949ff3c9,
-        0x43de38786d5f722446aaf767ebc084cb,
+    FP492::new(
+        0x0000052f7b961a2439b0d91c41eeac54,
+        0x9d5fa0148a6da0866191f1792cda3bf1,
+        0x4c37621be8441df3f25c1e67e2aaca4f,
+        0xf9e4a1ef1c3c36afb91223557bb3f5e0,
     ),
     // atan(87/256)
-    FP509::new(
-        0x0a7bafb9c34cbc7352f18400777bcbab,
-        0xab0f899e86112a03bca733e3cb72d387,
-        0x644349c59153a51b00993e6c1d4e36b4,
-        0x97cf209aec540ecc8a51ea31a7a004d9,
+    FP492::new(
+        0x0000053dd7dce1a65e39a978c2003bbd,
+        0xe5d5d587c4cf43089501de5399f1e5b9,
+        0x69c3b221a4e2c8a9d28d804c9f360ea7,
+        0x1b5a4be7904d762a07664528f518d3d0,
     ),
     // atan(88/256)
-    FP509::new(
-        0x0a9856cca8e6a4eda99b7f77bf7d9e8c,
-        0x1212c39d31ef4d7d3a25d29d4c9f1e2b,
-        0x6e0fba97ff2614377243ba936bcc3929,
-        0x1b556f8f6c32ee524bfe5c4121cdb349,
+    FP492::new(
+        0x0000054c2b6654735276d4cdbfbbdfbe,
+        0xcf46090961ce98f7a6be9d12e94ea64f,
+        0x8f15b707dd4bff930a1bb921dd49b5e6,
+        0x1c948daab7c7b619772925ff2e2090e7,
     ),
     // atan(89/256)
-    FP509::new(
-        0x0ab4ec470da66be0139e18ec301d8f4c,
-        0xabb77105a6898b47c614bcb325aa47d1,
-        0x147b669b6d70d539b425a046820d325f,
-        0xf0aa65d370f566085b07fa7e04bcd837,
+    FP492::new(
+        0x0000055a762386d335f009cf0c76180e,
+        0xc7a655dbb882d344c5a3e30a5e5992d5,
+        0x23e88a3db34db6b86a9cda12d0234106,
+        0x992ff85532e9b87ab3042d83fd3f025e,
     ),
     // atan(90/256)
-    FP509::new(
-        0x0ad1700baf07a72276f51f05c8ae83bd,
-        0x69db46278dba956160dd5d9b6ea5afc6,
-        0xf38d7841431384e028e993fe2a170139,
-        0xff83a77b43cfc128036f166d8dc04bb4,
+    FP492::new(
+        0x00000568b805d783d3913b7a8f82e457,
+        0x41deb4eda313c6dd4ab0b06eaecdb752,
+        0xd7e379c6bc20a189c2701474c9ff150b,
+        0x809cffc1d3bda1e7e09401b78b36c6e0,
     ),
     // atan(91/256)
-    FP509::new(
-        0x0aede1fddf3b469ea0ec1b76f7d9c4bf,
-        0x659738921ceb2bb025a0e0126a1ec698,
-        0x95ded5fd96fc64a7a54f3b37ebb65815,
-        0x58c61741f6b5b238cdc6991906086a3e,
+    FP492::new(
+        0x00000576f0feef9da34f50760dbb7bec,
+        0xe25fb2cb9c490e7595d812d07009350f,
+        0x634c4aef6afecb7e3253d2a79d9bf5db,
+        0x2c0aac630ba0fb5ad91c66e34c8c8304,
     ),
     // atan(92/256)
-    FP509::new(
-        0x0b0a420184e7f0cb1b51d51dc200a0fc,
-        0x2b4085cde97ad6d702fddf1ed0a00a4d,
-        0x1af82060036f8bbdb95cb0f363281dc1,
-        0xea3680386b1112afc5958fdc01ee67e1,
+    FP492::new(
+        0x000005852100c273f8658da8ea8ee100,
+        0x507e15a042e6f4bd6b6b817eef8f6850,
+        0x05268d7c103001b7c5dedcae5879b194,
+        0x0ee0f51b401c35888957e2cac7ee00f7,
     ),
     // atan(93/256)
-    FP509::new(
-        0x0b268ffb1ae0e2c0b7f8307e0484613e,
-        0xb0915f2c6f9b78f6b3eaaa3a1602d19e,
-        0x47ad7b382dd265cc2422430615f4d04c,
-        0xdb0a26036d734b708864f842f68951a5,
+    FP492::new(
+        0x0000059347fd8d7071605bfc183f0242,
+        0x309f5848af9637cdbc7b59f5551d0b01,
+        0x68cf23d6bd9c16e932e6121121830afa,
+        0x68266d851301b6b9a5b844327c217b45,
     ),
     // atan(94/256)
-    FP509::new(
-        0x0b42cbcfafd37efb6a1facb94958f693,
-        0x56b0ae965b2b4a2b68071b5506db7369,
-        0xf6c053b8a98ac27c7c8b0e446b075236,
-        0xff5eaf227d449e3f5dc0396d8df0f5d7,
+    FP492::new(
+        0x000005a165e7d7e9bf7db50fd65ca4ac,
+        0x7b49ab58574b2d95a515b4038daa836d,
+        0xb9b4fb6029dc54c5613e3e4587223583,
+        0xa91b7faf57913ea24f1faee01cb6c6f8,
     ),
     // atan(95/256)
-    FP509::new(
-        0x0b5ef564e5ebb672d1d4e0c90bec0c5f,
-        0x4aed2895943d8ed1eee220edbb8a934d,
-        0x625c45d5e4a37d589bfae20d71854af4,
-        0x091df4e376e3e2f16850f4a19b21799f,
+    FP492::new(
+        0x000005af7ab272f5db3968ea706485f6,
+        0x062fa576944aca1ec768f7711076ddc5,
+        0x49a6b12e22eaf251beac4dfd7106b8c2,
+        0xa57a048efa71bb71f178b4287a50cd91,
     ),
     // atan(96/256)
-    FP509::new(
-        0x0b7b0ca0f26f784738aa32122dcfe448,
-        0x33d843977ae5455cc4733e5ca334908e,
-        0x064cc582039fdc0d6dccce4a800cf73d,
-        0x28616ee077afa1a60487d5aad34939d6,
+    FP492::new(
+        0x000005bd86507937bc239c55190916e7,
+        0xf22419ec21cbbd72a2ae62399f2e519a,
+        0x4847032662c101cfee06b6e667254006,
+        0x7b9e9430b7703bd7d0d30243ead569a5,
     ),
     // atan(97/256)
-    FP509::new(
-        0x0b97116a9d5154c4c6d9630c1b0862a3,
-        0x07bea22db7f2f62aeb2dbf3cb97546d6,
-        0x3271f327eaee87e7a881992ac6c64370,
-        0xf8654ca30e0378b8bcd997e0e29f002b,
+    FP492::new(
+        0x000005cb88b54ea8aa62636cb1860d84,
+        0x315183df5116dbf97b157596df9e5cba,
+        0xa36b1938f993f57743f3d440cc956363,
+        0x21b87c32a6518701bc5c5e6ccbf07150,
     ),
     // atan(98/256)
-    FP509::new(
-        0x0bb303a940ba80f88bba1b8ce27fff42,
-        0x7c7b1530d314ccd22bf15a09d156ea18,
-        0xb5d852315e86f05b9b5bff5072cf5e47,
-        0x6e4cecfc48a77909ac4a68d8853b867a,
+    FP492::new(
+        0x000005d981d4a05d407c45dd0dc6713f,
+        0xffa13e3d8a98698a666915f8ad04e8ab,
+        0x750c5aec2918af43782dcdadffa83967,
+        0xaf23b726767e2453bc84d625346c429e,
     ),
     // atan(99/256)
-    FP509::new(
-        0x0bcee344c88c6881b7413a0ef606ccf0,
-        0x1c55b0788e97c1542f69a3f01d2b71da,
-        0x8b4191807f963fc258f4c7cb40cfe394,
-        0xa3fd752ae59e10526a14002016f7fb26,
+    FP492::new(
+        0x000005e771a264463440dba09d077b03,
+        0x66780e2ad83c474be0aa17b4d1f80e95,
+        0xb8ed45a0c8c03fcb1fe12c7a63e5a067,
+        0xf1ca51feba9572cf0829350a00100b7c,
     ),
     // atan(100/256)
-    FP509::new(
-        0x0beab025b1d9fbad3910b85649341102,
-        0x625c13c1d5e5df73f963f7de43ce9d8b,
-        0x240a53b5579a414c88facbbf9128f199,
-        0x77464c22e69fa5992e298e9a48eb70d9,
+    FP492::new(
+        0x000005f55812d8ecfdd69c885c2b249a,
+        0x0881312e09e0eaf2efb9fcb1fbef21e7,
+        0x4ec5920529daabcd20a6447d65dfc894,
+        0x78ccbba32611734fd2cc9714c74d2476,
     ),
     // atan(101/256)
-    FP509::new(
-        0x0c066a350a58e8430c0cd2f60bcd98bd,
-        0x8c31851f06e5f28492136f8ad2a8c0ae,
-        0xa997f77f9936300529895397306c5ab4,
-        0xb3aa65b59d594b39a718b27068ec9ae6,
+    FP492::new(
+        0x00000603351a852c74218606697b05e6,
+        0xcc5ec618c28f8372f9424909b7c56954,
+        0x605754cbfbbfcc9b180294c4a9cb9836,
+        0x2d5a59d532daceaca59cd38c59383476,
     ),
     // atan(102/256)
-    FP509::new(
-        0x0c22115c6fcaebbaed405336836b8747,
-        0x702eb403911a9b82655434b3413c2355,
-        0x1ffcfbb8130820f5d8ddb4a89bf6baab,
-        0xeed491b53c7c95a46d4faddcf08b27b7,
+    FP492::new(
+        0x0000061108ae37e575dd76a0299b41b5,
+        0xc3a3b8175a01c88d4dc132aa1a59a09e,
+        0x11aa8ffe7ddc0984107aec6eda544dfb,
+        0x5d55f76a48da9e3e4ad236a7d6ee7846,
     ),
     // atan(103/256)
-    FP509::new(
-        0x0c3da5860f5f6dd2460aba0b71e1728c,
-        0xbab00ae9eee70dfb4ce66bfadfb85bf1,
-        0xedc96b697c9b1b26582c09f86333f2e5,
-        0xd4ec95759332e510d8d641e73a03ae9b,
+    FP492::new(
+        0x0000061ed2c307afb6e923055d05b8f0,
+        0xb9465d580574f77386fda67335fd6fdc,
+        0x2df8f6e4b5b4be4d8d932c1604fc3199,
+        0xf972ea764abac99972886c6b20f39d02,
     ),
     // atan(104/256)
-    FP509::new(
-        0x0c59269ca50d92b6da1746e91f50a28d,
-        0xdc4b7c9e50d3aa1f6827bb94bb093487,
-        0xdc7043ba87431ec654691de993e24b63,
-        0xb7c403be536b8c7cbd73c429967d41ce,
+    FP492::new(
+        0x0000062c934e5286c95b6d0ba3748fa8,
+        0x5146ee25be4f2869d50fb413ddca5d84,
+        0x9a43ee3821dd43a18f632a348ef4c9f1,
+        0x25b1dbe201df29b5c63e5eb9e214cb3f,
     ),
     // atan(105/256)
-    FP509::new(
-        0x0c74948b7ae6f429814fc257f5f5e868,
-        0x7dc1bacd3d66c0d03a59bd07092403fd,
-        0x00b0e7ef4d6d6b5272ad30af049b1642,
-        0xdaf42bf1df98a03f7184ddeb3a76b5ca,
+    FP492::new(
+        0x0000063a4a45bd737a14c0a7e12bfafa,
+        0xf4343ee0dd669eb360681d2cde838492,
+        0x01fe805873f7a6b6b5a939569857824d,
+        0x8b216d7a15f8efcc501fb8c26ef59d3b,
     ),
     // atan(106/256)
-    FP509::new(
-        0x0c8fef3e686331220e83100a96a6d7d8,
-        0xc6fa642491725beb66f4f40af817add6,
-        0xf3eadcf4b30bfd79a47a90f82d00dd88,
-        0xeb16cbc08ee80dc3a4f981d175f033b7,
+    FP492::new(
+        0x00000647f79f34319891074188054b53,
+        0x6bec637d321248b92df5b37a7a057c0b,
+        0xd6eb79f56e7a5985febcd23d487c1680,
+        0x6ec4758b65e0477406e1d27cc0e8baf8,
     ),
     // atan(107/256)
-    FP509::new(
-        0x0cab36a1d1a48399b01537e0af2b5f15,
-        0x32e7c293cd15fc9fcf8623447bb614b8,
-        0xe8b2be10e6d00c55770b37d785df17a9,
-        0x7306561098628fe7afc1751cb894af92,
+    FP492::new(
+        0x000006559b50e8d241ccd80a9bf05795,
+        0xaf8a9973e149e68afe4fe7c311a23ddb,
+        0x0a5c74595f087368062abb859bebc2ef,
+        0x8bd4b9832b084c3147f3d7e0ba8e5c4a,
     ),
     // atan(108/256)
-    FP509::new(
-        0x0cc66aa2a6b58c33cd9311fa14ed9b7c,
-        0x3927a0054882196141323666edbd4549,
-        0x02066c4fa234b4ce55ce0e83b7b53d06,
-        0x70c156f27f2827d3a5aa0763b4f4fda0,
+    FP492::new(
+        0x000006633551535ac619e6c988fd0a76,
+        0xcdbe1c93d002a4410cb0a0991b3376de,
+        0xa2a481033627d11a5a672ae70741dbda,
+        0x9e833860ab793f9413e9d2d503b1da7a,
     ),
     // atan(109/256)
-    FP509::new(
-        0x0ce18b2e62c08386d9a58089433ea64b,
-        0xe53820e4fde4957b08def0f0220de58e,
-        0x502f1810ddebd0c7f3f848d907f1749f,
-        0xb60fdba91bfd8b085935f6ef0e975110,
+    FP492::new(
+        0x00000670c597316041c36cd2c044a19f,
+        0x5325f29c10727ef24abd846f78781106,
+        0xf2c728178c086ef5e863f9fc246c83f8,
+        0xba4fdb07edd48dfec5842c9afb77874c,
     ),
     // atan(110/256)
-    FP509::new(
-        0x0cfc98330b4000c6fb1f706d78cb034f,
-        0x732be931406f2166b08f8bd2c088f033,
-        0xd157110dded8200b9ebd6b69ce3cf3c4,
-        0x0ab5f4b31e7f8054e916f7448369468e,
+    FP492::new(
+        0x0000067e4c1985a000637d8fb836bc65,
+        0x81a7b995f498a03790b35847c5e96044,
+        0x7819e8ab8886ef6c1005cf5eb5b4e71e,
+        0x79e2055afa598f3fc02a748b7ba241b5,
     ),
     // atan(111/256)
-    FP509::new(
-        0x0d17919f2f29858c0a6afbcb843582a7,
-        0x8ce510320906369230cd21fb7bb7c0b1,
-        0xd8befbbc3daba03e9fdc8df3f558b12a,
-        0xab384c95df8ae7238d0ac5da9ceea739,
+    FP492::new(
+        0x0000068bc8cf9794c2c605357de5c21a,
+        0xc153c672881904831b49186690fdbddb,
+        0xe058ec5f7dde1ed5d01f4fee46f9faac,
+        0x5895559c264aefc57391c68562ed4e77,
     ),
     // atan(112/256)
-    FP509::new(
-        0x0d327761e611fe5b6427c95e9001e713,
-        0x66e0040dd2161a73c26677f8f13dd7e2,
-        0x82857e840bc4483b4f7968592537f6c5,
-        0xc372498dbbacd5cc9c22a0665adf405c,
+    FP492::new(
+        0x000006993bb0f308ff2db213e4af4800,
+        0xf389b3700206e90b0d39e1333bfc789e,
+        0xebf14142bf4205e2241da7bcb42c929b,
+        0xfb62e1b924c6ddd66ae64e1150332d70,
     ),
     // atan(113/256)
-    FP509::new(
-        0x0d4d496acf4c6784b90b7fdd7605a94e,
-        0x187f23ab581a8ba4d7981f932f01104f,
-        0x680ef12522fb8b0b294d8d68614b13a6,
-        0x07ad89a2c5bdfa160f7010df7297e9e2,
+    FP492::new(
+        0x000006a6a4b567a633c25c85bfeebb02,
+        0xd4a70c3f91d5ac0d45d26bcc0fc99780,
+        0x8827b4077892917dc58594a6c6b430a5,
+        0x89d303d6c4d162defd0b07b8086fb94c,
     ),
     // atan(114/256)
-    FP509::new(
-        0x0d6807aa1102c5bf89867123a5cfddef,
-        0xc1486b0180295d385f27f3d45c7b189e,
-        0xd2015d2bb71036d51a0e7ea62c5dcb8f,
-        0x3d4f59994bda5cf281c14dbd3864cefc,
+    FP492::new(
+        0x000006b403d5088162dfc4c33891d2e7,
+        0xeef7e0a43580c014ae9c2f93f9ea2e3d,
+        0x8c4f6900ae95db881b6a8d073f53162e,
+        0xe5c79ea7accca5ed2e7940e0a6de9c32,
     ),
     // atan(115/256)
-    FP509::new(
-        0x0d82b2105749a1cd9d8d739397554d75,
-        0xdfe6b55e49af69234de2726720e7d870,
-        0x5bb94400396399bc3e095cea523f1857,
-        0x0c2be629f7218d8341e550f0686e8715,
+    FP492::new(
+        0x000006c159082ba4d0e6cec6b9c9cbaa,
+        0xa6baeff35aaf24d7b491a6f139339073,
+        0xec382ddca2001cb1ccde1f04ae75291f,
+        0x8c2b8615f314fb90c6c1a0f2a8783437,
     ),
     // atan(116/256)
-    FP509::new(
-        0x0d9d488ed32e3635c30f6394a0806345,
-        0xd55481118bfb7044cc8d2269f5943675,
-        0x5e16830f1c2376a0db119f61571031fc,
-        0xa2412b76b4924d9ae84fd9a2fba39b35,
+    FP492::new(
+        0x000006cea44769971b1ae187b1ca5040,
+        0x31a2eaaa4088c5fdb82266469134faca,
+        0x1b3aaf0b41878e11bb506d88cfb0ab88,
+        0x18fe512095bb5a4926cd7427ecd17dd2,
     ),
     // atan(117/256)
-    FP509::new(
-        0x0db7cb1739bf7df1ad65cdb3f0c7aa19,
-        0x19af293f0cdfe813dd391b3f0ba08af4,
-        0x826c44b3f1ef6f0ff1fe07e54e700bdd,
-        0x9fe2b2192b7b0f2a5c65f854deee12c8,
+    FP492::new(
+        0x000006dbe58b9cdfbef8d6b2e6d9f863,
+        0xd50c8cd7949f866ff409ee9c8d9f85d0,
+        0x457a41362259f8f7b787f8ff03f2a738,
+        0x05eecff1590c95bd87952e32fc2a6f77,
     ),
     // atan(118/256)
-    FP509::new(
-        0x0dd2399bc31252aa334368dc95fd2539,
-        0xd8312f941a29ae6a633ac5cc75d49060,
-        0x18d5b89897e9a2b3360e2090a8a6a5c9,
-        0x22e090bd39bd3370189c3476814e4b65,
+    FP492::new(
+        0x000006e91ccde189295519a1b46e4afe,
+        0x929cec1897ca0d14d735319d62e63aea,
+        0x48300c6adc4c4bf4d1599b0710485453,
+        0x52e49170485e9cde99b80c4e1a3b40a7,
     ),
     // atan(119/256)
-    FP509::new(
-        0x0dec940f2940c8d69d578ca129336cc4,
-        0x13697bda2e7f8d5cfd191f536b0bed9e,
-        0x89756a05c39b35ed8340ff5be84406e1,
-        0x4b6d29e98f90fc0e33bf61644c72c9da,
+    FP492::new(
+        0x000006f64a0794a0646b4eabc6509499,
+        0xb66209b4bded173fc6ae7e8c8fa9b585,
+        0xf6cf44bab502e1cd9af6c1a07fadf422,
+        0x0370a5b694f4c7c87e0719dfb0b22639,
     ),
     // atan(120/256)
-    FP509::new(
-        0x0e06da64a764f7c67c631ed96798cb80,
-        0x3b614bf2f5f3eb823950b3ebc58654b7,
-        0xaad5715a4349a89309f6269130aca39f,
-        0xad728e28ca893bdaca32ce7ce93db829,
+    FP492::new(
+        0x000007036d3253b27be33e318f6cb3cc,
+        0x65c01db0a5f97af9f5c11ca859f5e2c3,
+        0x2a5bd56ab8ad21a4d44984fb13489856,
+        0x51cfd6b9471465449ded6519673e749f,
     ),
     // atan(121/256)
-    FP509::new(
-        0x0e210c8ff88f5b49d0417969822474e1,
-        0x0d1b7383deb854c6c23ed02530100711,
-        0x9b6b1dcc0864a17474fd4ddd7a4fc5b8,
-        0x87afee5570e6169912473a80294bbe6c,
+    FP492::new(
+        0x000007108647fc47ada4e820bcb4c112,
+        0x3a70868db9c1ef5c2a63611f68129808,
+        0x0388cdb58ee6043250ba3a7ea6eebd27,
+        0xe2dc43d7f72ab8730b4c89239d4014a6,
     ),
     // atan(122/256)
-    FP509::new(
-        0x0e3b2a8556b8fc5168e8011f78370fd4,
-        0xf7f162dccd5cfcacba6b54695d3410cb,
-        0x0d7d4ace4d663948a3f011adcef78d5d,
-        0x69894515ccb0cc1917aac638c8667853,
+    FP492::new(
+        0x0000071d9542ab5c7e28b474008fbc1b,
+        0x87ea7bf8b16e66ae7e565d35aa34ae9a,
+        0x086586bea56726b31ca451f808d6e77b,
+        0xc6aeb4c4a28ae658660c8bd5631c6433,
     ),
     // atan(123/256)
-    FP509::new(
-        0x0e55343979b18d819506781636f47ed4,
-        0xeac32730b30f25cc87c71e2a4d431b75,
-        0xafc43c984245c9771ffe292703244f7d,
-        0xb50f3f36578957cf9a82db60d05c5d84,
+    FP492::new(
+        0x0000072a9a1cbcd8c6c0ca833c0b1b7a,
+        0x3f6a75619398598792e643e38f1526a1,
+        0x8dbad7e21e4c2122e4bb8fff14938192,
+        0x27beda879f9b2bc4abe7cd416db0682e,
     ),
     // atan(124/256)
-    FP509::new(
-        0x0e6f29a19609a84ba60b77ce1ca6dc2c,
-        0x864b24e873cf283b40b03c10341eb3b2,
-        0x9d6ae7b75c116f87a67a19d0ea5871e1,
-        0x7507dd7f52416b87922e87b4999d7544,
+    FP492::new(
+        0x0000073794d0cb04d425d305bbe70e53,
+        0x6e164325927439e7941da0581e081a0f,
+        0x59d94eb573dbae08b7c3d33d0ce8752c,
+        0x38f0ba83eebfa920b5c3c91743da4ccf,
     ),
     // atan(125/256)
-    FP509::new(
-        0x0e890ab35bf956b7ccf06b10d8605775,
-        0xb9d767ef9c0ba871d5dd6774b1fec1d6,
-        0x0760bec80fea523d9665d78c92f1def6,
-        0xe7766959f24807d7d8f1eee6bbb93fc7,
+    FP492::new(
+        0x000007448559adfcab5be67835886c30,
+        0x2bbadcebb3f7ce05d438eaeeb3ba58ff,
+        0x60eb03b05f6407f5291ecb32ebc64978,
+        0xef7b73bb34acf92403ebec78f7735ddd,
     ),
     // atan(126/256)
-    FP509::new(
-        0x0ea2d764f64315989421163ef92d3494,
-        0x6d35d282cd58a491f3710298287d1494,
-        0xe53da3b50a6b6a81a83b495ad1d12009,
-        0xeb872b1d2f56495a89b2ab270dee7096,
+    FP492::new(
+        0x000007516bb27b218acc4a108b1f7c96,
+        0x9a4a369ae94166ac5248f9b8814c143e,
+        0x8a4a729ed1da8535b540d41da4ad68e8,
+        0x9004f5c3958e97ab24ad44d9559386f7,
     ),
     // atan(127/256)
-    FP509::new(
-        0x0ebc8fad09137a6bfe815a49b589fbcf,
-        0x3968b69a5bffdff91e2c2b5e803a56ab,
-        0x28df8f4f1c7bb09c2541b0d2831c7627,
-        0x2affdd1ca0f763ba432ba3e9f9365d28,
+    FP492::new(
+        0x0000075e47d68489bd35ff40ad24dac4,
+        0xfde79cb45b4d2dffeffc8f1615af401d,
+        0x2b55946fc7a78e3dd84e12a0d869418e,
+        0x3b13957fee8e507bb1dd2195d1f4fc9b,
     ),
     // atan(128/256)
-    FP509::new(
-        0x0ed63382b0dda7b456fe445ecbc3a8d0,
-        0x36e141587261cdf00e2cf16e6e962470,
-        0x9fa9c5917892b516c87c812f8c6a4618,
-        0x2cee1e80efd3c0013d6d85e3686228dc,
+    FP492::new(
+        0x0000076b19c1586ed3da2b7f222f65e1,
+        0xd4681b70a0ac3930e6f8071678b7374b,
+        0x12384fd4e2c8bc495a8b643e4097c635,
+        0x230c16770f4077e9e0009eb6c2f1b431,
     ),
     // atan(129/256)
-    FP509::new(
-        0x0eefc2dd8134ba143bbb0c0a1225c299,
-        0x6cddf6a61060e3b652b77dbff5e332e3,
-        0x50b24228337e673d615f1b838805e991,
-        0xfb509de80120f8fe33c1d81dfccc5230,
+    FP492::new(
+        0x00000777e16ec09a5d0a1ddd86050912,
+        0xe14cb66efb53083071db295bbedffaf1,
+        0x9971a859211419bf339eb0af8dc1c402,
+        0xf4c8fda84ef400907c7f19e0ec0efe66,
     ),
     // atan(130/256)
-    FP509::new(
-        0x0f093db583a257f6a7b3ce3395aaa30b,
-        0x78f0e8afdebfc0ec818e2cf4e9497929,
-        0xe8640f4c766fb69e82e7e9a7cd295ee5,
-        0x93aba497580a8753d080c2ac71e603b2,
+    FP492::new(
+        0x000007849edac1d12bfb53d9e719cad5,
+        0x5185bc787457ef5fe07640c7167a74a4,
+        0xbc94f43207a63b37db4f4173f4d3e694,
+        0xaf72c9d5d24bac0543a9e840615638f3,
     ),
     // atan(131/256)
-    FP509::new(
-        0x0f22a403367a8d04e8ea84b3a63c7742,
-        0xb623d21b42baf3ce1f1e5230e960aa24,
-        0x13361d314e6af50a61389bd2776b629f,
-        0xb2c3d7fab01e07d98a627ef904784f81,
+    FP492::new(
+        0x0000079152019b3d468274754259d31e,
+        0x3ba15b11e90da15d79e70f8f291874b0,
+        0x5512099b0e98a7357a85309c4de93bb5,
+        0xb14fd961ebfd580f03ecc5313f7c823c,
     ),
     // atan(132/256)
-    FP509::new(
-        0x0f3bf5bf8bad1a21ca7b837e686adf3f,
-        0xa2f20a0b8805d8e47d946887a4fd133f,
-        0xff0f41a019ea7a8133a0d017926e26a2,
-        0xa09d9a1d197c61bb8d74af4b87cdaa9a,
+    FP492::new(
+        0x0000079dfadfc5d68d10e53dc1bf3435,
+        0x6f9fd1790505c402ec723eca3443d27e,
+        0x899fff87a0d00cf53d4099d0680bc937,
+        0x1351504ecd0e8cbe30ddc6ba57a5c3e7,
     ),
     // atan(133/256)
-    FP509::new(
-        0x0f5532e3e7946212fb2ceca3bf056a93,
-        0x4eb3dba1e0061b7905f60d087018fc7c,
-        0x8410579800323bad75db7ca5f1428579,
-        0xccb775be266b010d2a8e9e43bf0ea017,
+    FP492::new(
+        0x000007aa9971f3ca31097d967651df82,
+        0xb549a759edd0f0030dbc82fb0684380c,
+        0x7e3e42082bcc00191dd6baedbe52f8a1,
+        0x42bce65bbadf1335808695474f21df87,
     ),
     // atan(134/256)
-    FP509::new(
-        0x0f6e5b6a1fc21a701b44e67bbd8e264d,
-        0xc5810ba8c365a3445900dd9ddb30b292,
-        0x7b3bf452a230c81b3d449fc21dc8a596,
-        0x6ab5c37be35b7e9b55133310dc7355f2,
+    FP492::new(
+        0x000007b72db50fe10d380da2733ddec7,
+        0x1326e2c085d461b2d1a22c806eceed98,
+        0x59493d9dfa295118640d9ea24fe10ee4,
+        0x52cb355ae1bdf1adbf4daa8999886e3a,
     ),
     // atan(135/256)
-    FP509::new(
-        0x0f876f4c79c9e7da17eaf069ced77ca3,
-        0x07df5881fffd31bf5b7f2ff9cfb8373e,
-        0x412323cb06312545da29ba9ea08ff160,
-        0xf0a5f124704ebde4b53422a5c7052806,
+    FP492::new(
+        0x000007c3b7a63ce4f3ed0bf57834e76b,
+        0xbe5183efac40fffe98dfadbf97fce7dc,
+        0x1b9f209191e5831892a2ed14dd4f5047,
+        0xf8b07852f89238275ef25a9a1152e383,
     ),
     // atan(136/256)
-    FP509::new(
-        0x0fa06e85aa0a0be5c66d23c7d5dc8ecc,
-        0x2100c92df8b8b5583632010fa1208266,
-        0xacd9cd7c29184d88625becbd986bc101,
-        0xd907525b1556078fa42b7021f4db9320,
+    FP492::new(
+        0x000007d03742d50505f2e33691e3eaee,
+        0x476610806496fc5c5aac1b190087d090,
+        0x4133566ce6be148c26c4312df65ecc35,
+        0xe080ec83a92d8aab03c7d215b810fa6e,
     ),
     // atan(137/256)
-    FP509::new(
-        0x0fb95910d2724a8a44e107bf5ba0094a,
-        0xf73699145e4d7bfb948fefce1fea6e3f,
-        0xf9a015225af546ebefdce1231b9e9c7b,
-        0x2d9b2ee3f38a46937629b976f6b509ea,
+    FP492::new(
+        0x000007dcac8869392545227083dfadd0,
+        0x04a57b9b4c8a2f26bdfdca47f7e70ff5,
+        0x371ffcd00a912d7aa375f7ee70918dcf,
+        0x4e3d96cd9771f9c52349bb14dcbb7b5b,
     ),
     // atan(138/256)
-    FP509::new(
-        0x0fd22ee981492c46b53847ae4e96a621,
-        0xdcd69ecd96a8250e84c34251d320e7ce,
-        0x33b72855e9b31297c29c0bd83c70bf90,
-        0x504130aa73110eef3caa0724514d53ed,
+    FP492::new(
+        0x000007e91774c0a496235a9c23d7274b,
+        0x5310ee6b4f66cb5412874261a128e990,
+        0x73e719db942af4d9894be14e05ec1e38,
+        0x5fc828209855398887779e55039228a7,
     ),
     // atan(139/256)
-    FP509::new(
-        0x0feaf00bafefc193a87b1ec49b153ace,
-        0x53f276b5044514e062fee9001fdb472c,
-        0xe355751584c368cb716573884b314e2d,
-        0x15608973386a07dd0e452b39d69fcb98,
+    FP492::new(
+        0x000007f57805d7f7e0c9d43d8f624d8a,
+        0x9d6729f93b5a82228a70317f74800fed,
+        0xa39671aaba8ac261b465b8b2b9c42598,
+        0xa7168ab044b99c3503ee8722959ceb50,
     ),
     // atan(140/256)
-    FP509::new(
-        0x10039c73c1a40b9334dad8d8a9b270b2,
-        0xcd2490c64dfc5c39805e4a7df2c41719,
-        0x0869cdbe54f42b876ec9cb96388abbd2,
-        0x1860a249204afc2e834c996449df7ef4,
+    FP492::new(
+        0x00000801ce39e0d205c99a6d6c6c54d9,
+        0x38596692486326fe2e1cc02f253ef962,
+        0x0b8c8434e6df2a7a15c3b764e5cb1c45,
+        0x5de90c30512490257e1741a64cb224f0,
     ),
     // atan(141/256)
-    FP509::new(
-        0x101c341e82422d4f6d13f32a43b77256,
-        0x35ae78e10536102e81fa2a34d783336a,
-        0x862136c6d993e4418f1f0a4a0d7856ce,
-        0x1e73dea224b9bb6a34d01de940ee44c7,
+    FP492::new(
+        0x0000080e1a0f412116a7b689f99521db,
+        0xb92b1ad73c70829b081740fd151a6bc1,
+        0x99b543109b636cc9f220c78f852506bc,
+        0x2b670f39ef51125cddb51a680ef4a077,
     ),
     // atan(142/256)
-    FP509::new(
-        0x1034b70925048831f3671b0aa81fea86,
-        0x3928e9e40c6176eb86247ea2fcabc0f0,
-        0x2be76b9d69b682bd3b621b0d805de094,
-        0x6a4f4d80fa5e43265183a12f7081a8ce,
+    FP492::new(
+        0x0000081a5b8492824418f9b38d85540f,
+        0xf5431c9474f20630bb75c3123f517e55,
+        0xe07815f3b5ceb4db415e9db10d86c02e,
+        0xf04a3527a6c07d2f219328c1d097b841,
     ),
     // atan(143/256)
-    FP509::new(
-        0x104d25314342e5b8de726ef4e263ad44,
-        0xf77fe87ff101058da7808557cdda3353,
-        0x94ec803b0a21e677a4d56a336324ee73,
-        0x705fbbda7a2ba89376c4488567350fc1,
+    FP492::new(
+        0x000008269298a1a172dc6f39377a7131,
+        0xd6a27bbff43ff88082c6d3c042abe6ed,
+        0x19a9ca76401d8510f33bd26ab519b192,
+        0x7739b82fdded3d15d449bb622442b39b,
     ),
     // atan(144/256)
-    FP509::new(
-        0x10657e94db30cfc5496d41396c34a2b8,
-        0x1e22ab9b0ee9bbf78ab8d7b9e3cb6cba,
-        0x087afac19a9e27e9d05877ab7a97bb84,
-        0x91c50e3eaa7ff02fadfe3d52fe855e70,
+    FP492::new(
+        0x00000832bf4a6d9867e2a4b6a09cb61a,
+        0x515c0f1155cd8774ddfbc55c6bdcf1e5,
+        0xb65d043d7d60cd4f13f4e82c3bd5bd4b,
+        0xddc248e2871f553ff817d6ff1ea97f43,
     ),
     // atan(145/256)
-    FP509::new(
-        0x107dc3324e9b3836e193c088a158e724,
-        0x192d74db8f2f73c139a8e0cabc5cfff1,
-        0x2c0a3ba4a61b27c0aa8c2ab2eb420f5b,
-        0x028ff8d229055745fc3f7968ac713760,
+    FP492::new(
+        0x0000083ee199274d9c1b70c9e04450ac,
+        0x73920c96ba6dc797b9e09cd470655e2e,
+        0x7ff896051dd2530d93e05546155975a1,
+        0x07ad8147fc691482aba2fe1fbcb45639,
     ),
     // atan(146/256)
-    FP509::new(
-        0x1095f30861a58fddbc9bebd4ac1a555d,
-        0x55d48e420b8ada98b3c7e853f2348e3c,
-        0x4552bdc48d101dc09a934fca6478891d,
-        0x1293531d8254673725c30ec1ae127bcf,
+    FP492::new(
+        0x0000084af98430d2c7eede4df5ea560d,
+        0x2aaeaaea472105c56d4c59e3f429f91a,
+        0x471e22a95ee246880ee04d49a7e5323c,
+        0x448e8949a98ec12a339b92e18760d709,
     ),
     // atan(147/256)
-    FP509::new(
-        0x10ae0e1639866c20eb57e5bc88b4a7c5,
-        0x8eba920ed806f4304e56b40e69cf10da,
-        0x1747da14b3000a665570025f39727890,
-        0x94e24668caa3eff4913f6d156d78790e,
+    FP492::new(
+        0x00000857070b1cc3361075abf2de445a,
+        0x53e2c75d49076c037a18272b5a0734e7,
+        0x886d0ba3ed0a598005332ab8012f9cb9,
+        0x3c484a7123346551f7fa489fb68ab6bc,
     ),
     // atan(148/256)
-    FP509::new(
-        0x10c6145b5b43da0cba7d09daa027946f,
-        0xb2552a1b528aa65215d17db1339ea998,
-        0xe8bea8ca337acf2a98225ea3970f626d,
-        0x7ed4b6773d758288613276f2d72a2b92,
+    FP492::new(
+        0x000008630a2dada1ed065d3e84ed5013,
+        0xca37d92a950da94553290ae8bed899cf,
+        0x54cc745f546519bd67954c112f51cb87,
+        0xb136bf6a5b3b9ebac14430993b796b95,
     ),
     // atan(149/256)
-    FP509::new(
-        0x10de05d7aa6f7ccf92f69c75acaac457,
-        0x4f8ea121a67872f62411303b8fc94c3a,
-        0xb91ce99923bb5a7f6a19c2d59e80b0da,
-        0x7c95c6d67faa06dbfecd5fb1198d89a6,
+    FP492::new(
+        0x0000086f02ebd537be67c97b4e3ad655,
+        0x622ba7c75090d33c397b1208981dc7e4,
+        0xa61d5c8e74cc91ddad3fb50ce16acf40,
+        0x586d3e4ae36b3fd5036dff66afd88cc7,
     ),
     // atan(150/256)
-    FP509::new(
-        0x10f5e28b67e295001311b17ec990d028,
-        0x537bad7f3e2a1e6585bd538463e851eb,
-        0x1454fe9f105c84f23adbad404660d24a,
-        0x575b9fd667a8cf1e9434bba5eabd190d,
+    FP492::new(
+        0x0000087af145b3f14a800988d8bf64c8,
+        0x681429bdd6bf9f150f32c2dea9c231f4,
+        0x28f58a2a7f4f882e42791d6dd6a02330,
+        0x69252badcfeb33d4678f4a1a5dd2f55f,
     ),
     // atan(151/256)
-    FP509::new(
-        0x110daa77307a0d5a70cf5131ec15f3eb,
-        0xb79c264bf318059ef8f6b0e7234bd394,
-        0x33a820a726ffcb49ba1a1791d4cc6c10,
-        0x76782aa168be5aa8643cb2ef84815732,
+    FP492::new(
+        0x00000886d53b983d06ad3867a898f60a,
+        0xf9f5dbce1325f98c02cf7c7b587391a5,
+        0xe9ca19d41053937fe5a4dd0d0bc8ea66,
+        0x36083b3c1550b45f2d54321e5977c241,
     ),
     // atan(152/256)
-    FP509::new(
-        0x11255d9bfbd2a8f6a1288f1f88e5695f,
-        0x71f7cf73f73bbecfe5181445ccbfec01,
-        0xc6240bba1c72deec145a11695bf455ca,
-        0xfe8466fd1656a37bb331ae789db6a1f0,
+    FP492::new(
+        0x00000892aecdfde9547b5094478fc472,
+        0xb4afb8fbe7b9fb9ddf67f28c0a22e65f,
+        0xf600e31205dd0e396f760a2d08b4adfa,
+        0x2ae57f42337e8b2b51bdd998d73c4edb,
     ),
     // atan(153/256)
-    FP509::new(
-        0x113cfbfb1b056e4c4439bf0fb4df3138,
-        0x165cb3ddf54ef9833e801a05f4eb64a3,
-        0xe0ebd43d46e24c899ec0fe685cf0854a,
-        0x9fe286a15c965034ba87ec9618fc74a5,
+    FP492::new(
+        0x0000089e7dfd8d82b726221cdf87da6f,
+        0x989c0b2e59eefaa77cc19f400d02fa75,
+        0xb251f075ea1ea3712644cf607f342e78,
+        0x42a54ff14350ae4b281a5d43f64b0c7e,
     ),
     // atan(154/256)
-    FP509::new(
-        0x11548596376469ad160eadd030f3d087,
-        0x3fcedefd99f77e7ad6bf804a9b894407,
-        0x68b032dd37d03b34a4c44aa7392cf452,
-        0xbe5b1a53752fa0a6a249326a8ede7176,
+    FP492::new(
+        0x000008aa42cb1bb234d68b0756e81879,
+        0xe8439fe76f7eccfbbf3d6b5fc0254dc4,
+        0xa203b458196e9be81d9a526225539c96,
+        0x7a295f2d8d29ba97d05351249935476f,
     ),
     // atan(155/256)
-    FP509::new(
-        0x116bfa6f5137e132c0dfc2837a690c69,
-        0xb329259ed74057e9a7ea932a5282022b,
-        0x89a6fd15b380d6226533ead813970201,
-        0x3696acac86d5c7cb28e1b01a38f06591,
+    FP492::new(
+        0x000008b5fd37a89bf099606fe141bd34,
+        0x8634d99492cf6ba02bf4d3f549952941,
+        0x0115c4d37e8ad9c06b113299f56c09cb,
+        0x81009b4b5656436ae3e59470d80d1c78,
     ),
     // atan(156/256)
-    FP509::new(
-        0x11835a88be7c13718873b0030c040b24,
-        0x1f1c4889206239c0d95245c7c806c9cd,
-        0xf706816d149526984545c2937115a8bb,
-        0x18fbb367ebfe3cceb89d1197847e504c,
+    FP492::new(
+        0x000008c1ad445f3e09b8c439d8018602,
+        0x05920f8e244490311ce06ca922e3e403,
+        0x64e6fb8340b68a4a934c22a2e149b88a,
+        0xd45d8c7dd9b3f5ff1e675c4e88cbc23f,
     ),
     // atan(157/256)
-    FP509::new(
-        0x119aa5e5299f99967e4f4e9c1f2c0567,
-        0x70e13a1e4291f154c59b5e77d0db94fe,
-        0xc10589e7a80c8786409845fb031e1a8e,
-        0x055cd1dbd99784909287eb328a107518,
+    FP492::new(
+        0x000008cd52f294cfcccb3f27a74e0f96,
+        0x02b3b8709d0f2148f8aa62cdaf3be86d,
+        0xca7f6082c4f3d40643c3204c22fd818f,
+        0x0d4702ae68edeccbc2484943f5994508,
     ),
     // atan(158/256)
-    FP509::new(
-        0x11b1dc87904284ede173751070d71459,
-        0x9bf8570c2b96db74667a79d0c9271e70,
-        0xd1c18457bc892ed9cf153fff624027a8,
-        0x789116ad190ef56e13e3069079b4c202,
+    FP492::new(
+        0x000008d8ee43c8214276f0b9ba88386b,
+        0x8a2ccdfc2b8615cb6dba333d3ce86493,
+        0x8f3868e0c22bde44976ce78a9fffb120,
+        0x13d43c488b568c877ab709f183483cda,
     ),
     // atan(159/256)
-    FP509::new(
-        0x11c8fe7341f64f2517793abcf253f1d9,
-        0xbdf39d83510bcb3752994ec6d3531220,
-        0x55bf273077e61e6b529d5353cd72408b,
-        0x96fda69bb3b0dc9cf622e324700f7bd9,
+    FP492::new(
+        0x000008e47f39a0fb27928bbc9d5e7929,
+        0xf8ecdef9cec1a885e59ba94ca76369a9,
+        0x89102adf93983bf30f35a94ea9a9e6b9,
+        0x2045cb7ed34dd9d86e4e7b1171923808,
     ),
     // atan(160/256)
-    FP509::new(
-        0x11e00babdefeb3f36b906bc2ccb886e8,
-        0xf2314cfc0ca566eb9ea7b48da26713d6,
-        0x46cd3b9a7231ae256cd9afba60e7ad4b,
-        0x05389da3afca475986b1ec8814866628,
+    FP492::new(
+        0x000008f005d5ef7f59f9b5c835e1665c,
+        0x43747918a67e0652b375cf53da46d133,
+        0x89eb23669dcd3918d712b66cd7dd3073,
+        0xd6a5829c4ed1d7e523acc358f6440a43,
     ),
     // atan(161/256)
-    FP509::new(
-        0x11f7043557138a2d8cb3edafba8e26d5,
-        0x36cd1b0ee1c394144cae70cfe85547f1,
-        0x36675b71e62c6ded860b1c85e2c07ceb,
-        0xfba5c889f2085e251d1c85af8c7c3b1c,
+    FP492::new(
+        0x000008fb821aab89c516c659f6d7dd47,
+        0x136a9b668d8770e1ca0a26573867f42a,
+        0xa3f89b33adb8f31636f6c3058e42f160,
+        0x3e75fdd2e444f9042f128e8e42d7c63e,
     ),
     // atan(162/256)
-    FP509::new(
-        0x120de813e823b1a1b8a2b05122f0a156,
-        0xb33e149088335fd4dfb2a9ce507f0086,
-        0x9a88ad1dfe1adff533628dc9db1fe41f,
-        0x83913054a9cd9c0cc1c65dc439c02e52,
+    FP492::new(
+        0x00000906f409f411d8d0dc5158289178,
+        0x50ab599f0a484419afea6fd954e7283f,
+        0x80434d44568eff0d6ffa99b146e4ed8f,
+        0xf20fc1c8982a54e6ce0660e32ee21ce0,
     ),
     // atan(163/256)
-    FP509::new(
-        0x1224b74c1d192a75b4f7e22983101ed4,
-        0x5616a3a2640a2473a4b063596517a2a3,
-        0xd3e9e5fc218ef1ca35ecaeb0547b4a47,
-        0x1d81fceb279b586bd166e0e11d044eec,
+    FP492::new(
+        0x000009125ba60e8c953ada7bf114c188,
+        0x0f6a2b0b51d132051239d25831acb28b,
+        0xd151e9f4f2fe10c778e51af657582a3d,
+        0xa5238ec0fe7593cdac35e8b370708e82,
     ),
     // atan(164/256)
-    FP509::new(
-        0x123b71e2cc9e6a1c421c9f38224dc043,
-        0xfb32bd1a3f86a686eceb1e41c0ddf7d2,
-        0xed0999b1bdc91872079ca86267d61f68,
-        0x47329b5be44cd8d213edcf2a7db4e582,
+    FP492::new(
+        0x0000091db8f1664f350e210e4f9c1126,
+        0xe021fd995e8d1fc3534376758f20e06e,
+        0xfbe97684ccd8dee48c3903ce543133eb,
+        0x0fb423994dadf2266c6909f6e7953eda,
     ),
     // atan(165/256)
-    FP509::new(
-        0x125217dd17e50155aaa2306d9e6f2fae,
-        0xdd4a167ce43797e5a496f7db90db8f74,
-        0x6fbbd09780e2dbd81e262b005d714509,
-        0x65e7f55a3be1ee1f204e1299bdb101be,
+    FP492::new(
+        0x000009290bee8bf280aad5511836cf37,
+        0x97d76ea50b3e721bcbf2d24b7bedc86d,
+        0xc7ba37dde84bc0716dec0f1315802eb8,
+        0xa284b2f3faad1df0f70f9027094cded9,
     ),
     // atan(166/256)
-    FP509::new(
-        0x1268a940696da60e89a4502639e63930,
-        0x389b69f25852372fb5d55b34ffdd6ee7,
-        0xf7dba714c67c7f47c607d08d075cd759,
-        0x3bcd9050b4220dc82445b673179dafe2,
+    FP492::new(
+        0x0000093454a034b6d30744d228131cf3,
+        0x1c981c4db4f92c291b97daeaad9a7fee,
+        0xb773fbedd38a633e3fa3e303e84683ae,
+        0x6bac9de6c8285a1106e41222db398bcf,
     ),
     // atan(167/256)
-    FP509::new(
-        0x127f261273d1b350efcd8547767c5d9b,
-        0x4ae7b805feef8daf1ad486c8e95e5f78,
-        0x857f403ac04ebbd74f1fd3e000e8fdc5,
-        0x969507c5e143dbc73d23368d49545470,
+    FP492::new(
+        0x0000093f930939e8d9a877e6c2a3bb3e,
+        0x2ecda573dc02ff77c6d78d6a436474af,
+        0x2fbc42bfa01d60275deba78fe9f00074,
+        0x7ee2cb4a83e2f0a1ede39e919b46a4aa,
     ),
     // atan(168/256)
-    FP509::new(
-        0x12958e59308e30dec3189e727ef1465f,
-        0x1e715c1e8f528bdb458d73ef100638f0,
-        0xc6cdb79c372fd00dd1255d7704685c04,
-        0xe60ff24473f919ba47d4affc01e48eda,
+    FP492::new(
+        0x0000094ac72c9847186f618c4f393f78,
+        0xa32f8f38ae0f47a945eda2c6b9f78803,
+        0x1c786366dbce1b97e806e892aebb8234,
+        0x2e027307f92239fc8cdd23ea57fe00f2,
     ),
     // atan(169/256)
-    FP509::new(
-        0x12abe21aded07370a30006b408b87622,
-        0x2e91b7c8e01d8d57edd0208fad8aa1de,
-        0x6a6bc0e607eb6d8d8bf55920a7ec4af4,
-        0x2fa92efec0fc44efc040276cec7a2bff,
+    FP492::new(
+        0x00000955f10d6f6839b85180035a045c,
+        0x3b111748dbe4700ec6abf6e81047d6c5,
+        0x50ef3535e07303f5b6c6c5faac9053f6,
+        0x257a17d4977f607e2277e02013b6763d,
     ),
     // atan(170/256)
-    FP509::new(
-        0x12c2215e024465fad1fbc9716d07c4d0,
-        0xc935e7723290f06cc4b2b422fcb39878,
-        0xc9f725ffe7cd585462fafe0dee5a08bf,
-        0x4a3ac474ccb6b9ff4ae0eb7b74602fb8,
+    FP492::new(
+        0x0000096110af012232fd68fde4b8b683,
+        0xe268649af3b91948783662595a117e59,
+        0xcc3c64fb92fff3e6ac2a317d7f06f72d,
+        0x045fa51d623a665b5cffa57075bdba30,
     ),
     // atan(171/256)
-    FP509::new(
-        0x12d84c2961e48bc1b57beb9235f48555,
-        0x03fa527e8c4425fddf78417c9dcb5cf8,
-        0xa09a9bfd00f6a9e5b2ca9dfe5bcf1415,
-        0x17022ffee9b4c2f04f7301b641a5b788,
+    FP492::new(
+        0x0000096c2614b0f245e0dabdf5c91afa,
+        0x42aa81fd293f462212feefbc20be4ee5,
+        0xae7c504d4dfe807b54f2d9654eff2de7,
+        0x8a0a8b8117ff74da617827b980db20d3,
     ),
     // atan(172/256)
-    FP509::new(
-        0x12ee628406cbca71757a7fc33e35d6d6,
-        0x52f31b64e80e0af1c3f5e41550e98c9a,
-        0x84764818b70e37ec00916348d9924242,
-        0x902e7e7656dc54cf02bf074d5587d4e0,
+    FP492::new(
+        0x0000097731420365e538babd3fe19f1a,
+        0xeb6b29798db274070578e1faf20aa874,
+        0xc64d423b240c5b871bf60048b1a46cc9,
+        0x212148173f3b2b6e2a67815f83a6aac4,
     ),
     // atan(173/256)
-    FP509::new(
-        0x130464753b090ad831db3c4bce19b741,
-        0xda29f8b04c97bdff02903ca3f703bc6f,
-        0x8cd972bff4ae5b2ed97aaabf2855ae52,
-        0x130c863542d06723c33704ab89a74703,
+    FP492::new(
+        0x00000982323a9d84856c18ed9e25e70c,
+        0xdba0ed14fc58264bdeff81481e51fb81,
+        0xde37c66cb95ffa572d976cbd555f942a,
+        0xd7290986431aa1683391e19b8255c4d4,
     ),
     // atan(174/256)
-    FP509::new(
-        0x131a52048874be5032ae1e9eb0912548,
-        0x5fb98211f333f81b44be7c4b72649814,
-        0x10949180b16906ceaa3875baf0db0784,
-        0x41dfdd5a60e9c2a4db14756c1df6e328,
+    FP492::new(
+        0x0000098d2902443a5f2819570f4f5848,
+        0x92a42fdcc108f999fc0da25f3e25b932,
+        0x4c0a084a48c058b48367551c3add786d,
+        0x83c220efeead3074e1526d8a3ab60efb,
     ),
     // atan(175/256)
-    FP509::new(
-        0x13302b39b788565774bb61eea0acf15a,
-        0xcb27d1a36816f715faa438db705a8540,
-        0x9acebb1db538bb3e0418c44828459aaf,
-        0x215815362307f3a2d5aab29749bc614f,
+    FP492::new(
+        0x00000998159cdbc42b2bba5db0f75056,
+        0x78ad6593e8d1b40b7b8afd521c6db82d,
+        0x42a04d675d8eda9c5d9f020c62241422,
+        0xcd5790ac0a9b1183f9d16ad5594ba4de,
     ),
     // atan(176/256)
-    FP509::new(
-        0x1345f01cce37bb440844df1c4409fe77,
-        0x9b5c8de0c2e913ab8ef0e9a3cea75fdc,
-        0x8999b7fcd6e95b11e22c415c52cd7b53,
-        0x8131cabbb3889f503d3ce1a522811c36,
+    FP492::new(
+        0x000009a2f80e671bdda204226f8e2204,
+        0xff3bcdae46f0617489d5c77874d1e753,
+        0xafee44ccdbfe6b74ad88f11620ae2966,
+        0xbda9c098e55dd9c44fa81e9e70d29141,
     ),
     // atan(177/256)
-    FP509::new(
-        0x135ba0b60eccce78ee866e4da2e56e13,
-        0x2d807a3b13aff3b36c876a92e87d5d73,
-        0x5892dd9ed69c5d41d55b38484142cf59,
-        0x4430f015d6c1513cdb3d8a19fffec528,
+    FP492::new(
+        0x000009add05b0766673c77433726d172,
+        0xb70996c03d1d89d7f9d9b643b549743e,
+        0xaeb9ac496ecf6b4e2ea0eaad9c2420a1,
+        0x67aca218780aeb60a89e6d9ec50cffff,
     ),
     // atan(178/256)
-    FP509::new(
-        0x13713d0df6c503f5843b0fe74fc96dba,
-        0x78bb5581db56ecf35c0354e684b92aa6,
-        0x0154afcc94c1ab0a1c443b9e123a9e33,
-        0x5b9debdc5942b7823dce783b19a91a80,
+    FP492::new(
+        0x000009b89e86fb6281fac21d87f3a7e4,
+        0xb6dd3c5daac0edab7679ae01aa73425c,
+        0x955300aa57e64a60d5850e221dcf091d,
+        0x4f19adcef5ee2ca15bc11ee73c1d8cd5,
     ),
     // atan(179/256)
-    FP509::new(
-        0x1386c52d3db11e921c78d050657f7b42,
-        0xdd2526002c003c6bd597dc6a03a87c4d,
-        0x18ba2806c99beb986b03d4b2a178f86a,
-        0x60798e9031123be1c5e6c82fa6b389b1,
+    FP492::new(
+        0x000009c362969ed88f490e3c682832bf,
+        0xbda16e92930016001e35eacbee3501d4,
+        0x3e268c5d140364cdf5cc3581ea5950bc,
+        0x7c35303cc74818891df0e2f36417d35a,
     ),
     // atan(180/256)
-    FP509::new(
-        0x139c391cd41719b73ef3389d02e99e23,
-        0x8b4558d4764dcf27de3cae4bac1a59fe,
-        0x58b59b6a4d959b5f469ac795bae4c81d,
-        0x5e04c633f46d9de3d52bc34b44a59ac3,
+    FP492::new(
+        0x000009ce1c8e6a0b8cdb9f799c4e8174,
+        0xcf11c5a2ac6a3b26e793ef1e5725d60d,
+        0x2cff2c5acdb526cacdafa34d63cadd72,
+        0x640eaf026319fa36cef1ea95e1a5a253,
     ),
     // atan(181/256)
-    FP509::new(
-        0x13b198e5e2564ada0dbbc1f15aa841b2,
-        0x7fdd7f6025cab0b77d70f8c76bde67bd,
-        0x8c3d46119b5032dab0dd09e82b560771,
-        0xd53331ba57014aed795b081c1e89037c,
+    FP492::new(
+        0x000009d8cc72f12b256d06dde0f8ad54,
+        0x20d93feebfb012e5585bbeb87c63b5ef,
+        0x33dec61ea308cda8196d586e84f415ab,
+        0x03b8ea9998dd2b80a576bcad840e0f45,
     ),
     // atan(182/256)
-    FP509::new(
-        0x13c6e491c78dc487aebdac0bd1625173,
-        0x8729ef590af93227d193dccbaa9659d0,
-        0xc2c3fb4d46c1cd450254e06ee96444de,
-        0x5d96d5996db2a1d276ee27cf1bcf688f,
+    FP492::new(
+        0x000009e37248e3c6e243d75ed605e8b1,
+        0x28b9c394f7ac857c9913e8c9ee65d54b,
+        0x2ce86161fda6a360e6a2812a703774b2,
+        0x226f2ecb6accb6d950e93b7713e78de8,
     ),
     // atan(183/256)
-    FP509::new(
-        0x13dc1c2a1885044b398dc3d3a5c3bfbe,
-        0xb24b413fffb17286f5e13db52a2c63cc,
-        0xd22839a701b16f35b0eb9982d4a46d55,
-        0xe2937b6adc7f89c4acc90c17ad1ffd7a,
+    FP492::new(
+        0x000009ee0e150c4282259cc6e1e9d2e1,
+        0xdfdf5925a09fffd8b9437af09eda9516,
+        0x31e669141cd380d8b79ad875ccc16a52,
+        0x36aaf149bdb56e3fc4e25664860bd690,
     ),
     // atan(184/256)
-    FP509::new(
-        0x13f13fb89e96f43d9f16924c89e0e03b,
-        0xf3ae87a37900359540146b78438de9bf,
-        0x7b6ed1060ef0b1e8c506f41bacece951,
-        0x6951b9bf7db133b7a29282dd258c2479,
+    FP492::new(
+        0x000009f89fdc4f4b7a1ecf8b492644f0,
+        0x701df9d743d1bc801acaa00a35bc21c6,
+        0xf4dfbdb76883077858f462837a0dd676,
+        0x74a8b4a8dcdfbed899dbd149416e92c6,
     ),
     // atan(185/256)
-    FP509::new(
-        0x14064f47569f489549dc1b903537cb4e,
-        0x12258ac7533952de2ae1b5899fe0ab89,
-        0x33242aa130a1726ecf887215de3ba7cd,
-        0x7bced99a69c634be151797398f8462ad,
+    FP492::new(
+        0x00000a0327a3ab4fa44aa4ee0dc81a9b,
+        0xe5a70912c563a99ca96f1570dac4cff0,
+        0x55c4999215509850b93767c4390aef1d,
+        0xd3e6bde76ccd34e31a5f0a8bcb9cc7c2,
     ),
     // atan(186/256)
-    FP509::new(
-        0x141b4ae06fea4113d60a53277651d8ad,
-        0x072cc5d97ef8c6e08677848655a5d104,
-        0x7bfc2725cba587706753550d0a498053,
-        0x6e1b6efc37c0ec15a0209754a5002cf6,
+    FP492::new(
+        0x00000a0da57037f52089eb052993bb28,
+        0xec56839662ecbf7c6370433bc2432ad2,
+        0xe8823dfe1392e5d2c3b833a9aa868524,
+        0xc029b70db77e1be0760ad0104baa5280,
     ),
     // atan(187/256)
-    FP509::new(
-        0x1430328e4b26d5bb3a9bbe3d1985deec,
-        0x7e1ea6b2602fc7264206399fd0b56e18,
-        0xf8a9add7156d696a534a1a26d4096104,
-        0x0c1453afa2090b1df12c84267bf777d8,
+    FP492::new(
+        0x00000a18194725936add9d4ddf1e8cc2,
+        0xef763f0f53593017e39321031ccfe85a,
+        0xb70c7c54d6eb8ab6b4b529a50d136a04,
+        0xb082060a29d7d104858ef89642133dfc,
     ),
     // atan(188/256)
-    FP509::new(
-        0x1445065b795b55c1125fd3810c6f5e1c,
-        0xba10828da9faab7c82b423e76a045af0,
-        0x668a30bd259fc3a67e378503dcdd22a1,
-        0x32d6058540a27a936f45fd91931c8c2e,
+    FP492::new(
+        0x00000a22832dbcadaae0892fe9c08637,
+        0xaf0e5d084146d4fd55be415a11f3b502,
+        0x2d783345185e92cfe1d33f1bc281ee6e,
+        0x9150996b02c2a0513d49b7a2fec8c98e,
     ),
     // atan(189/256)
-    FP509::new(
-        0x1459c652badc7f4665a63a384d6f5127,
-        0xa7eadaaebd979be14aaea602ca91320b,
-        0x565473d616f8f6a1eee041159e46e74b,
-        0x69f0fe7d28c61b09da303dfb5b64cbcb,
+    FP492::new(
+        0x00000a2ce3295d6e3fa332d31d1c26b7,
+        0xa893d3f56d575ecbcdf0a55753016548,
+        0x9905ab2a39eb0b7c7b50f770208acf23,
+        0x73a5b4f87f3e94630d84ed181efdadb2,
     ),
     // atan(190/256)
-    FP509::new(
-        0x146e727efe4715ec6464e47bb3373dfa,
-        0x706ef43d8ae8eadb5e3fba8ce2a336fa,
-        0x846c7447e99008b4d44a847d36810683,
-        0x4d6671fa66a70f1809036b4ab0c24097,
+    FP492::new(
+        0x00000a37393f7f238af63232723dd99b,
+        0x9efd38377a1ec574756daf1fdd467151,
+        0x9b7d42363a23f4c8045a6a25423e9b40,
+        0x8341a6b338fd3353878c0481b5a55861,
     ),
     // atan(191/256)
-    FP509::new(
-        0x14830aeb5f7bfdf2ecd4ccc4dac6669b,
-        0x1a8769c0c751c675f4deebd16ceefc29,
-        0x43f182cf06eb30e6ad26b952a55f4e5f,
-        0xda2ca54a8a22aff765e786be9c58bbc6,
+    FP492::new(
+        0x00000a418575afbdfef9766a66626d63,
+        0x334d8d43b4e063a8e33afa6f75e8b677,
+        0x7e14a1f8c1678375987356935ca952af,
+        0xa72fed1652a5451157fbb2f3c35f4e2c,
     ),
     // atan(192/256)
-    FP509::new(
-        0x14978fa3269ee12483350fe548afb593,
-        0xdc7e10d13dd6573ce4290cccb1989de7,
-        0x54fef6fb72679709eaec440dda7a0496,
-        0x722e85999cf0450b591d41948a901eda,
+    FP492::new(
+        0x00000a4bc7d1934f7092419a87f2a457,
+        0xdac9ee3f08689eeb2b9e7214866658cc,
+        0x4ef3aa7f7b7db933cb84f5762206ed3d,
+        0x024b391742ccce782285ac8ea0ca4548,
     ),
     // atan(193/256)
-    FP509::new(
-        0x14ac00b1c717626c839c8e0ae4007d68,
-        0xc53de3d9419a1cb1b3639ff6b9bba22c,
-        0x095208d8bd2a91125c136668537ede7c,
-        0x76d36acf166aff1189d76fa201efd1c5,
+    FP492::new(
+        0x00000a560058e38bb13641ce47057200,
+        0x3eb4629ef1eca0cd0e58d9b1cffb5cdd,
+        0xd11604a9046c5e9548892e09b33429bf,
+        0x6f3e3b69b5678b357f88c4ebb7d100f8,
     ),
     // atan(194/256)
-    FP509::new(
-        0x14c05e22de94e48fd4f83d8344848a3a,
-        0x88c84c98b922dd1d1d8eb2487ae5edca,
-        0xa4da5cc26008ec3568be89f5ba8d9a17,
-        0xc7d7e2a043ee55e353ea0df0702ed81e,
+    FP492::new(
+        0x00000a602f116f4a7247ea7c1ec1a242,
+        0x451d4464264c5c916e8e8ec759243d72,
+        0xf6e5526d2e613004761ab45f44fadd46,
+        0xcd0be3ebf15021f72af1a9f506f83817,
     ),
     // atan(195/256)
-    FP509::new(
-        0x14d4a8023414e81e3a891daa88b01dc4,
-        0x9430e552b85da27966631465622a4cad,
-        0xb99373aba26a8aac43de3d92707a6de2,
-        0x4b605362c1c186ea8c0d152e184cb0c6,
+    FP492::new(
+        0x00000a6a54011a0a740f1d448ed54458,
+        0x0ee24a1872a95c2ed13cb3318a32b115,
+        0x2656dcc9b9d5d135455621ef1ec9383d,
+        0x36f125b029b160e0c37546068a970c26,
     ),
     // atan(196/256)
-    FP509::new(
-        0x14e8de5bb6ec04528cf6facde5ae9c03,
-        0x243702ee9b0f46d49d67fcbf49294264,
-        0x47388101edbb7704a13ec8681259ec3e,
-        0x9e70b617551ddc0e48be8b287384d093,
+    FP492::new(
+        0x00000a746f2ddb760229467b7d66f2d7,
+        0x4e01921b81774d87a36a4eb3fe5fa494,
+        0xa132239c4080f6ddbb82509f6434092c,
+        0xf61f4f385b0baa8eee07245f459439c2,
     ),
     // atan(197/256)
-    FP509::new(
-        0x14fd013b7dd17e3aa27e7cf84969a282,
-        0x561a42595c46b5574acdcfd17e1a232b,
-        0x3d385fefbb97b4c3b8860f16a25a9c77,
-        0x083b4e1370797c35ad59189ef9e6c585,
+    FP492::new(
+        0x00000a7e809dbee8bf1d513f3e7c24b4,
+        0xd1412b0d212cae235aaba566e7e8bf0d,
+        0x11959e9c2ff7ddcbda61dc43078b512d,
+        0x4e3b841da709b83cbe1ad6ac8c4f7cf3,
     ),
     // atan(198/256)
-    FP509::new(
-        0x151110adc5ed81247b9ad0654c7bc3dd,
-        0x1c2f5694b5e978cc10f042363e4afa03,
-        0xdd94374ba891896ab3dbc7a9848fc8ff,
-        0xfbb06a8720baf349738ed7c29c58fbf4,
+    FP492::new(
+        0x00000a888856e2f6c0923dcd6832a63d,
+        0xe1ee8e17ab4a5af4bc660878211b1f25,
+        0x7d01eeca1ba5d448c4b559ede3d4c247,
+        0xe47ffdd83543905d79a4b9c76be14e2c,
     ),
     // atan(199/256)
-    FP509::new(
-        0x15250cbef1e9faf563242e6ebbc8373b,
-        0xee7953346a4e8c5617b7569b36c4e13a,
-        0xd511a54dbea51f0fe517f8e357d8484e,
-        0x3b33197743ce502dba3d4b41df306952,
+    FP492::new(
+        0x00000a92865f78f4fd7ab19217375de4,
+        0x1b9df73ca99a3527462b0bdbab4d9b62,
+        0x709d6a88d2a6df528f87f28bfc71abec,
+        0x24271d998cbba1e72816dd1ea5a0ef98,
     ),
     // atan(200/256)
-    FP509::new(
-        0x1538f57b89061eb9122d5096b7cf267e,
-        0xbf32e2cabc84f7e38129e0074fb7eb89,
-        0xa8b263ae86d439433fef5b3360ac55bd,
-        0x8e5d64b3ff0863dbd0b8cfb4c0c2a363,
+    FP492::new(
+        0x00000a9c7abdc4830f5c8916a84b5be7,
+        0x933f5f9971655e427bf1c094f003a7db,
+        0xf5c4d45931d7436a1ca19ff7ad99b056,
+        0x2adec72eb259ff8431ede85c67da6061,
     ),
     // atan(201/256)
-    FP509::new(
-        0x154ccaf0362c8f628c91fe3d0f05598a,
-        0x2e59bca90efdea117237ad04feed3a71,
-        0x1d853cef4205c6a735789d2159f48e2d,
-        0xba8c0f4d6f3a508fdb09ab5d65dcc0cc,
+    FP492::new(
+        0x00000aa665781b1647b14648ff1e8782,
+        0xacc5172cde54877ef508b91bd6827f76,
+        0x9d388ec29e77a102e3539abc4e90acfa,
+        0x4716dd4607a6b79d2847ed84d5aeb2ee,
     ),
     // atan(202/256)
-    FP509::new(
-        0x15608d29c70c34664e73c37a022001fa,
-        0x9f43b73cf1cd3c4e13e643f94b7946b0,
-        0xaff4bf715c5d936da50d592361c5802a,
-        0x3344a8565116ffaf195636154c65c021,
+    FP492::new(
+        0x00000ab04694e3861a332739e1bd0110,
+        0x00fd4fa1db9e78e69e2709f321fca5bc,
+        0xa35857fa5fb8ae2ec9b6d286ac91b0e2,
+        0xc01519a2542b288b7fd78cab1b0aa633,
     ),
     // atan(203/256)
-    FP509::new(
-        0x15743c352b33b9857fcb2cde0568d3f6,
-        0xc06e516e1c1a58ab6ad440c40549a11c,
-        0x829fea739ce7f73836800116f7490a72,
-        0x19f0ab75ac316a17480030be58276c21,
+    FP492::new(
+        0x00000aba1e1a9599dcc2bfe5966f02b4,
+        0x69fb603728b70e0d2c55b56a206202a4,
+        0xd08e414ff539ce73fb9c1b40008b7ba4,
+        0x85390cf855bad618b50ba400185f2c14,
     ),
     // atan(204/256)
-    FP509::new(
-        0x1587d81f732fbad4346c4e74ad5f51de,
-        0x8307b6a80d8840d1970a96b9f4fdbe0a,
-        0xa798dd66a394469ff373557a2de64b5c,
-        0x69432bb5f877bceffa7fb6eedfb146af,
+    FP492::new(
+        0x00000ac3ec0fb997dd6a1a36273a56af,
+        0xa8ef4183db5406c42068cb854b5cfa7e,
+        0xdf0553cc6eb351ca234ff9b9aabd16f3,
+        0x25ae34a195dafc3bde77fd3fdb776fd9,
     ),
     // atan(205/256)
-    FP509::new(
-        0x159b60f5cfab9db93ecefbf650ed3e49,
-        0xa32a37706261baee5e861344989c4a27,
-        0xec902a42d3bdf6a9964f0a8547345733,
-        0xff21517fbffda16408c280cf86d4931e,
+    FP492::new(
+        0x00000acdb07ae7d5cedc9f677dfb2876,
+        0x9f24d1951bb83130dd772f4309a24c4e,
+        0x2513f648152169defb54cb278542a39a,
+        0x2b99ff90a8bfdffed0b204614067c36a,
     ),
     // atan(206/256)
-    FP509::new(
-        0x15aed6c59095175cc4bdc52a50d9b6b2,
-        0x2a53e9e86b58fec726c37ae7a64f0c17,
-        0x0408200e6c8d0971f1a1b28f58212931,
-        0xcf764be5cb27b4752a74613e8df759e4,
+    FP492::new(
+        0x00000ad76b62c84a8bae625ee295286c,
+        0xdb591529f4f435ac7f639361bd73d327,
+        0x860b82041007364684b8f8d0d947ac10,
+        0x9498e7bb25f2e593da3a953a309f46fc,
     ),
     // atan(207/256)
-    FP509::new(
-        0x15c2399c244260b390ac586a532a2a95,
-        0x7828ed0cd8855820803c5b9498be3056,
-        0xe36e7095f4905c84b02761f2b3913604,
-        0xb80d1fbee219da67a98ad03d085b847d,
+    FP492::new(
+        0x00000ae11cce12213059c8562c352995,
+        0x154abc1476866c42ac10401e2dca4c5f,
+        0x182b71b7384afa482e425813b0f959c8,
+        0x9b025c068fdf710ced33d4c5681e842e,
     ),
     // atan(208/256)
-    FP509::new(
-        0x15d58987169b1810028e4bc5e7ca40e1,
-        0x406e8568c87dffc4c0880f28f889fba6,
-        0x12bdc1fa3dde3e7af8cb0dfc3ba8735e,
-        0x67fadef0a76e8d85aa60fda978a7859c,
+    FP492::new(
+        0x00000aeac4c38b4d8c08014725e2f3e5,
+        0x2070a03742b4643effe2604407947c44,
+        0xfdd3095ee0fd1eef1f3d7c6586fe1dd4,
+        0x39af33fd6f7853b746c2d5307ed4bc54,
     ),
     // atan(209/256)
-    FP509::new(
-        0x15e8c6941043cfde81148375c3209f22,
-        0xc8e6df8897f76b8d0dbabcefe9c7412f,
-        0x8ef7ab3536d6b4d1870877b9687b143e,
-        0xcef1e4752c11b33c20d2a31de3384f49,
+    FP492::new(
+        0x00000af4634a0821e7ef408a41bae190,
+        0x4f9164736fc44bfbb5c686dd5e77f4e3,
+        0xa097c77bd59a9b6b5a68c3843bdcb43d,
+        0x8a1f6778f23a9608d99e1069518ef19c,
     ),
     // atan(210/256)
-    FP509::new(
-        0x15fbf0d0d5cc49f259817ffa475415cc,
-        0x4fc822633e4a68f69245cde62e50215e,
-        0xe54f63ee122de0cebefed08e649a25d7,
-        0xb62dbe0f1df34483597e1ae8a1cc439e,
+    FP492::new(
+        0x00000afdf8686ae624f92cc0bffd23aa,
+        0x0ae627e411319f25347b4922e6f31728,
+        0x10af72a7b1f70916f0675f7f6847324d,
+        0x12ebdb16df078ef9a241acbf0d7450e6,
     ),
     // atan(211/256)
-    FP509::new(
-        0x160f084b46e05e8911e599aeb9b39b5e,
-        0x54b61e8542293ea2e08d2d4be27ac4d9,
-        0xa3bbf0a9bcc90214f4bf1f788e99ec4c,
-        0x58e88916a7f9ec7bfdc534d41d8c561f,
+    FP492::new(
+        0x00000b078425a3702f4488f2ccd75cd9,
+        0xcdaf2a5b0f42a1149f51704696a5f13d,
+        0x626cd1ddf854de64810a7a5f8fbc474c,
+        0xf6262c74448b53fcf63dfee29a6a0ec6,
     ),
     // atan(212/256)
-    FP509::new(
-        0x16220d115d7b8ded487acaf1173ed4f6,
-        0xa13c5051a9bf3c38eba7daad799cdb65,
-        0x640a2217a084b29f8f21761357bf9488,
-        0x2628e2d7c23358ede741d7e5a43f6dc9,
+    FP492::new(
+        0x00000b110688aebdc6f6a43d65788b9f,
+        0x6a7b509e2828d4df9e1c75d3ed56bcce,
+        0x6db2b205110bd042594fc790bb09abdf,
+        0xca441314716be119ac76f3a0ebf2d220,
     ),
     // atan(213/256)
-    FP509::new(
-        0x1634ff312d1f3b674bcc57cad65f3d29,
-        0x475c783ece2dd4ad4cd4c6ba5abe05dd,
-        0xc5c86910a5b635ec60c405601a5049ba,
-        0x2a557e6876e14da6a933a182fd4b5a4e,
+    FP492::new(
+        0x00000b1a7f98968f9db3a5e62be56b2f,
+        0x9e94a3ae3c1f6716ea56a66a635d2d5f,
+        0x02eee2e4348852db1af6306202b00d28,
+        0x24dd152abf343b70a6d35499d0c17ea6,
     ),
     // atan(214/256)
-    FP509::new(
-        0x1647deb8e20b8ff09afdfee2d7186648,
-        0x565477b94a6e699d47862ef4581e8175,
-        0xa4a6538f309dee4f073969b76bfc9c18,
-        0xbd5a0629ed86805a6346cceb2a088449,
+    FP492::new(
+        0x00000b23ef5c7105c7f84d7eff716b8c,
+        0x33242b2a3bdca53734cea3c3177a2c0f,
+        0x40bad25329c7984ef727839cb4dbb5fe,
+        0x4e0c5ead0314f6c3402d31a366759504,
     ),
     // atan(215/256)
-    FP509::new(
-        0x165aabb6c07b02e86c64c50cd8d73b89,
-        0x745a108fd20e39c1dd48d3787141289d,
-        0xbbfcb6f24c7c7751f7bf74b3d8f87ed8,
-        0x58c78b137f8ac8e72eec75ad09af65a7,
+    FP492::new(
+        0x00000b2d55db603d8174363262866c6b,
+        0x9dc4ba2d0847e9071ce0eea469bc38a0,
+        0x944eddfe5b79263e3ba8fbdfba59ec7c,
+        0x3f6c2c63c589bfc5647397763ad684d8,
     ),
     // atan(216/256)
-    FP509::new(
-        0x166d663923e086d22b20282e888c5f27,
-        0x3c8d3fe500f07edfcea3cbbd8813b9a3,
-        0xc875918bfde9314aee1808b53f94e3b1,
-        0x819fb8d393d2ef5f68f0be8eda0735d2,
+    FP492::new(
+        0x00000b36b31c91f04369159014174446,
+        0x2f939e469ff280783f6fe751e5dec409,
+        0xdcd1e43ac8c5fef498a5770c045a9fca,
+        0x71d8c0cfdc69c9e977afb4785f476d04,
     ),
     // atan(217/256)
-    FP509::new(
-        0x16800e4e7e2857f38acaf260b787e2ae,
-        0xcd34a612a5ffa1fee8780d2e1d46ff8b,
-        0xf4dc3df3b18899d46ebe1c010fba9d09,
-        0xe7a557a2b40e7b9824471926780dd24e,
+    FP492::new(
+        0x00000b4007273f142bf9c56579305bc3,
+        0xf157669a530952ffd0ff743c06970ea3,
+        0x7fc5fa6e1ef9d8c44cea375f0e0087dd,
+        0x4e84f3d2abd15a073dcc12238c933c07,
     ),
     // atan(218/256)
-    FP509::new(
-        0x1692a40556fb6a7652e56a3a8b2e394f,
-        0x0e84de7771cb67cea15077ed2aa3886a,
-        0xce90d5ca486b3fb9e18562869988e1fc,
-        0x0785b28f113954aada7fb57a18049dc9,
+    FP492::new(
+        0x00000b495202ab7db53b2972b51d4597,
+        0x1ca787426f3bb8e5b3e750a83bf69551,
+        0xc43567486ae524359fdcf0c2b1434cc4,
+        0x70fe03c2d947889caa556d3fdabd0c02,
     ),
     // atan(219/256)
-    FP509::new(
-        0x16a5276c4b05758252698ee56587f313,
-        0x7813315e3f56ef1f2f8d8b4200377ffc,
-        0x4c35c21e1fecdddc1e8a7b8f713ed4e0,
-        0x1344bdd558ac64e534611c3f76d6f857,
+    FP492::new(
+        0x00000b5293b62582bac12934c772b2c3,
+        0xf989bc0998af1fab778f97c6c5a1001b,
+        0xbffe261ae10f0ff66eee0f453dc7b89f,
+        0x6a7009a25eeaac5632729a308e1fbb6b,
     ),
     // atan(220/256)
-    FP509::new(
-        0x16b798920b3d9895ff1e79dcebc720fa,
-        0xaea42de8f67123c0f19bb558319d52a6,
-        0xbcb06a1e6df51aaeb745941dfdddcd9e,
-        0xfdd1618b82f25ab955d1aaa604dda396,
+    FP492::new(
+        0x00000b5bcc49059ecc4aff8f3cee75e3,
+        0x907d575216f47b3891e078cddaac18ce,
+        0xa9535e58350f36fa8d575ba2ca0efeee,
+        0xe6cf7ee8b0c5c1792d5caae8d553026f,
     ),
     // atan(221/256)
-    FP509::new(
-        0x16c9f7855c31983813bc537a50191416,
-        0xddcfc75bcacf2294db8f1cda5ab39e0e,
-        0xa65e6817eecce42d6e463bcfb09a4000,
-        0x6a631657cdc25654cd4317ac3589a064,
+    FP492::new(
+        0x00000b64fbc2ae18cc1c09de29bd280c,
+        0x8a0b6ee7e3ade567914a6dc78e6d2d59,
+        0xcf07532f340bf7667216b7231de7d84d,
+        0x200035318b2be6e12b2a66a18bd61ac5,
     ),
     // atan(222/256)
-    FP509::new(
-        0x16dc44551553aef203bce5463eb90c93,
-        0x015af43d8e767fa2be4b6aa2ec45c80c,
-        0xbc60643526f5a16d846b4e8ad88aa208,
-        0x8f0a284fff0a3d338edd11a817a73613,
+    FP492::new(
+        0x00000b6e222a8aa9d77901de72a31f5c,
+        0x864980ad7a1ec73b3fd15f25b5517622,
+        0xe4065e30321a937ad0b6c235a7456c45,
+        0x510447851427ff851e99c76e88d40bd4,
     ),
     // atan(223/256)
-    FP509::new(
-        0x16ee7f10204aef5a4bba8c1989c7df05,
-        0x1f23492aa1acfe92f37f7b12dc1c7b2f,
-        0xacf44182bdd7de20b07f2e2092ab2ae8,
-        0x47b27f15a56004cdfe27675582787b18,
+    FP492::new(
+        0x00000b773f88102577ad25dd460cc4e3,
+        0xef828f91a49550d67f4979bfbd896e0e,
+        0x3d97d67a20c15eebef10583f97104955,
+        0x957423d93f8ad2b00266ff13b3aac13c,
     ),
     // atan(224/256)
-    FP509::new(
-        0x1700a7c5784633ce7965b4aa42148887,
-        0xa7af5d982298f350140242abec995ca6,
-        0x08cabe0cb9d93030493893d8e4cd04e5,
-        0x9d18a7c428700f038704afc8328bd19e,
+    FP492::new(
+        0x00000b8053e2bc2319e73cb2da55210a,
+        0x4443d3d7aecc114c79a80a012155f64c,
+        0xae5304655f065cec9818249c49ec7266,
+        0x8272ce8c53e214380781c38257e41946,
     ),
     // atan(225/256)
-    FP509::new(
-        0x1712be84295198573640cdf62205eee2,
-        0xeb49ab483546de26a5002ec79f50a895,
-        0x5b8c6cfb5db5fbd4d6ee5a6e98ea0308,
-        0xa71ae77b8ac9bd3bf6fc051368fa09e6,
+    FP492::new(
+        0x00000b895f4214a8cc2b9b2066fb1102,
+        0xf77175a4d5a41aa36f1352801763cfa8,
+        0x544aadc6367daedafdea6b772d374c75,
+        0x0184538d73bdc564de9dfb7e0289b47d,
     ),
     // atan(226/256)
-    FP509::new(
-        0x1724c35b4fae7b0ca45996d9a4cd788c,
-        0x00bfbd067e5179e544f3f7bc463bd7f5,
-        0x50b41cb91b5b77200b3f84176b9c3c44,
-        0x8d4afe1d83f8ff604189997eb5238856,
+    FP492::new(
+        0x00000b9261ada7d73d86522ccb6cd266,
+        0xbc46005fde833f28bcf2a279fbde231d,
+        0xebfaa85a0e5c8dadbb90059fc20bb5ce,
+        0x1e2246a57f0ec1fc7fb020c4ccbf5a92,
     ),
     // atan(227/256)
-    FP509::new(
-        0x1736b65a172dff2eebfa0d5125a201ce,
-        0x1e03e0da9aba1ef405c89cce3583c43a,
-        0x3fd3d182cfe29dd386dbba4fe19bae7a,
-        0x3253c28951a50848b3ead1b3284d3025,
+    FP492::new(
+        0x00000b9b5b2d0b96ff9775fd06a892d1,
+        0x00e70f01f06d4d5d0f7a02e44e671ac1,
+        0xe21d1fe9e8c167f14ee9c36ddd27f0cd,
+        0xd73d1929e144a8d2842459f568d99427,
     ),
     // atan(228/256)
-    FP509::new(
-        0x1748978fba8e0f05eca9859621285c70,
-        0xc464508a9a8a946860ce5f9faa3dd9c4,
-        0xe83483f1a1ac69fd9dacc91ec6f8b884,
-        0xb97c4bb12c5d4a1a5849ea30fdca8d35,
+    FP492::new(
+        0x00000ba44bc7dd470782f654c2cb1094,
+        0x2e38623228454d454a3430672fcfd51e,
+        0xece2741a41f8d0d634feced6648f637c,
+        0x5c425cbe25d8962ea50d2c24f5187ee5,
     ),
     // atan(229/256)
-    FP509::new(
-        0x175a670b82d8d87b92b131ca421b42a1,
-        0x691994e621518f63db15d16d13124ada,
-        0xdf0c07f7586e5a50b9b486625e1f7f11,
-        0xdd31d01ea634330cd419c9a52ee7a2a3,
+    FP492::new(
+        0x00000bad3385c16c6c3dc95898e5210d,
+        0xa150b48cca7310a8c7b1ed8ae8b68989,
+        0x256d6f8603fbac372d285cda43312f0f,
+        0xbf88ee98e80f531a19866a0ce4d29774,
     ),
     // atan(230/256)
-    FP509::new(
-        0x176c24dcc6c6c046549546b720f22b5c,
-        0xc2685bdfedf1ad8cbc58e329a0b6f28c,
-        0x9205d72aad24fbac7125dbdd30d5c541,
-        0xe7fda88e6b5c579536b140163b062f54,
+    FP492::new(
+        0x00000bb6126e636360232a4aa35b9079,
+        0x15ae61342deff6f8d6c65e2c7194d05b,
+        0x79464902eb9556927dd63892edee986a,
+        0xe2a0f3fed44735ae2bca9b58a00b1d83,
     ),
     // atan(231/256)
-    FP509::new(
-        0x177dd112ea22c75cc9823f0434f5c7cc,
-        0x4e81d355f4b33cfa50eee6b7241a9909,
-        0xa87d6a0a7290cf7c162c31103ff1e677,
-        0xb1115a81b2ddc466b943a4e46f58cf83,
+    FP492::new(
+        0x00000bbee889751163ae64c11f821a7a,
+        0xe3e62740e9aafa599e7d2877735b920d,
+        0x4c84d43eb505394867be0b1618881ff8,
+        0xf33bd888ad40d96ee2335ca1d27237ac,
     ),
     // atan(232/256)
-    FP509::new(
-        0x178f6bbd5d315e501a822600dd01f652,
-        0x027f5703eb7495714462f2d76aa29532,
-        0xa02190bf8ad308be7a82818f7a0a00cf,
-        0x92417469ebab1b515329d330f8987882,
+    FP492::new(
+        0x00000bc7b5deae98af280d4113006e80,
+        0xfb29013fab81f5ba4ab8a231796bb551,
+        0x4a995010c85fc569845f3d4140c7bd05,
+        0x0067c920ba34f5d58da8a994e9987c4c,
     ),
     // atan(233/256)
-    FP509::new(
-        0x17a0f4eb9c19a2113c67cd815f576bae,
-        0x82bafad4b1492e2d17d037f098e3fdaf,
-        0x2084b2acbe7d932555f57615a23e9b25,
-        0xeeb5194f0ab56b5ee5f9083fe0f1ab24,
+    FP492::new(
+        0x00000bd07a75ce0cd1089e33e6c0afab,
+        0xb5d7415d7d6a58a497168be81bf84c71,
+        0xfed7904259565f3ec992aafabb0ad11f,
+        0x4d92f75a8ca7855ab5af72fc841ff079,
     ),
     // atan(234/256)
-    FP509::new(
-        0x17b26cad2e50fd8c5fc833efb81362f2,
-        0x313f63c4d8e4de6254b275e1eadc9770,
-        0x870948ce2b949eff73e7437fc24059b1,
-        0x39ccbbe732488e7e456601f675eb1b91,
+    FP492::new(
+        0x00000bd9365697287ec62fe419f7dc09,
+        0xb179189fb1e26c726f312a593af0f56e,
+        0x4bb84384a46715ca4f7fb9f3a1bfe120,
+        0x2cd89ce65df39924473f22b300fb3af6,
     ),
     // atan(235/256)
-    FP509::new(
-        0x17c3d311a6092b6ecf2cb4c0ca2136e8,
-        0x6d776eda4ff4b16653857e8b2cc99977,
-        0xcfc9770aac73d4d3d47911bfb8678e6f,
-        0x2c8c817b2ae1e3fe0292b5a21b732a45,
+    FP492::new(
+        0x00000be1e988d30495b767965a606510,
+        0x9b7436bbb76d27fa58b329c2bf459664,
+        0xccbbe7e4bb855639ea69ea3c88dfdc33,
+        0xc737964640bd9570f1ff01495ad10dba,
     ),
     // atan(236/256)
-    FP509::new(
-        0x17d528289fa09355820878bceaa505cf,
-        0xa02870683e27ab874e9fb5de2cab7e68,
-        0xa8261ecba028d336329e679abdb81dcc,
-        0x62963bce62c06ca0184de5955d675e10,
+    FP492::new(
+        0x00000bea94144fd049aac1043c5e7552,
+        0x82e7d01438341f13d5c3a74fdaef1655,
+        0xbf3454130f65d014699b194f33cd5edc,
+        0x0ee6314b1de7316036500c26f2caaeb4,
     ),
     // atan(237/256)
-    FP509::new(
-        0x17e66c01c114fd8df51dd227d1ca15b4,
-        0xcded7fa4d44c0d9b02a23d0a5cee71cf,
-        0x5d827771af7fae0b33003fcc892305f5,
-        0x4c492eba8313939ba770b91792919bdd,
+    FP492::new(
+        0x00000bf33600e08a7ec6fa8ee913e8e5,
+        0x0ada66f6bfd26a2606cd81511e852e77,
+        0x38e7aec13bb8d7bfd70599801fe64491,
+        0x82faa624975d4189c9cdd3b85c8bc949,
     ),
     // atan(238/256)
-    FP509::new(
-        0x17f79eacb978987f572a03ab48834496,
-        0xb9c410bbea7268ab0d563ac46c966cad,
-        0x4c12708b81bcdd0ac43b66381ec300ec,
-        0xa34759dfb533f74ef20b662f523802f7,
+    FP492::new(
+        0x00000bfbcf565cbc4c3fab9501d5a441,
+        0xa24b5ce2085df539345586ab1d62364b,
+        0x3656a6093845c0de6e85621db31c0f61,
+        0x807651a3acefda99fba77905b317a91c,
     ),
     // atan(239/256)
-    FP509::new(
-        0x1808c03940694abfc33623a8256c61a9,
-        0xab2a7175748d4a14aa91d205d73446c8,
-        0x50dc83c9d50f0e1e042bfa1089101e21,
-        0xc30ac8237d016aea84469d4e95d7a16d,
+    FP492::new(
+        0x00000c04601ca034a55fe19b11d412b6,
+        0x30d4d59538baba46a50a5548e902eb9a,
+        0x2364286e41e4ea87870f0215fd084488,
+        0x0f10e1856411be80b57542234ea74aec,
     ),
     // atan(240/256)
-    FP509::new(
-        0x1819d0b7158a4cc8113bac588dd25f44,
-        0x9ab1dd0cf5de86dec6e1028cf42165a4,
-        0xa89ff4a78a34c5eaf46958b9e90b78b8,
-        0x475a06c6d592b996dbfd0d707320ac7c,
+    FP492::new(
+        0x00000c0ce85b8ac52664089dd62c46e9,
+        0x2fa24d58ee867aef436f637081467a10,
+        0xb2d2544ffa53c51a62f57a34ac5cf485,
+        0xbc5c23ad03636ac95ccb6dfe86b83990,
     ),
     // atan(241/256)
-    FP509::new(
-        0x182ad03600000528b25f9d249a484bd5,
-        0x0d2b7e4f8e07c2d88130f7dd9a2aea0e,
-        0x11adfb75b07067dcde53f160bcea2f0e,
-        0x0e88b26cdab9c1f5afb0fc2dbe556f0a,
+    FP492::new(
+        0x00000c15681b00000294592fce924d24,
+        0x25ea8695bf27c703e16c40987beecd15,
+        0x750708d6fdbad83833ee6f29f8b05e75,
+        0x1787074459366d5ce0fad7d87e16df2b,
     ),
     // atan(242/256)
-    FP509::new(
-        0x183bbec5cdee2213107104ffc6c2891c,
-        0xe30257209c76007e4cca7775702ae13a,
-        0x2eb5f354c2c04764c08b1df57d5ae301,
-        0xa8ae9668dc66f4348d2b092205bc8c94,
+    FP492::new(
+        0x00000c1ddf62e6f711098838827fe361,
+        0x448e71812b904e3b003f26653bbab815,
+        0x709d175af9aa616023b260458efabead,
+        0x7180d4574b346e337a1a4695849102de,
     ),
     // atan(243/256)
-    FP509::new(
-        0x184c9c7653f7eafcf93dc03eb82e27c5,
-        0xf007351d8308f8af7f919ce519d1044e,
-        0xcb60d123c25b824bb834eb0df69cc591,
-        0xadda0ba64cae1f880b40f485c799f491,
+    FP492::new(
+        0x00000c264e3b29fbf57e7c9ee01f5c17,
+        0x13e2f8039a8ec1847c57bfc8ce728ce8,
+        0x822765b06891e12dc125dc1a7586fb4e,
+        0x62c8d6ed05d326570fc405a07a42e3cd,
     ),
     // atan(244/256)
-    FP509::new(
-        0x185d69576cc2c516b66e7fc8b8c3773f,
-        0x5d2e1d81c1c9754cd49485dff52e48a2,
-        0x395023ad401d1efde2de048ec93a4e5e,
-        0x883e74f8dd19629c6b9260f233ed83d3,
+    FP492::new(
+        0x00000c2eb4abb661628b5b373fe45c61,
+        0xbb9fae970ec0e0e4baa66a4a42effa97,
+        0x24511ca811d6a00e8f7ef16f0247649d,
+        0x272f441f3a7c6e8cb14e35c9307919f7,
     ),
     // atan(245/256)
-    FP509::new(
-        0x186e2578f87ae5408ac4dd73f8cf1fbc,
-        0x1274e5e61a096fed554255d904318dac,
-        0x9871d2375bedea4d01bef427c22b3ea5,
-        0x9d1147f96bdbc2312b8544622c52ca56,
+    FP492::new(
+        0x00000c3712bc7c3d72a045626eb9fc67,
+        0x8fde093a72f30d04b7f6aaa12aec8218,
+        0xc6d64c38e91badf6f52680df7a13e115,
+        0x9f52ce88a3fcb5ede11895c2a2311629,
     ),
     // atan(246/256)
-    FP509::new(
-        0x187ed0eadc5a2a215eb5b2afe978c2ac,
-        0xb9c954c47956c5f6aaf6e8d1e60c3e5e,
-        0x79481013b04cc6f4590c50d633503ebf,
-        0x663a3c2e7bfaa82b3c54e2fe6d8ae413,
+    FP492::new(
+        0x00000c3f68756e2d1510af5ad957f4bc,
+        0x61565ce4aa623cab62fb557b7468f306,
+        0x1f2f3ca40809d826637a2c86286b19a8,
+        0x1f5fb31d1e173dfd54159e2a717f36c5,
     ),
     // atan(247/256)
-    FP509::new(
-        0x188f6bbd023118f669716d2a2ccfc4a0,
-        0x52e325770c79707d523b0bd81e6569f2,
-        0x6399936f996c75a3214626ca0871fea1,
-        0xa748ab17ab207d64585b6735f11927e6,
+    FP492::new(
+        0x00000c47b5de81188c7b34b8b6951667,
+        0xe250297192bb863cb83ea91d85ec0f32,
+        0xb4f931ccc9b7ccb63ad190a313650438,
+        0xff50d3a4558bd5903eb22c2db39af88d,
     ),
     // atan(248/256)
-    FP509::new(
-        0x189ff5ff57f1f7aa919687a21793c044,
-        0x29b4c436c0073069dfccd3b329f2fa3f,
-        0x561faad288b8a26a540d1d619f08c784,
-        0x449da362c000d79341316d953a51a5eb,
+    FP492::new(
+        0x00000c4ffaffabf8fbd548cb43d10bc9,
+        0xe02214da621b60039834efe669d994f9,
+        0x7d1fab0fd569445c51352a068eb0cf84,
+        0x63c2224ed1b160006bc9a098b6ca9d29,
     ),
     // atan(249/256)
-    FP509::new(
-        0x18b06fc1cf3dfebc133b66a4924c7a3a,
-        0x8d06fadb429657f7decdac06769572b9,
-        0x337518a0d8c3fcd926931a04107575b0,
-        0xb519008e77166002c711c383ccbe63e7,
+    FP492::new(
+        0x00000c5837e0e79eff5e099db3524926,
+        0x3d1d46837d6da14b2bfbef66d6033b4a,
+        0xb95c99ba8c506c61fe6c93498d02083a,
+        0xbad85a8c80473b8b30016388e1c1e65f,
     ),
     // atan(250/256)
-    FP509::new(
-        0x18c0d9145cf49d6fa901db710cca2c8a,
-        0xadee96bb5142b8328884a63e6f347fe2,
-        0xfe5b655768f429f44893aa460b9cd8d7,
-        0xc3127fdeeb382b4f629224d5d124513e,
+    FP492::new(
+        0x00000c606c8a2e7a4eb7d480edb88665,
+        0x164556f74b5da8a15c194442531f379a,
+        0x3ff17f2db2abb47a14fa2449d52305ce,
+        0x6c6be1893fef759c15a7b149126ae892,
     ),
     // atan(251/256)
-    FP509::new(
-        0x18d13206f8c4cac9fce68aaecae9944c,
-        0xdba2788e5c75ea93f4e47c0b628454c3,
-        0x6deaeb6f88c8fdd1ed3f0df91ab1627a,
-        0x59a9908bcaf5116af184824689ba0e38,
+    FP492::new(
+        0x00000c6899037c626564fe7345576574,
+        0xca266dd13c472e3af549fa723e05b142,
+        0x2a61b6f575b7c4647ee8f69f86fc8d58,
+        0xb13d2cd4c845e57a88b578c2412344dd,
     ),
     // atan(252/256)
-    FP509::new(
-        0x18e17aa99cc05dc27cfaa9f7a13e57c7,
-        0x01d3930dd5f36e0555bfbd2529082ffb,
-        0x57a0d3f576b0918fd7739379fbd02c55,
-        0x8e49a38cc82ebd73bed865f8ef9ae92b,
+    FP492::new(
+        0x00000c70bd54ce602ee13e7d54fbd09f,
+        0x2be380e9c986eaf9b702aadfde929484,
+        0x17fdabd069fabb5848c7ebb9c9bcfde8,
+        0x162ac724d1c664175eb9df6c32fc77cd,
     ),
     // atan(253/256)
-    FP509::new(
-        0x18f1b30c44f1671dd1cab93933fd28d6,
-        0x47938ec73d169a615a82d03673afd140,
-        0xd2e50a32eb772a9d3657ca050436e7e3,
-        0xdc1602aadf81fc3e89a7f6e52d696354,
+    FP492::new(
+        0x00000c78d9862278b38ee8e55c9c99fe,
+        0x946b23c9c7639e8b4d30ad41681b39d7,
+        0xe8a06972851975bb954e9b2be502821b,
+        0x73f1ee0b01556fc0fe1f44d3fb7296b5,
     ),
     // atan(254/256)
-    FP509::new(
-        0x1901db3eeef1875a19979580f23dee3a,
-        0x876fa537d8e10429908055c02e531494,
-        0x8b8a819182334ac293443c4c0727c6d0,
-        0x4dedffa44eb81e52a3d9488c1d29b0ba,
+    FP492::new(
+        0x00000c80ed9f7778c3ad0ccbcac0791e,
+        0xf71d43b7d29bec708214c8402ae01729,
+        0x8a4a45c540c8c119a56149a21e260393,
+        0xe36826f6ffd2275c0f2951eca4460e95,
     ),
     // atan(255/256)
-    FP509::new(
-        0x1911f35199833b13ae8a0edbf521aa61,
-        0x82cf6992bcf72667db310955cfd40301,
-        0x74b22f9da03c7eabf61d10956e79d575,
-        0x7c14b2304c88c6d9b41b0a09407c426c,
+    FP492::new(
+        0x00000c88f9a8ccc19d89d745076dfa90,
+        0xd530c167b4c95e7b9333ed9884aae7ea,
+        0x0180ba5917ced01e3f55fb0e884ab73c,
+        0xeababe0a59182644636cda0d8504a03e,
     ),
 ];
 
-pub(crate) fn approx_atan(x: &FP509) -> FP509 {
+pub(crate) fn approx_atan(x: &FP492) -> FP492 {
     let mut x_abs = *x;
     x_abs.iabs();
-    debug_assert!(x_abs < FP509::ONE);
+    debug_assert!(x_abs < FP492::ONE);
     // Reduce |x| so that |x| = c + y and y < 1/256
     let (q, c, mut y) = x_abs.divmod_1_over_256();
     // atan(|x|) = atan(c) + atan(y/(1+|x|⋅c))
     let mut t = x_abs;
     // |x| < 1 => c < 1 => |x|⋅c < 1
     t *= &c;
-    t += &FP509::ONE;
+    t += &FP492::ONE;
     // 1 < t < 2 and y < 1/256 => y/t < 1/256
     y /= &t;
     let mut y2 = y;

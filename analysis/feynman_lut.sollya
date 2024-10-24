@@ -3,12 +3,6 @@ display = decimal;
 
 prec = 512;
 
-signum = proc(f) {
-    var s;
-    if (f == 0) then s = 0 else s = f / abs(f);
-    return s;
-};
-
 hex = proc(m) {
     var d, s, p, n, i;
     d = 16;
@@ -25,10 +19,10 @@ hex = proc(m) {
     return p @ s;
 };
 
-repr = proc(s, m) {
-    var z, n, r;
+repr = proc(f) {
+    var m, z, n, r;
     B = 2^128;
-    if (s < 0) then m = 2^512 - m;
+    m = nearestint(f * X);
     z = "";
     n = 1;
     while (n <= 4) do {
@@ -43,20 +37,20 @@ repr = proc(s, m) {
 P = 492;
 X = 2^P;
 
-// --- Polynomial approximating cosine -----------------------------------------
+// LUT log(1 + 2^-(i+1)
 
-COS = cos(x);
-N = 32;
-T = taylor(COS, 2*N+1, 0);
-print("");
-while (N >= 0) do {
-    var n, c, s, m;
-    n = 2 * N;
-    c = coeff(T, n);
-    s = signum(c);
-    m = nearestint(abs(c) * X);
-    print("//", s @ " / " @ n @ "! ≈");
+N = P;
+n = 1;
+while (n <= N) do {
+    f = 1+2^-n;
+    l = log(f);
+    print("// n =", n);
+    print("// l =", round(l, P, RN));
+    print("(");
     print("FP492::new(");
-    print(repr(s, m), "),");
-    N = N - 1;
+    print(repr(f), "),");
+    print("FP492::new(");
+    print(repr(l), "),");
+    print("),");
+    n = n+1;
 };

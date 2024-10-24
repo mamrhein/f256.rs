@@ -1,7 +1,7 @@
 roundingwarnings = off;
 display = decimal;
 
-prec = 520;
+prec = 512;
 
 hex = proc(m) {
     var d, s, p, n, i;
@@ -37,11 +37,11 @@ repr = proc(s, m) {
 prx = proc(v, f) {
     e = exponent(f);
     m = mantissa(f) * 2^(P+e);
-    print("const " @ v @ ": FP509 = FP509::new(");
+    print("const " @ v @ ": FP492 = FP492::new(");
     print(repr(0, m), ");");
 };
 
-P = 509;
+P = 492;
 
 // --- Several multiples of ¼π -----------------------------------------
 

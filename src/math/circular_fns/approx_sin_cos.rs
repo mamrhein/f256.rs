@@ -10,15 +10,15 @@
 use super::{
     approx_cos::{approx_cos, SMALL_CUT_OFF},
     approx_sin::approx_sin,
-    FP509,
+    FP492,
 };
 
-pub(crate) fn approx_sin_cos(x: &FP509) -> (FP509, FP509) {
+pub(crate) fn approx_sin_cos(x: &FP492) -> (FP492, FP492) {
     let mut x_abs = *x;
     x_abs.iabs();
     // If x is zero or very small, cosine x == 1 and sine x == x.
     if x_abs <= SMALL_CUT_OFF {
-        return (*x, FP509::ONE);
+        return (*x, FP492::ONE);
     };
     (approx_sin(x), approx_cos(x))
 }

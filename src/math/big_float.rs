@@ -16,7 +16,7 @@ use core::{
 };
 
 use crate::{
-    abs_bits, exp_bits, f256, math::fp509::FP509, norm_bit, signif, BigUInt,
+    abs_bits, exp_bits, f256, math::fp509::FP492, norm_bit, signif, BigUInt,
     DivRem, HiLo, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
     HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS,
     U256, U512,
@@ -620,17 +620,6 @@ impl BigFloat {
         q.incr_if(rnd_bits == 3 || rnd_bits == 1 && !r.is_zero());
         q >>= 1;
         Self::new(1, exp, (q.hi.0, q.lo.0))
-    }
-}
-
-impl From<i32> for BigFloat {
-    #[inline(always)]
-    fn from(i: i32) -> Self {
-        BigFloat::from_sign_exp_signif(
-            i.is_negative() as u32,
-            0,
-            (0_u128, i.abs() as u128),
-        )
     }
 }
 
