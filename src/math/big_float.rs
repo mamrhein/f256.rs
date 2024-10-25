@@ -15,11 +15,11 @@ use core::{
     },
 };
 
+use super::FP492;
 use crate::{
-    abs_bits, exp_bits, f256, math::fp509::FP492, norm_bit, signif, BigUInt,
-    DivRem, HiLo, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
-    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS,
-    U256, U512,
+    abs_bits, exp_bits, f256, norm_bit, signif, BigUInt, DivRem, HiLo, EMAX,
+    EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BIAS,
+    HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS, U256, U512,
 };
 
 fn add_signifs(x: &U256, y: &U256) -> (U256, i32) {

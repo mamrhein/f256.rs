@@ -7,15 +7,11 @@
 // $Source$
 // $Revision$
 
+use super::{approx_atan::approx_atan, BigFloat, FP492};
 use crate::{
     abs_bits,
     consts::{FRAC_PI_2, PI},
-    f256,
-    math::{
-        big_float::BigFloat, circular_fns::approx_atan::approx_atan,
-        fp509::FP492,
-    },
-    HI_EXP_MASK, U256,
+    f256, HI_EXP_MASK, U256,
 };
 
 const FP492_FRAC_PI_2: FP492 = FP492::new(
