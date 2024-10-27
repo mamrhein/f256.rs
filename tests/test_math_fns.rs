@@ -155,7 +155,12 @@ mod random_math_fn_tests {
     }
 
     #[test]
-    fn test_ln() {
+    fn test_ln_normal() {
         run_tests(f256::ln, 0, "test_ln_normal.txt");
+    }
+
+    #[test]
+    fn test_ln_subnormal() {
+        run_tests(f256::ln, 0, "test_ln_subnormal.txt");
     }
 }
