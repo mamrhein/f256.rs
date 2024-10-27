@@ -146,6 +146,12 @@ impl FP492 {
         }
     }
 
+    /// Returns self + ⌊self * 2⁻ⁿ⌋₄₉₂
+    #[inline(always)]
+    pub(super) fn add_self_shr(self, n: u32) -> Self {
+        Self(self.0 + (self.0 >> n))
+    }
+
     /// Returns ⌊self * 256⌋, ⌊self * 256⌋ / 256, self - ⌊self * 256⌋ / 256
     pub(super) fn divmod_1_over_256(mut self) -> (i32, Self, Self) {
         let signum = self.signum();
@@ -179,7 +185,6 @@ impl From<i32> for FP492 {
 }
 
 impl From<&BigFloat> for FP492 {
-    #[inline(always)]
     fn from(value: &BigFloat) -> Self {
         debug_assert!(value.exp <= Self::INT_BITS as i32);
         let sh = (Self::INT_BITS as i32 - 1 - value.exp) as u32;
@@ -292,6 +297,7 @@ impl From<U512> for FP492 {
 impl Neg for FP492 {
     type Output = Self;
 
+    #[inline(always)]
     fn neg(mut self) -> Self::Output {
         self.ineg();
         self
@@ -309,6 +315,7 @@ impl PartialOrd for FP492 {
 }
 
 impl Ord for FP492 {
+    #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other).unwrap()
     }
@@ -333,6 +340,7 @@ impl SubAssign<&FP492> for FP492 {
 impl Sub for &FP492 {
     type Output = FP492;
 
+    #[inline(always)]
     fn sub(self, rhs: Self) -> Self::Output {
         let mut res = *self;
         res -= rhs;

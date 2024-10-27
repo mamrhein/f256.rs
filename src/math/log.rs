@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use super::{feynman, BigFloat, FP492};
+use super::{bkm::bkm_l, BigFloat, FP492};
 use crate::{exp, f256, norm_signif, BigUInt};
 
 // LN_2 = ◯₄₉₂(ln(2)) =
@@ -61,7 +61,7 @@ fn ln(x: &f256) -> FP492 {
     // x = m'⋅2⁻ⁿ⁻²⁵⁶⋅2ᵉ
     // ln x = ln (m'⋅2⁻ⁿ⁻²⁵⁶) + ln 2ᵉ = ln (m'⋅2⁻ⁿ⁻²⁵⁶) + e⋅ln 2
     let m = FP492::new(m.hi.0, m.lo.0, 0_u128, 0_u128);
-    let ln_m = feynman::feynman(&m);
+    let ln_m = bkm_l(&m);
     let mut ln = LN_2;
     ln *= &FP492::from(e);
     ln += &ln_m;
@@ -159,7 +159,7 @@ mod ln_tests {
     #[test]
     fn test_ln_1_minus_epsilon() {
         let x = f256::ONE - f256::EPSILON;
-        assert_eq!(x.ln(), -f256::EPSILON - f256::EPSILON.ulp());
+        assert_eq!(x.ln(), -f256::EPSILON);
     }
 
     #[test]

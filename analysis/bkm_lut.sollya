@@ -1,0 +1,52 @@
+roundingwarnings = off;
+display = decimal;
+
+prec = 512;
+
+hex = proc(m) {
+    var d, s, p, n, i;
+    d = 16;
+    A = [|"0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"|];
+    s = "";
+    p = "0x";
+    n = 1;
+    while (n <= 32) do {
+        i = mod(m, d);
+        s = A[i] @ s;
+        m = div(m, d);
+        n = n + 1;
+    };
+    return p @ s;
+};
+
+repr = proc(f) {
+    var m, z, n, r;
+    B = 2^128;
+    m = nearestint(f * X);
+    z = "";
+    n = 1;
+    while (n <= 4) do {
+        r = hex(mod(m, B));
+        z = r @ ",\n" @ z;
+        m = div(m, B);
+        n = n + 1;
+    };
+    return z;
+};
+
+P = 492;
+X = 2^P;
+
+// LUT log(1 + 2^-i)
+
+N = P;
+n = 0;
+while (n <= N) do {
+    f = 1+2^-n;
+    l = log(f);
+    print("// n =", n);
+    print("// l =", round(l, P, RN));
+    print("FP492::new(");
+    print(repr(l), "),");
+    n = n+1;
+};
