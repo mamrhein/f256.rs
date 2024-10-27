@@ -163,4 +163,24 @@ mod random_math_fn_tests {
     fn test_ln_subnormal() {
         run_tests(f256::ln, 0, "test_ln_subnormal.txt");
     }
+
+    #[test]
+    fn test_log2_normal() {
+        run_tests(f256::log2, 0, "test_log2_normal.txt");
+    }
+
+    #[test]
+    fn test_log2_subnormal() {
+        run_tests(f256::log2, 0, "test_log2_subnormal.txt");
+    }
+
+    #[test]
+    fn test_log10_normal() {
+        run_tests(f256::log10, 0, "test_log10_normal.txt");
+    }
+
+    #[test]
+    fn test_log10_subnormal() {
+        run_tests(f256::log10, 0, "test_log10_subnormal.txt");
+    }
 }
