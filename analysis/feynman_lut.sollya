@@ -37,7 +37,7 @@ repr = proc(f) {
 P = 492;
 X = 2^P;
 
-// LUT log(1 + 2^-(i+1)
+// LUT log(1 + 2^-(i+1))
 
 N = P;
 n = 1;
