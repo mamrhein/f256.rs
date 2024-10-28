@@ -183,4 +183,9 @@ mod random_math_fn_tests {
     fn test_log10_subnormal() {
         run_tests(f256::log10, 0, "test_log10_subnormal.txt");
     }
+
+    #[test]
+    fn test_ln_1p() {
+        run_tests(f256::ln_1p, 0, "test_ln_1p.txt");
+    }
 }
