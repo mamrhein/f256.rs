@@ -51,21 +51,27 @@ pub(crate) const LOG10_E: FP492 = FP492::new(
     0x3250a8c671decfe9c6e5e37d15c69646,
 );
 
-fn ln(x: &f256) -> FP492 {
-    debug_assert!(!x.is_special() && x.is_sign_positive());
-    let (mut m, sh) = norm_signif(&x.bits);
-    let e = exp(&x.bits) - sh as i32;
-    // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 1 < m⋅2⁻ⁿ < 2
-    // m has 19 leading zeroes. By using it as the hi-part of an FP492 value,
-    // we turn m⋅2⁻ⁿ into m'⋅2⁻ⁿ⁻²⁵⁶, so that
-    // x = m'⋅2⁻ⁿ⁻²⁵⁶⋅2ᵉ
-    // ln x = ln (m'⋅2⁻ⁿ⁻²⁵⁶) + ln 2ᵉ = ln (m'⋅2⁻ⁿ⁻²⁵⁶) + e⋅ln 2
-    let m = FP492::new(m.hi.0, m.lo.0, 0_u128, 0_u128);
+#[inline(always)]
+fn approx_ln(m: &FP492, e: i32) -> FP492 {
+    debug_assert!(m >= &FP492::ONE);
     let ln_m = bkm_l(&m);
     let mut ln = LN_2;
     ln *= &FP492::from(e);
     ln += &ln_m;
     ln
+}
+
+fn ln(x: &f256) -> FP492 {
+    debug_assert!(!x.is_special() && x.is_sign_positive());
+    let (mut m, sh) = norm_signif(&x.bits);
+    let e = exp(&x.bits) - sh as i32;
+    // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 1 < m⋅2⁻ⁿ < 2
+    // By using m as the hi-part of an FP492 value,
+    // we turn m⋅2⁻ⁿ into m'⋅2⁻ⁿ⁻²⁵⁶, so that
+    // x = m'⋅2⁻ⁿ⁻²⁵⁶⋅2ᵉ
+    // ln x = ln (m'⋅2⁻ⁿ⁻²⁵⁶) + ln 2ᵉ = ln (m'⋅2⁻ⁿ⁻²⁵⁶) + e⋅ln 2
+    let m = FP492::new(m.hi.0, m.lo.0, 0_u128, 0_u128);
+    approx_ln(&m, e)
 }
 
 impl f256 {
