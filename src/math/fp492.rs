@@ -146,6 +146,12 @@ impl FP492 {
         }
     }
 
+    /// Replaces self by ⌊self * 2⁻ⁿ⌋₄₉₂
+    #[inline(always)]
+    pub(super) fn ishr(&mut self, n: u32) {
+        self.0 >>= n;
+    }
+
     /// Returns self + ⌊self * 2⁻ⁿ⌋₄₉₂
     #[inline(always)]
     pub(super) fn add_self_shr(self, n: u32) -> Self {

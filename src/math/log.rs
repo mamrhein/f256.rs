@@ -8,7 +8,7 @@
 // $Revision$
 
 use super::{bkm::bkm_l, BigFloat, FP492};
-use crate::{exp, f256, norm_signif, BigUInt};
+use crate::{exp, f256, norm_signif, signif, BigUInt};
 
 // LN_2 = ◯₄₉₂(ln(2)) =
 // 0.693147180559945309417232121458176568075500134360255254120680009493393621\
@@ -63,9 +63,9 @@ fn approx_ln(m: &FP492, e: i32) -> FP492 {
 
 fn ln(x: &f256) -> FP492 {
     debug_assert!(!x.is_special() && x.is_sign_positive());
-    let (mut m, sh) = norm_signif(&x.bits);
+    let (m, sh) = norm_signif(&x.bits);
     let e = exp(&x.bits) - sh as i32;
-    // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 1 < m⋅2⁻ⁿ < 2
+    // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 1 <= m⋅2⁻ⁿ < 2
     // By using m as the hi-part of an FP492 value,
     // we turn m⋅2⁻ⁿ into m'⋅2⁻ⁿ⁻²⁵⁶, so that
     // x = m'⋅2⁻ⁿ⁻²⁵⁶⋅2ᵉ
@@ -87,7 +87,7 @@ impl f256 {
     /// Returns the natural logarithm of the number.
     pub fn ln(&self) -> Self {
         // x <= 0 or x is infinite or nan => ln x is nan
-        if self.is_special() || self.is_sign_negative() {
+        if self.is_sign_negative() || self.is_special() {
             return Self::NAN;
         }
         Self::from(&ln(self))
@@ -96,7 +96,41 @@ impl f256 {
     /// Returns ln(1+n) (natural logarithm) more accurately than if the
     /// operations were performed separately.
     pub fn ln_1p(&self) -> Self {
-        unimplemented!()
+        // x <= -1 or x is infinite or nan => ln 1+x is nan
+        if self <= &f256::NEG_ONE || self.is_infinite() || self.is_nan() {
+            return Self::NAN;
+        }
+        // x = 0 => ln (1+x) = ln 1 = 0
+        if self.eq_zero() {
+            return Self::ZERO;
+        }
+        // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 0 < m⋅2⁻ⁿ < 2
+        let e = exp(&self.bits);
+        match e {
+            ..=-257 => {
+                // x < 2⁻²⁵⁶ => ln (1+x) ≈ x-½x² ≈ x
+                *self
+            }
+            -256..=0 => {
+                // 2⁻²⁵⁶ <= x < 2
+                let mut m = FP492::from(self);
+                m += &FP492::ONE;
+                Self::from(&approx_ln(&m, 0))
+            }
+            1..=492 => {
+                // 2 <= x < 2⁴⁹³
+                let m = signif(&self.bits);
+                let mut m = FP492::new(m.hi.0, m.lo.0, 0_u128, 0_u128);
+                let mut t = FP492::ONE;
+                t.ishr(e as u32);
+                m += &t;
+                Self::from(&approx_ln(&m, e))
+            }
+            _ => {
+                // x >= 2⁴⁹³ => ln (1+x) ≈ ln x
+                self.ln()
+            }
+        }
     }
 
     /// Returns the base 2 logarithm of the number.
@@ -134,6 +168,7 @@ mod ln_tests {
     #[test]
     fn test_undefined() {
         assert!(f256::NEG_ONE.ln().is_nan());
+        assert!(f256::ZERO.ln().is_nan());
         assert!(f256::INFINITY.ln().is_nan());
         assert!(f256::NEG_INFINITY.ln().is_nan());
         assert!(f256::NAN.ln().is_nan());
@@ -205,6 +240,98 @@ mod ln_tests {
     #[test]
     fn test_ln_e() {
         assert_eq!(E.ln(), f256::ONE);
+    }
+}
+
+#[cfg(test)]
+mod ln_1p_tests {
+    use core::str::FromStr;
+
+    use super::*;
+    use crate::consts::E;
+
+    #[test]
+    fn test_undefined() {
+        assert!(f256::NEG_ONE.ln_1p().is_nan());
+        assert!(f256::INFINITY.ln_1p().is_nan());
+        assert!(f256::NEG_INFINITY.ln_1p().is_nan());
+        assert!(f256::NAN.ln_1p().is_nan());
+    }
+
+    #[test]
+    fn test_ln_1p_0() {
+        assert_eq!(f256::ZERO.ln_1p(), f256::ZERO);
+    }
+
+    #[test]
+    fn test_ln_1p_1() {
+        assert_eq!(f256::ONE.ln_1p(), f256::from(&LN_2));
+    }
+
+    #[test]
+    fn test_ln_1p_epsilon() {
+        let x = f256::EPSILON;
+        let s = "9.0556790788267123675091192908877917806825311981391381895826\
+                    1488993550128e-72";
+        let ln_1p_x = f256::from_str(s).unwrap();
+        assert_eq!(x.ln_1p(), ln_1p_x);
+    }
+
+    #[test]
+    fn test_ln_1p_7_times_epsilon() {
+        let x = f256::from(7) * f256::EPSILON;
+        let s = "6.3389753551786986572563835036214542464777718386973967327078\
+                    3042295485073e-71";
+        let ln_1p_x = f256::from_str(s).unwrap();
+        assert_eq!(x.ln_1p(), ln_1p_x);
+    }
+
+    #[test]
+    fn test_ln_1p_e() {
+        assert_eq!(E.ln_1p(), (E + f256::ONE).ln());
+    }
+
+    #[test]
+    fn test_ln_1p_some_gte() {
+        let s = "3.9172112277498476971618994396640379622838972944553968700466\
+                    109220590303";
+        let x = f256::from_str(s).unwrap();
+        let s = "1.5927415461708937796028041885177758718526978971737978008094\
+                    3200179146619";
+        let ln_1p_x = f256::from_str(s).unwrap();
+        assert_eq!(x.ln_1p(), ln_1p_x);
+    }
+
+    #[test]
+    fn test_ln_1p_some_large_value() {
+        let s = "6.4925516411401714605181493976904708352003549751890256895138\
+                    1816355622497e69";
+        let x = f256::from_str(s).unwrap();
+        let s = "160.74902703508073753030346151423598221171734146783516372812\
+                    6476793486362";
+        let ln_1p_x = f256::from_str(s).unwrap();
+        assert_eq!(x.ln_1p(), ln_1p_x);
+    }
+
+    #[test]
+    fn test_ln_1p_2_pow_230() {
+        let x = f256::from(2_f64.powi(230));
+        let s = "159.42385152878742116596338793538061065736503090285870844775\
+                    6402183480534";
+        let ln_1p_x = f256::from_str(s).unwrap();
+        assert_eq!(x.ln_1p(), ln_1p_x);
+    }
+
+    #[test]
+    fn test_ln_1p_2_pow_231() {
+        let x = f256::from(2_f64.powi(231));
+        assert_eq!(x.ln_1p(), x.ln());
+    }
+
+    #[test]
+    fn test_ln_1p_2_pow_minus_237() {
+        let x = f256::from(2_f64.powi(-237));
+        assert_eq!(x.ln_1p(), x);
     }
 }
 
