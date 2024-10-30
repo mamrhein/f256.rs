@@ -362,8 +362,7 @@ impl f256 {
     /// Returns the sign bit of `self`: 0 = positive, 1 = negative.
     #[inline]
     pub(crate) const fn sign(&self) -> u32 {
-        let self1 = &self.bits;
-        (self1.hi.0 >> HI_SIGN_SHIFT) as u32
+        (self.bits.hi.0 >> HI_SIGN_SHIFT) as u32
     }
 
     /// Returns the biased binary exponent of `self`.
