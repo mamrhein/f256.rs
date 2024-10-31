@@ -7,6 +7,8 @@
 // $Source$
 // $Revision$
 
+use core::num::FpCategory;
+
 use super::{bkm::bkm_l, BigFloat, FP492};
 use crate::{exp, f256, norm_signif, signif, BigUInt};
 
@@ -86,23 +88,32 @@ impl f256 {
 
     /// Returns the natural logarithm of the number.
     pub fn ln(&self) -> Self {
-        // x <= 0 or x is infinite or nan => ln x is nan
-        if self.is_sign_negative() || self.is_special() {
-            return Self::NAN;
+        // x < 0 or x is nan => ln x is nan
+        // x = 0 => ln x = -∞
+        // x = ∞ => ln x = ∞
+        match (self.sign(), self.classify()) {
+            (_, FpCategory::Zero) => f256::NEG_INFINITY,
+            (_, FpCategory::Nan) => f256::NAN,
+            (0, FpCategory::Infinite) => f256::INFINITY,
+            (1, _) => f256::NAN,
+            _ => Self::from(&ln(self)),
         }
-        Self::from(&ln(self))
     }
 
     /// Returns ln(1+n) (natural logarithm) more accurately than if the
     /// operations were performed separately.
     pub fn ln_1p(&self) -> Self {
-        // x <= -1 or x is infinite or nan => ln 1+x is nan
-        if self <= &f256::NEG_ONE || self.is_infinite() || self.is_nan() {
-            return Self::NAN;
+        // |x| = 0 or x = ∞ => ln (1+x) = x
+        if self.eq_zero() || self == &f256::INFINITY {
+            return *self;
         }
-        // x = 0 => ln (1+x) = ln 1 = 0
-        if self.eq_zero() {
-            return Self::ZERO;
+        // x = -1 => ln 1+x = -∞
+        if self == &f256::NEG_ONE {
+            return Self::NEG_INFINITY;
+        }
+        // x < -1 or x is nan => ln 1+x is nan
+        if self < &f256::NEG_ONE || self.is_nan() {
+            return Self::NAN;
         }
         // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 0 < m⋅2⁻ⁿ < 2
         let e = exp(&self.bits);
@@ -133,28 +144,44 @@ impl f256 {
         }
     }
 
+    //noinspection DuplicatedCode
     /// Returns the base 2 logarithm of the number.
     pub fn log2(&self) -> Self {
-        // x <= 0 or x is infinite or nan => log₂ x is nan
-        if self.is_special() || self.is_sign_negative() {
-            return Self::NAN;
+        // x < 0 or x is nan => ln x is nan
+        // x = 0 => ln x = -∞
+        // x = ∞ => ln x = ∞
+        match (self.sign(), self.classify()) {
+            (_, FpCategory::Zero) => f256::NEG_INFINITY,
+            (_, FpCategory::Nan) => f256::NAN,
+            (0, FpCategory::Infinite) => f256::INFINITY,
+            (1, _) => f256::NAN,
+            _ => {
+                // log₂ x = ln x ⋅ log₂ e
+                let mut t = ln(&self);
+                t *= &LOG2_E;
+                Self::from(&t)
+            }
         }
-        // log₂ x = ln x ⋅ log₂ e
-        let mut t = ln(&self);
-        t *= &LOG2_E;
-        Self::from(&t)
     }
 
+    //noinspection DuplicatedCode
     /// Returns the base 10 logarithm of the number.
     pub fn log10(&self) -> Self {
-        // x <= 0 or x is infinite or nan => log₁₀ x is nan
-        if self.is_special() || self.is_sign_negative() {
-            return Self::NAN;
+        // x < 0 or x is nan => ln x is nan
+        // x = 0 => ln x = -∞
+        // x = ∞ => ln x = ∞
+        match (self.sign(), self.classify()) {
+            (_, FpCategory::Zero) => f256::NEG_INFINITY,
+            (_, FpCategory::Nan) => f256::NAN,
+            (0, FpCategory::Infinite) => f256::INFINITY,
+            (1, _) => f256::NAN,
+            _ => {
+                // log₁₀ x = ln x ⋅ log₁₀ e
+                let mut t = ln(&self);
+                t *= &LOG10_E;
+                Self::from(&t)
+            }
         }
-        // log₁₀ x = ln x ⋅ log₁₀ e
-        let mut t = ln(&self);
-        t *= &LOG10_E;
-        Self::from(&t)
     }
 }
 
@@ -168,10 +195,15 @@ mod ln_tests {
     #[test]
     fn test_undefined() {
         assert!(f256::NEG_ONE.ln().is_nan());
-        assert!(f256::ZERO.ln().is_nan());
-        assert!(f256::INFINITY.ln().is_nan());
         assert!(f256::NEG_INFINITY.ln().is_nan());
         assert!(f256::NAN.ln().is_nan());
+    }
+
+    #[test]
+    fn test_specials() {
+        assert_eq!(f256::ZERO.ln(), f256::NEG_INFINITY);
+        assert_eq!(f256::NEG_ZERO.ln(), f256::NEG_INFINITY);
+        assert_eq!(f256::INFINITY.ln(), f256::INFINITY);
     }
 
     #[test]
@@ -245,17 +277,24 @@ mod ln_tests {
 
 #[cfg(test)]
 mod ln_1p_tests {
-    use core::str::FromStr;
+    use core::{ops::Neg, str::FromStr};
 
     use super::*;
     use crate::consts::E;
 
     #[test]
     fn test_undefined() {
-        assert!(f256::NEG_ONE.ln_1p().is_nan());
-        assert!(f256::INFINITY.ln_1p().is_nan());
+        assert!(f256::TWO.neg().ln_1p().is_nan());
         assert!(f256::NEG_INFINITY.ln_1p().is_nan());
         assert!(f256::NAN.ln_1p().is_nan());
+    }
+
+    #[test]
+    fn test_specials() {
+        assert_eq!(f256::NEG_ONE.ln_1p(), f256::NEG_INFINITY);
+        assert_eq!(f256::ZERO.ln_1p(), f256::ZERO);
+        assert_eq!(f256::NEG_ZERO.ln_1p(), f256::NEG_ZERO);
+        assert_eq!(f256::INFINITY.ln_1p(), f256::INFINITY);
     }
 
     #[test]
@@ -342,9 +381,15 @@ mod log2_tests {
     #[test]
     fn test_undefined() {
         assert!(f256::NEG_ONE.log2().is_nan());
-        assert!(f256::INFINITY.log2().is_nan());
         assert!(f256::NEG_INFINITY.log2().is_nan());
         assert!(f256::NAN.log2().is_nan());
+    }
+
+    #[test]
+    fn test_specials() {
+        assert_eq!(f256::ZERO.log2(), f256::NEG_INFINITY);
+        assert_eq!(f256::NEG_ZERO.log2(), f256::NEG_INFINITY);
+        assert_eq!(f256::INFINITY.log2(), f256::INFINITY);
     }
 
     #[test]
@@ -360,9 +405,15 @@ mod log10_tests {
     #[test]
     fn test_undefined() {
         assert!(f256::NEG_ONE.log10().is_nan());
-        assert!(f256::INFINITY.log10().is_nan());
         assert!(f256::NEG_INFINITY.log10().is_nan());
         assert!(f256::NAN.log10().is_nan());
+    }
+
+    #[test]
+    fn test_specials() {
+        assert_eq!(f256::ZERO.log10(), f256::NEG_INFINITY);
+        assert_eq!(f256::NEG_ZERO.log10(), f256::NEG_INFINITY);
+        assert_eq!(f256::INFINITY.log10(), f256::INFINITY);
     }
 
     #[test]
