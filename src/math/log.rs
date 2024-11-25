@@ -92,10 +92,10 @@ impl f256 {
         // x = 0 => ln x = -∞
         // x = ∞ => ln x = ∞
         match (self.sign(), self.classify()) {
-            (_, FpCategory::Zero) => f256::NEG_INFINITY,
-            (_, FpCategory::Nan) => f256::NAN,
-            (0, FpCategory::Infinite) => f256::INFINITY,
-            (1, _) => f256::NAN,
+            (_, FpCategory::Zero) => Self::NEG_INFINITY,
+            (_, FpCategory::Nan) => Self::NAN,
+            (0, FpCategory::Infinite) => Self::INFINITY,
+            (1, _) => Self::NAN,
             _ => Self::from(&ln(self)),
         }
     }
@@ -104,15 +104,15 @@ impl f256 {
     /// operations were performed separately.
     pub fn ln_1p(&self) -> Self {
         // |x| = 0 or x = ∞ => ln (1+x) = x
-        if self.eq_zero() || self == &f256::INFINITY {
+        if self.eq_zero() || self == &Self::INFINITY {
             return *self;
         }
         // x = -1 => ln 1+x = -∞
-        if self == &f256::NEG_ONE {
+        if self == &Self::NEG_ONE {
             return Self::NEG_INFINITY;
         }
         // x < -1 or x is nan => ln 1+x is nan
-        if self < &f256::NEG_ONE || self.is_nan() {
+        if self < &Self::NEG_ONE || self.is_nan() {
             return Self::NAN;
         }
         // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 0 < m⋅2⁻ⁿ < 2
@@ -151,10 +151,10 @@ impl f256 {
         // x = 0 => ln x = -∞
         // x = ∞ => ln x = ∞
         match (self.sign(), self.classify()) {
-            (_, FpCategory::Zero) => f256::NEG_INFINITY,
-            (_, FpCategory::Nan) => f256::NAN,
-            (0, FpCategory::Infinite) => f256::INFINITY,
-            (1, _) => f256::NAN,
+            (_, FpCategory::Zero) => Self::NEG_INFINITY,
+            (_, FpCategory::Nan) => Self::NAN,
+            (0, FpCategory::Infinite) => Self::INFINITY,
+            (1, _) => Self::NAN,
             _ => {
                 // log₂ x = ln x ⋅ log₂ e
                 let mut t = ln(&self);
@@ -171,10 +171,10 @@ impl f256 {
         // x = 0 => ln x = -∞
         // x = ∞ => ln x = ∞
         match (self.sign(), self.classify()) {
-            (_, FpCategory::Zero) => f256::NEG_INFINITY,
-            (_, FpCategory::Nan) => f256::NAN,
-            (0, FpCategory::Infinite) => f256::INFINITY,
-            (1, _) => f256::NAN,
+            (_, FpCategory::Zero) => Self::NEG_INFINITY,
+            (_, FpCategory::Nan) => Self::NAN,
+            (0, FpCategory::Infinite) => Self::INFINITY,
+            (1, _) => Self::NAN,
             _ => {
                 // log₁₀ x = ln x ⋅ log₁₀ e
                 let mut t = ln(&self);
