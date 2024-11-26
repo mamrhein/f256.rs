@@ -1,7 +1,7 @@
 ### Elementary functions
 
 * Exponentiation (powf, powi, exp, exp_m1, exp2, exp10)
-* Logarithms (ln, log2, log10, ln_1p)
+* ~~Logarithms (ln, log2, log10, ln_1p, log)~~
 * ~~Trigonometric functions (sin, cos, tan, asin, acos, atan)~~
 * ~~Square root (sqrt)~~
 * Cubic root (cbrt)

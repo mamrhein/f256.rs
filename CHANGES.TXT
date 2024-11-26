@@ -1,5 +1,8 @@
 Version   Changes
 --------  --------------------------------------------------------------------
+ 0.6.0    Added fns for calculating logarithms:
+          f256::log, f256::log10, f256::log2, f256::ln, f256::ln_1p
+
  0.5.0    Added fns f256::mul2, mul_pow2, f256::div2, f256::div_pow2.
 
  0.4.0    Added trigonometric functions asin, acos and atan.
