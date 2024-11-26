@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use core::num::FpCategory;
+use core::{cmp::Ordering, num::FpCategory};
 
 use super::{bkm::bkm_l, BigFloat, FP492};
 use crate::{exp, f256, norm_signif, signif, BigUInt};
@@ -82,8 +82,53 @@ impl f256 {
     /// The result might not be correctly rounded owing to implementation
     /// details; self.log2() can produce more accurate results for base 2, and
     /// self.log10() can produce more accurate results for base 10.
-    pub fn log(self, base: Self) -> Self {
-        unimplemented!()
+    pub fn log(&self, base: &Self) -> Self {
+        // logₐ(b) = ln(b) / ln(a)
+        match (self.sign(), self.classify()) {
+            (_, FpCategory::Zero) => {
+                if base.is_special() || base.is_sign_negative() {
+                    Self::NAN
+                } else {
+                    [Self::INFINITY, Self::NEG_INFINITY]
+                        [(base >= &Self::ONE) as usize]
+                }
+            }
+            (0, FpCategory::Infinite) => {
+                if base.is_special() || base.is_sign_negative() {
+                    Self::NAN
+                } else {
+                    [Self::NEG_INFINITY, Self::INFINITY]
+                        [(base >= &Self::ONE) as usize]
+                }
+            }
+            (_, FpCategory::Nan) => Self::NAN,
+            (1, _) => Self::NAN,
+            _ => {
+                // self is finite and > 0
+                match (base.sign(), base.classify()) {
+                    (_, FpCategory::Zero) => [Self::ZERO, Self::NEG_ZERO]
+                        [(self >= &Self::ONE) as usize],
+                    (0, FpCategory::Infinite) => [Self::NEG_ZERO, Self::ZERO]
+                        [(self >= &Self::ONE) as usize],
+                    (_, FpCategory::Nan) => Self::NAN,
+                    (1, _) => Self::NAN,
+                    _ => {
+                        // base is finite and > 0
+                        if base == &Self::ONE {
+                            match self.total_cmp(&Self::ONE) {
+                                Ordering::Greater => Self::INFINITY,
+                                Ordering::Equal => Self::NAN,
+                                Ordering::Less => Self::NEG_INFINITY,
+                            }
+                        } else {
+                            let mut t = BigFloat::from(&ln(self));
+                            t.idiv(&BigFloat::from(&ln(base)));
+                            Self::from(&t)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Returns the natural logarithm of the number.
@@ -182,6 +227,261 @@ impl f256 {
                 Self::from(&t)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod log_tests {
+    use super::*;
+
+    #[test]
+    fn test_nan() {
+        for b in [
+            f256::NAN,
+            f256::INFINITY,
+            f256::NEG_INFINITY,
+            f256::from(-1.5),
+            f256::from(-1.0),
+            f256::from(-0.5),
+            f256::from(-0.0),
+            f256::from(0.0),
+            f256::from(0.5),
+            f256::from(1.0),
+            f256::from(1.5),
+        ] {
+            assert!(f256::NAN.log(&b).is_nan());
+        }
+    }
+
+    #[test]
+    fn test_zero() {
+        for b in [
+            f256::NAN,
+            f256::INFINITY,
+            f256::NEG_INFINITY,
+            f256::from(-1.5),
+            f256::from(-1.0),
+            f256::from(-0.5),
+            f256::from(-0.0),
+            f256::from(0.0),
+        ] {
+            assert!(f256::ZERO.log(&b).is_nan());
+            assert!(f256::NEG_ZERO.log(&b).is_nan());
+        }
+        for b in [
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::from(1.0) - f256::EPSILON,
+        ] {
+            assert_eq!(f256::ZERO.log(&b), f256::INFINITY);
+            assert_eq!(f256::NEG_ZERO.log(&b), f256::INFINITY);
+        }
+        for b in [f256::from(1.0), f256::from(1.0) + f256::EPSILON, f256::MAX]
+        {
+            assert_eq!(f256::ZERO.log(&b), f256::NEG_INFINITY);
+            assert_eq!(f256::NEG_ZERO.log(&b), f256::NEG_INFINITY);
+        }
+    }
+
+    #[test]
+    fn test_infinity() {
+        for b in [
+            f256::NAN,
+            f256::INFINITY,
+            f256::NEG_INFINITY,
+            f256::from(-1.5),
+            f256::from(-1.0),
+            f256::from(-0.5),
+            f256::from(-0.0),
+            f256::from(0.0),
+        ] {
+            assert!(f256::INFINITY.log(&b).is_nan());
+        }
+        for b in [
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::from(1.0) - f256::EPSILON,
+        ] {
+            assert_eq!(f256::INFINITY.log(&b), f256::NEG_INFINITY);
+        }
+        for b in [
+            f256::from(1.0),
+            f256::from(1.0) + f256::EPSILON,
+            f256::TEN,
+            f256::MAX,
+        ] {
+            assert_eq!(f256::INFINITY.log(&b), f256::INFINITY);
+        }
+    }
+
+    #[test]
+    fn test_neg_values() {
+        for a in [
+            f256::NEG_INFINITY,
+            f256::MIN,
+            f256::from(-1.5),
+            f256::from(-1.0),
+            f256::from(-0.5),
+        ] {
+            for b in [
+                f256::NAN,
+                f256::INFINITY,
+                f256::NEG_INFINITY,
+                f256::from(-1.5),
+                f256::from(-1.0),
+                f256::from(-0.5),
+                f256::from(-0.0),
+                f256::from(0.0),
+                f256::from(0.5),
+                f256::from(1.0),
+                f256::from(1.5),
+            ] {
+                assert!(a.log(&b).is_nan());
+            }
+        }
+    }
+
+    #[test]
+    fn test_one() {
+        assert_eq!(f256::ONE.log(&f256::INFINITY), f256::ZERO);
+        assert_eq!(f256::ONE.log(&f256::from(1.2)), f256::ZERO);
+        assert!(f256::ONE.log(&f256::ONE).is_nan());
+        assert_eq!(f256::ONE.log(&f256::from(0.5)), f256::NEG_ZERO);
+        assert_eq!(f256::ONE.log(&f256::ZERO), f256::NEG_ZERO);
+        assert_eq!(f256::ONE.log(&f256::NEG_ZERO), f256::NEG_ZERO);
+    }
+
+    #[test]
+    fn test_base_nan() {
+        for a in [
+            f256::NAN,
+            f256::INFINITY,
+            f256::NEG_INFINITY,
+            f256::from(-1.5),
+            f256::from(-1.0),
+            f256::from(-0.5),
+            f256::from(-0.0),
+            f256::from(0.0),
+            f256::from(0.5),
+            f256::from(1.0),
+            f256::from(1.5),
+        ] {
+            assert!(a.log(&f256::NAN).is_nan());
+        }
+    }
+
+    #[test]
+    fn test_base_infinite() {
+        for a in [
+            f256::NAN,
+            f256::INFINITY,
+            f256::NEG_INFINITY,
+            f256::from(-1.5),
+            f256::from(-1.0),
+            f256::from(-0.5),
+            f256::from(-0.0),
+            f256::from(0.0),
+        ] {
+            assert!(a.log(&f256::INFINITY).is_nan());
+        }
+        for a in [
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::from(1.0) - f256::EPSILON,
+        ] {
+            assert_eq!(a.log(&f256::INFINITY), f256::NEG_ZERO);
+        }
+        for a in [
+            f256::from(1.0),
+            f256::from(1.0) + f256::EPSILON,
+            f256::TEN,
+            f256::MAX,
+        ] {
+            assert_eq!(a.log(&f256::INFINITY), f256::ZERO);
+        }
+    }
+
+    #[test]
+    fn test_base_zero() {
+        for a in [
+            f256::NAN,
+            f256::INFINITY,
+            f256::NEG_INFINITY,
+            f256::from(-1.5),
+            f256::from(-1.0),
+            f256::from(-0.5),
+            f256::from(-0.0),
+            f256::from(0.0),
+        ] {
+            assert!(a.log(&f256::ZERO).is_nan());
+            assert!(a.log(&f256::NEG_ZERO).is_nan());
+        }
+        for a in [
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::from(1.0) - f256::EPSILON,
+        ] {
+            assert_eq!(a.log(&f256::ZERO), f256::ZERO);
+            assert_eq!(a.log(&f256::NEG_ZERO), f256::ZERO);
+        }
+        for a in [
+            f256::from(1.0),
+            f256::from(1.0) + f256::EPSILON,
+            f256::TEN,
+            f256::MAX,
+        ] {
+            assert_eq!(a.log(&f256::ZERO), f256::NEG_ZERO);
+            assert_eq!(a.log(&f256::NEG_ZERO), f256::NEG_ZERO);
+        }
+    }
+
+    #[test]
+    fn test_neg_base() {
+        for b in [
+            f256::NEG_INFINITY,
+            f256::MIN,
+            f256::from(-1.5),
+            f256::from(-1.0),
+            f256::from(-0.5),
+        ] {
+            for a in [
+                f256::NAN,
+                f256::INFINITY,
+                f256::NEG_INFINITY,
+                f256::from(-1.5),
+                f256::from(-1.0),
+                f256::from(-0.5),
+                f256::from(-0.0),
+                f256::from(0.0),
+                f256::from(0.5),
+                f256::from(1.0),
+                f256::from(1.5),
+            ] {
+                assert!(a.log(&b).is_nan());
+            }
+        }
+    }
+
+    #[test]
+    fn test_base_one() {
+        assert_eq!(f256::INFINITY.log(&f256::ONE), f256::INFINITY);
+        assert_eq!(f256::from(1.2).log(&f256::ONE), f256::INFINITY);
+        assert!(f256::ONE.log(&f256::ONE).is_nan());
+        assert_eq!(f256::from(0.5).log(&f256::ONE), f256::NEG_INFINITY);
+        assert_eq!(f256::ZERO.log(&f256::ONE), f256::NEG_INFINITY);
+        assert_eq!(f256::NEG_ZERO.log(&f256::ONE), f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_near_one() {
+        let x = f256::ONE - f256::EPSILON;
+        let y = f256::ONE + f256::EPSILON;
+        assert_eq!(x.log(&y), -y);
+        assert_eq!(y.log(&x), -x);
     }
 }
 
