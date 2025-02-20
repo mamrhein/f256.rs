@@ -13,10 +13,9 @@ use core::{
 };
 
 use crate::{
-    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, norm_signif,
-    sign_bits_hi, signif, BigUInt, BinEncAnySpecial, DivRem, HiLo,
-    FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS, MAX_HI, SIGNIFICAND_BITS,
-    U256, U512,
+    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, sign_bits_hi,
+    signif, BigUInt, BinEncAnySpecial, DivRem, HiLo, FRACTION_BITS,
+    HI_EXP_MASK, HI_FRACTION_BITS, MAX_HI, SIGNIFICAND_BITS, U256, U512,
 };
 
 // Compute z = x % y.

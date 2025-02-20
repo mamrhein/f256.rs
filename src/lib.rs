@@ -1402,6 +1402,15 @@ pub(crate) fn norm_signif(abs_bits: &U256) -> (U256, u32) {
     (signif.shift_left(shift), shift)
 }
 
+/// Returns the normalized integral significand and the corresponding exponent
+/// from `abs_bits`.
+#[inline(always)]
+pub(crate) fn norm_signif_exp(abs_bits: &U256) -> (U256, i32) {
+    let (signif, shift) = norm_signif(abs_bits);
+    let exp = exp(abs_bits) - shift as i32;
+    (signif, exp)
+}
+
 /// Returns the left adjusted integral significand and the corresponding
 /// shift from `abs_bits`.
 #[inline(always)]

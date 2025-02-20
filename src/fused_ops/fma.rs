@@ -15,7 +15,7 @@ use core::{
 
 use crate::{
     abs_bits, abs_bits_sticky, binops::mul::mul_abs_finite, exp_bits, f256,
-    left_adj_signif, norm_bit, norm_signif, sign_bits_hi, signif, BigUInt,
+    left_adj_signif, norm_bit, sign_bits_hi, signif, BigUInt,
     BinEncAnySpecial, HiLo, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS,
     HI_FRACTION_BITS, HI_SIGN_MASK, INF_HI, MAX_HI, SIGNIFICAND_BITS, U256,
     U512,

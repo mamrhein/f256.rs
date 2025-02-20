@@ -10,7 +10,7 @@
 use core::{cmp::Ordering, num::FpCategory};
 
 use super::{bkm::bkm_l, BigFloat, FP492};
-use crate::{exp, f256, norm_signif, signif, BigUInt};
+use crate::{exp, f256, norm_signif_exp, signif, BigUInt};
 
 // LN_2 = ◯₄₉₂(ln(2)) =
 // 0.693147180559945309417232121458176568075500134360255254120680009493393621\
@@ -65,8 +65,7 @@ fn approx_ln(m: &FP492, e: i32) -> FP492 {
 
 fn ln(x: &f256) -> FP492 {
     debug_assert!(!x.is_special() && x.is_sign_positive());
-    let (m, sh) = norm_signif(&x.bits);
-    let e = exp(&x.bits) - sh as i32;
+    let (m, e) = norm_signif_exp(&x.bits);
     // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 1 <= m⋅2⁻ⁿ < 2
     // By using m as the hi-part of an FP492 value,
     // we turn m⋅2⁻ⁿ into m'⋅2⁻ⁿ⁻²⁵⁶, so that
