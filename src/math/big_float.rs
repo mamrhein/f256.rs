@@ -11,7 +11,8 @@ use core::{
     cmp::{max, Ordering},
     mem::swap,
     ops::{
-        Add, AddAssign, Mul, MulAssign, Neg, Shr, ShrAssign, Sub, SubAssign,
+        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Shr, ShrAssign,
+        Sub, SubAssign,
     },
 };
 
@@ -419,7 +420,7 @@ impl BigFloat {
         }
     }
 
-    pub(crate) fn idiv(&mut self, other: &Self) {
+    fn idiv(&mut self, other: &Self) {
         assert!(!other.is_zero(), "Division by zero.");
         if self.signum == 0 {
             return;
@@ -946,6 +947,30 @@ impl Mul<&Self> for BigFloat {
     type Output = Self;
 
     fn mul(self, rhs: &Self) -> Self::Output {
+        let mut res = self;
+        res *= rhs;
+        res
+    }
+}
+
+impl DivAssign<Self> for BigFloat {
+    #[inline(always)]
+    fn div_assign(&mut self, rhs: Self) {
+        self.idiv(&rhs);
+    }
+}
+
+impl DivAssign<&Self> for BigFloat {
+    #[inline(always)]
+    fn div_assign(&mut self, rhs: &Self) {
+        self.idiv(rhs);
+    }
+}
+
+impl Div<&Self> for BigFloat {
+    type Output = Self;
+
+    fn div(self, rhs: &Self) -> Self::Output {
         let mut res = self;
         res *= rhs;
         res

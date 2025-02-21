@@ -121,7 +121,7 @@ impl f256 {
                             }
                         } else {
                             let mut t = BigFloat::from(&ln(self));
-                            t.idiv(&BigFloat::from(&ln(base)));
+                            t /= &BigFloat::from(&ln(base));
                             Self::from(&t)
                         }
                     }

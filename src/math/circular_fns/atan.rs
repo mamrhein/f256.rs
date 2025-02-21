@@ -123,11 +123,11 @@ impl f256 {
         let sign_q = (self.sign() + other.sign()) % 2;
         let mut atan = if abs_bits_y < abs_bits_x {
             let mut q = BigFloat::from(self);
-            q.idiv(&BigFloat::from(other));
+            q /= &BigFloat::from(other);
             BigFloat::from(&approx_atan(&FP492::from(&q)))
         } else if abs_bits_y > abs_bits_x {
             let mut q = BigFloat::from(other);
-            q.idiv(&BigFloat::from(self));
+            q /= &BigFloat::from(self);
             [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2][sign_q as usize]
                 - &BigFloat::from(&approx_atan(&FP492::from(&q)))
         } else {
