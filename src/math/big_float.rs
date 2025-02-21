@@ -880,6 +880,13 @@ impl ShrAssign<u32> for BigFloat {
     }
 }
 
+impl AddAssign<Self> for BigFloat {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: Self) {
+        self.iadd(&rhs);
+    }
+}
+
 impl AddAssign<&Self> for BigFloat {
     #[inline(always)]
     fn add_assign(&mut self, rhs: &Self) {
@@ -897,6 +904,13 @@ impl Add<&Self> for BigFloat {
     }
 }
 
+impl SubAssign<Self> for BigFloat {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: Self) {
+        self.isub(&rhs);
+    }
+}
+
 impl SubAssign<&Self> for BigFloat {
     #[inline(always)]
     fn sub_assign(&mut self, rhs: &Self) {
@@ -911,6 +925,13 @@ impl Sub<&Self> for BigFloat {
         let mut res = self;
         res -= rhs;
         res
+    }
+}
+
+impl MulAssign<Self> for BigFloat {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: Self) {
+        self.imul(&rhs);
     }
 }
 
@@ -938,7 +959,7 @@ mod add_sub_tests {
     #[test]
     fn test_add_same_sign() {
         let mut f = BigFloat::ONE;
-        f += &BigFloat::ONE;
+        f += f;
         assert_eq!(f.signum, 1);
         assert_eq!(f.exp, 1);
         assert_eq!(f.signif, BigFloat::ONE.signif);
@@ -1016,7 +1037,7 @@ mod add_sub_tests {
     #[test]
     fn test_sub_same_sign() {
         let mut f = BigFloat::NEG_ONE;
-        f -= &BigFloat::NEG_ONE;
+        f -= f;
         assert_eq!(f, BigFloat::ZERO);
         let mut f = BigFloat {
             signum: 1,
@@ -1093,7 +1114,7 @@ mod mul_tests {
         let mut x = BigFloat::NEG_ONE;
         x += &BigFloat::EPSILON;
         let y = x;
-        x.imul(&y);
+        x *= x;
         assert_eq!(x.signum, 1);
         assert_eq!(x.exp, -1);
         assert_eq!(x.signif, U256::new(y.signif.hi.0, y.signif.lo.0 - 2));
