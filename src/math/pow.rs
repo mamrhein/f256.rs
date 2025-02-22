@@ -10,29 +10,29 @@
 use core::num::FpCategory;
 
 use crate::{
-    abs_bits, exp, f256, math::big_float::BigFloat, norm_signif_exp, EMIN,
+    abs_bits, exp, f256, math::big_float::BigFloat, norm_signif_exp, EMAX,
+    EMIN, FRACTION_BITS,
 };
 
 #[inline(always)]
 fn powi(x: &f256, mut n: i32) -> f256 {
     debug_assert!(x.is_finite() && !x.eq_zero());
-    debug_assert!(n != 0);
+    debug_assert!(n.abs() > 1);
+    // x < 0 => x = -1⋅|x| => xⁿ = (-1)ⁿ⋅|x|ⁿ
+    let s = x.sign() * ((n.abs() % 2) == 1) as u32;
     let (m, e) = norm_signif_exp(&abs_bits(x));
     // Now we have |x| = m⋅2ᵉ with 1 <= m < 2 and Eₘᵢₙ-P+1 <= e <= Eₘₐₓ
     // |x|ⁿ = (m⋅2ᵉ)ⁿ = mⁿ⋅(2ᵉ)ⁿ = mⁿ⋅2ᵉⁿ
-    // n > 0 => 1 <= mⁿ < 2ⁿ => 2ᵉⁿ <= mⁿ⋅2ᵉⁿ < 2ⁿ⁺ᵉⁿ
-    // n < 0 => 2ⁿ < mⁿ <= 1 => 2ⁿ⁺ᵉⁿ < mⁿ⋅2ᵉⁿ <= 2ᵉⁿ
-    let en = e.saturating_mul(n);
-    // let enn = en.saturating_add(n);
-    // let p = match enn {
-    //     2.. => {
-    //         *x
-    //     }
-    //     1 => *x,
-    //     0 => f256::ONE,
-    //     i32::MIN..=EMIN => f256::ZERO
-    //     ..=-1 =>
-    // };
+    // n > 1 => 1 <= mⁿ < 2ⁿ => 2ᵉⁿ <= mⁿ⋅2ᵉⁿ < 2ⁿ⁺ᵉⁿ
+    // n < 1 => 2ⁿ < mⁿ <= 1 => 2ⁿ⁺ᵉⁿ < mⁿ⋅2ᵉⁿ <= 2ᵉⁿ
+    let mut lim = e.saturating_mul(n);
+    if lim > EMAX {
+        return [f256::INFINITY, f256::NEG_INFINITY][s as usize];
+    }
+    if lim < EMIN - FRACTION_BITS as i32 {
+        return [f256::ZERO, f256::NEG_ZERO][s as usize];
+    }
+    // Result is most likely finite.
     let mut base = BigFloat::from(x);
     let mut result = BigFloat::ONE;
     if n < 0 {
@@ -52,17 +52,21 @@ fn powi(x: &f256, mut n: i32) -> f256 {
 impl f256 {
     /// Raises a number to an integer power.
     pub fn powi(&self, n: i32) -> Self {
-        match (n.signum(), self.classify()) {
+        match (n, self.classify()) {
             (0, _) => Self::ONE,
-            (1, FpCategory::Zero) => Self::ZERO,
-            (-1, FpCategory::Zero) => Self::INFINITY,
+            (1, _) => *self,
+            (-1, _) => self.recip(),
+            (2.., FpCategory::Zero) | (..=-2, FpCategory::Infinite) => {
+                [Self::NEG_ZERO, Self::ZERO]
+                    [(self.is_sign_positive() || n % 2 == 0) as usize]
+            }
+            (..=-2, FpCategory::Zero) | (2.., FpCategory::Infinite) => {
+                [Self::NEG_INFINITY, Self::INFINITY]
+                    [(self.is_sign_positive() || n % 2 == 0) as usize]
+            }
             (_, FpCategory::Nan) => Self::NAN,
-            (1, FpCategory::Infinite) => [Self::NEG_INFINITY, Self::INFINITY]
-                [(self.is_sign_positive() || n % 2 == 0) as usize],
-            (-1, FpCategory::Infinite) => [Self::NEG_ZERO, Self::ZERO]
-                [(self.is_sign_positive() || n % 2 == 0) as usize],
             _ => {
-                // self is finite and != 0, n != 0
+                // self is finite and != 0, n ∉ [-1…1]
                 powi(self, n)
             }
         }
@@ -149,6 +153,15 @@ mod powi_tests {
             (0, 1),
         );
         assert_eq!(f.powi(n), f256::NEG_ZERO);
+        let mut f = f256::MIN_GT_ZERO.sqrt();
+        f -= f.ulp();
+        assert_eq!(f.powi(2), f256::ZERO);
+    }
+
+    #[test]
+    fn test_subnormal_result() {
+        let f = f256::MIN_GT_ZERO.sqrt();
+        assert_eq!(f.powi(2), f256::MIN_GT_ZERO);
     }
 
     #[test]
