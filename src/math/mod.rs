@@ -13,6 +13,7 @@ mod circular_fns;
 mod feynman;
 mod fp492;
 mod log;
+mod pow;
 mod sqrt;
 
 use big_float::BigFloat;

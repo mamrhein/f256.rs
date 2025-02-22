@@ -1,0 +1,185 @@
+// ---------------------------------------------------------------------------
+// Copyright:   (c) 2024 ff. Michael Amrhein (michael@adrhinum.de)
+// License:     This program is part of a larger application. For license
+//              details please read the file LICENSE.TXT provided together
+//              with the application.
+// ---------------------------------------------------------------------------
+// $Source$
+// $Revision$
+
+use core::num::FpCategory;
+
+use crate::{
+    abs_bits, exp, f256, math::big_float::BigFloat, norm_signif_exp, EMIN,
+};
+
+#[inline(always)]
+fn powi(x: &f256, mut n: i32) -> f256 {
+    debug_assert!(x.is_finite() && !x.eq_zero());
+    debug_assert!(n != 0);
+    let (m, e) = norm_signif_exp(&abs_bits(x));
+    // Now we have |x| = m⋅2ᵉ with 1 <= m < 2 and Eₘᵢₙ-P+1 <= e <= Eₘₐₓ
+    // |x|ⁿ = (m⋅2ᵉ)ⁿ = mⁿ⋅(2ᵉ)ⁿ = mⁿ⋅2ᵉⁿ
+    // n > 0 => 1 <= mⁿ < 2ⁿ => 2ᵉⁿ <= mⁿ⋅2ᵉⁿ < 2ⁿ⁺ᵉⁿ
+    // n < 0 => 2ⁿ < mⁿ <= 1 => 2ⁿ⁺ᵉⁿ < mⁿ⋅2ᵉⁿ <= 2ᵉⁿ
+    let en = e.saturating_mul(n);
+    // let enn = en.saturating_add(n);
+    // let p = match enn {
+    //     2.. => {
+    //         *x
+    //     }
+    //     1 => *x,
+    //     0 => f256::ONE,
+    //     i32::MIN..=EMIN => f256::ZERO
+    //     ..=-1 =>
+    // };
+    let mut base = BigFloat::from(x);
+    let mut result = BigFloat::ONE;
+    if n < 0 {
+        n = -n;
+        base = base.recip();
+    }
+    while n > 0 {
+        if n % 2 != 0 {
+            result *= base;
+        }
+        base *= base;
+        n /= 2;
+    }
+    f256::from(&result)
+}
+
+impl f256 {
+    /// Raises a number to an integer power.
+    pub fn powi(&self, n: i32) -> Self {
+        match (n.signum(), self.classify()) {
+            (0, _) => Self::ONE,
+            (1, FpCategory::Zero) => Self::ZERO,
+            (-1, FpCategory::Zero) => Self::INFINITY,
+            (_, FpCategory::Nan) => Self::NAN,
+            (1, FpCategory::Infinite) => [Self::NEG_INFINITY, Self::INFINITY]
+                [(self.is_sign_positive() || n % 2 == 0) as usize],
+            (-1, FpCategory::Infinite) => [Self::NEG_ZERO, Self::ZERO]
+                [(self.is_sign_positive() || n % 2 == 0) as usize],
+            _ => {
+                // self is finite and != 0, n != 0
+                powi(self, n)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod powi_tests {
+    use super::*;
+    use crate::{EMAX, FRACTION_BITS};
+
+    #[test]
+    fn test_specials() {
+        for n in [1, 786, i32::MAX] {
+            assert_eq!(f256::INFINITY.powi(n), f256::INFINITY);
+            assert_eq!(f256::ZERO.powi(n), f256::ZERO);
+            assert!(f256::NAN.powi(n).is_nan());
+        }
+        for n in [i32::MIN, -328, -1] {
+            assert_eq!(f256::INFINITY.powi(n), f256::ZERO);
+            assert_eq!(f256::ZERO.powi(n), f256::INFINITY);
+            assert!(f256::NAN.powi(n).is_nan());
+        }
+        for n in [1, 783, i32::MAX] {
+            assert_eq!(f256::NEG_INFINITY.powi(n), f256::NEG_INFINITY);
+        }
+        for n in [4, 780, i32::MAX - 1] {
+            assert_eq!(f256::NEG_INFINITY.powi(n), f256::INFINITY);
+        }
+        for n in [i32::MIN, -328, -8] {
+            let z = f256::NEG_INFINITY.powi(n);
+            assert!(z.eq_zero());
+            assert!(z.is_sign_positive());
+        }
+        for n in [i32::MIN + 1, -321, -5] {
+            let z = f256::NEG_INFINITY.powi(n);
+            assert!(z.eq_zero());
+            assert!(z.is_sign_negative());
+        }
+    }
+
+    #[test]
+    fn test_n_eq_0() {
+        for f in [
+            f256::NAN,
+            f256::NEG_INFINITY,
+            f256::MIN,
+            -f256::TEN,
+            f256::NEG_ONE,
+            f256::NEG_ZERO,
+            f256::ZERO,
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::ONE,
+            f256::TWO,
+            f256::MAX,
+            f256::INFINITY,
+        ] {
+            assert_eq!(f.powi(0), f256::ONE);
+        }
+    }
+
+    #[test]
+    fn test_overflow() {
+        let mut f = f256::MAX.sqrt();
+        f += f.ulp();
+        assert_eq!(f.powi(2), f256::INFINITY);
+        let n = -7;
+        let f = f256::from_sign_exp_signif(1, EMAX / n - 1, (0, 1));
+        assert_eq!(f.powi(n), f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_underflow() {
+        let mut f =
+            f256::MAX.sqrt() * f256::from(2_u128.pow(FRACTION_BITS / 2));
+        f += f.ulp();
+        assert_eq!(f.powi(-2), f256::ZERO);
+        let n = 7;
+        let f = f256::from_sign_exp_signif(
+            1,
+            (EMIN - FRACTION_BITS as i32) / n - 1,
+            (0, 1),
+        );
+        assert_eq!(f.powi(n), f256::NEG_ZERO);
+    }
+
+    #[test]
+    fn test_int_base_with_n_gt_0() {
+        let m = 73_u64;
+        let f = f256::from(m);
+        let n = 5;
+        assert_eq!(f.powi(n), f256::from(m.pow(n as u32)));
+        let m = 17_u128;
+        let f = f256::from(m);
+        let n = 30;
+        assert_eq!(f.powi(n), f256::from(m.pow(n as u32)));
+    }
+
+    #[test]
+    fn test_int_base_with_n_lt_0() {
+        let m = 69_u64;
+        let f = f256::from(m);
+        let n = -4;
+        assert_eq!(f.powi(n), f256::from(m.pow(n.unsigned_abs())).recip());
+        let m = 7_u128;
+        let f = f256::from(m);
+        let n = -41;
+        assert_eq!(f.powi(n), f256::from(m.pow(n.unsigned_abs())).recip());
+    }
+
+    #[test]
+    fn test_base_near_1() {
+        let f = f256::ONE + f256::EPSILON;
+        let f2 = f.square();
+        assert_eq!(f.powi(2), f2);
+        assert_eq!(f.powi(9), f2.square().square() * f);
+    }
+}
