@@ -577,6 +577,13 @@ impl f256 {
         self.bits.hi.0 >= HI_SIGN_MASK
     }
 
+    /// Returns `true` if `self` represents an integer, i. e. `self` ∈ ℤ.
+    #[must_use]
+    #[inline]
+    pub(crate) fn is_integer(self) -> bool {
+        is_int(&abs_bits(&self))
+    }
+
     /// Returns the unit in the last place of `self`.
     ///
     /// ULP denotes the magnitude of the last significand digit of `self`.
@@ -1288,6 +1295,16 @@ pub(crate) const fn abs_bits_sticky(abs_bits: &U256) -> u128 {
     abs_bits.hi.0 | (abs_bits.lo.0 != 0) as u128
 }
 
+/// Returns true if `abs_bits` represent an integer
+pub(crate) fn is_int(abs_bits: &U256) -> bool {
+    *abs_bits == U256::ZERO ||
+        // |self| >= 2²³⁶
+        abs_bits.hi.0 >= MIN_NO_FRACT_HI ||
+            // all fractional bits = 0
+            exp(&abs_bits) >=
+                FRACTION_BITS.saturating_sub(abs_bits.trailing_zeros()) as i32
+}
+
 pub(crate) trait BinEncSpecial {
     /// Returns true if self represents |Inf|, NaN or |0|.
     fn is_special(&self) -> bool;
@@ -1483,6 +1500,7 @@ mod repr_tests {
         assert_eq!(z.decode(), (0, 0, U256::default()));
         assert_eq!(z.exponent(), 0);
         assert_eq!(z.significand(), f256::ZERO);
+        assert!(z.is_integer());
         let z = f256::NEG_ZERO;
         assert_eq!(z.sign(), 1);
         assert_eq!(z.quantum_exponent(), 0);
@@ -1490,6 +1508,7 @@ mod repr_tests {
         assert_eq!(z.decode(), (1, 0, U256::default()));
         assert_eq!(z.exponent(), 0);
         assert_eq!(z.significand(), f256::ZERO);
+        assert!(z.is_integer());
     }
 
     #[test]
@@ -1505,6 +1524,7 @@ mod repr_tests {
         assert_eq!(i.decode(), (0, 0, U256::ONE));
         assert_eq!(i.exponent(), 0);
         assert_eq!(i.significand(), f256::ONE);
+        assert!(i.is_integer());
         let i = f256::NEG_ONE;
         assert_eq!(i.sign(), 1);
         assert_eq!(i.biased_exponent(), EXP_BIAS);
@@ -1516,6 +1536,7 @@ mod repr_tests {
         assert_eq!(i.decode(), (1, 0, U256::ONE));
         assert_eq!(i.exponent(), 0);
         assert_eq!(i.significand(), f256::ONE);
+        assert!(i.is_integer());
     }
 
     #[test]
@@ -1531,6 +1552,7 @@ mod repr_tests {
         assert_eq!(i.decode(), (0, 1, U256::ONE));
         assert_eq!(i.exponent(), 1);
         assert_eq!(i.significand(), f256::ONE);
+        assert!(i.is_integer());
         let f = f256::from(-3.5_f64);
         assert_eq!(f.sign(), 1);
         assert_eq!(f.quantum_exponent(), -235);
@@ -1541,6 +1563,7 @@ mod repr_tests {
         assert_eq!(f.decode(), (1, -1, U256::new(0_u128, 7_u128)));
         assert_eq!(f.exponent(), 1);
         assert_eq!(f.significand(), f.abs() / f256::TWO);
+        assert!(!f.is_integer());
     }
 
     #[test]
