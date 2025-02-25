@@ -9,7 +9,7 @@
 
 #[cfg(test)]
 mod min_max_tests {
-    use f256::f256;
+    use ::f256::f256;
 
     #[test]
     fn test_min_nan() {
@@ -26,7 +26,7 @@ mod min_max_tests {
 
 #[cfg(test)]
 mod abs_tests {
-    use f256::f256;
+    use ::f256::f256;
 
     #[test]
     fn test_nan() {
@@ -64,7 +64,9 @@ mod abs_tests {
 
 #[cfg(test)]
 mod trunc_tests {
-    use f256::f256;
+    use core::ops::Neg;
+
+    use ::f256::f256;
 
     #[test]
     fn test_nan() {
@@ -90,6 +92,7 @@ mod trunc_tests {
         let g = f256::from(17.625_f64);
         let h = -g;
         assert_eq!(f.trunc(), f);
+        assert_eq!(f.neg().trunc(), -f);
         assert_eq!(g.trunc(), f);
         assert_eq!(h.trunc(), -f);
     }
@@ -117,7 +120,7 @@ mod trunc_tests {
 
 #[cfg(test)]
 mod fract_tests {
-    use f256::f256;
+    use ::f256::f256;
 
     #[test]
     fn test_nan() {
@@ -164,7 +167,9 @@ mod fract_tests {
 
 #[cfg(test)]
 mod ceil_tests {
-    use f256::f256;
+    use core::ops::Neg;
+
+    use ::f256::f256;
 
     #[test]
     fn test_nan() {
@@ -190,6 +195,7 @@ mod ceil_tests {
         let g = f256::from(17.625_f64);
         let h = -g;
         assert_eq!(f.ceil(), f);
+        assert_eq!(f.neg().ceil(), -f);
         assert_eq!(g.ceil(), f);
         assert_eq!(h.ceil(), f256::ONE - f);
     }
@@ -219,7 +225,9 @@ mod ceil_tests {
 
 #[cfg(test)]
 mod floor_tests {
-    use f256::f256;
+    use core::ops::Neg;
+
+    use ::f256::f256;
 
     #[test]
     fn test_nan() {
@@ -245,6 +253,7 @@ mod floor_tests {
         let g = f256::from(28.025_f64);
         let h = -g;
         assert_eq!(f.floor(), f);
+        assert_eq!(f.neg().floor(), -f);
         assert_eq!(g.floor(), f);
         assert_eq!(h.floor(), -f - f256::ONE);
     }
@@ -274,7 +283,9 @@ mod floor_tests {
 
 #[cfg(test)]
 mod round_tests {
-    use f256::f256;
+    use core::ops::Neg;
+
+    use ::f256::f256;
 
     #[test]
     fn test_nan() {
@@ -306,9 +317,11 @@ mod round_tests {
         let g = f256::from(28.025_f64);
         let h = -g;
         assert_eq!(f.round(), f);
+        assert_eq!(f.neg().round(), -f);
         assert_eq!(g.round(), f);
         assert_eq!(h.round(), -f);
         assert_eq!(f.round_tie_even(), f);
+        assert_eq!(f.neg().round_tie_even(), -f);
         assert_eq!(g.round_tie_even(), f);
         assert_eq!(h.round_tie_even(), -f);
     }
@@ -319,6 +332,7 @@ mod round_tests {
         let g = f256::from(2.5_f64);
         let h = f256::from(-2.5_f64);
         assert_eq!(f.round(), f);
+        assert_eq!(f.neg().round(), -f);
         assert_eq!(g.round(), f);
         assert_eq!(h.round(), -f);
     }
@@ -329,6 +343,7 @@ mod round_tests {
         let g = f256::from(2.5_f64);
         let h = f256::from(-2.5_f64);
         assert_eq!(f.round_tie_even(), f);
+        assert_eq!(f.neg().round_tie_even(), -f);
         assert_eq!(g.round_tie_even(), f);
         assert_eq!(h.round_tie_even(), -f);
     }
