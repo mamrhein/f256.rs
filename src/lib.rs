@@ -896,39 +896,28 @@ impl f256 {
         }
     }
 
-    // Returns the nearest integral value in the direction controlled by the
-    // given function.
+    // Returns
+    // * self, if self is an integral value,
+    // * value returned by lt1, if 0 < self < 1,
+    // * return value of gt1 otherwise.
     #[must_use]
-    fn nearest_integral(&self, adj: fn(u32) -> bool) -> Self {
+    fn to_integer(
+        &self,
+        lt1: fn(u32, U256) -> Self,
+        gt1: fn(u32, U256) -> Self,
+    ) -> Self {
         let mut abs_bits = abs_bits(self);
-        if abs_bits.is_special() {
-            // self is special
-            return *self;
-        }
-        // self is finite and non-zero.
-        if abs_bits.hi.0 >= MIN_NO_FRACT_HI {
-            // |self| >= 2²³⁶, i. e. self is integral.
-            return *self;
-        }
-        let sign = self.sign();
-        if abs_bits.hi.0 < ONE.bits.hi.0 {
-            // 0 < |self| < 1
-            return match (sign, adj(sign)) {
-                (0, true) => Self::ONE,
-                (1, true) => Self::NEG_ONE,
-                (..) => Self::ZERO,
-            };
-        }
-        // 1 < |self| < 2²³⁶
-        let n_fract_bits = FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
-        let mut abs_int_bits = &(&abs_bits >> n_fract_bits) << n_fract_bits;
-        let c = adj(sign) as u32 * (abs_int_bits != abs_bits) as u32;
-        abs_int_bits += &(&U256::new(0, c as u128) << n_fract_bits);
-        Self {
-            bits: U256::new(
-                abs_int_bits.hi.0 | sign_bits_hi(self),
-                abs_int_bits.lo.0,
-            ),
+        if is_int(&abs_bits) || abs_bits.is_special() {
+            *self
+        } else {
+            let sign = self.sign();
+            if abs_bits.hi.0 < ONE.bits.hi.0 {
+                // 0 < |self| < 1
+                lt1(sign, abs_bits)
+            } else {
+                // 1 < |self| < 2²³⁶
+                gt1(sign, abs_bits)
+            }
         }
     }
 
@@ -947,11 +936,19 @@ impl f256 {
     /// assert_eq!(g.trunc(), f);
     /// assert_eq!(h.trunc(), -f);
     //// ```
-    #[inline]
     #[must_use]
     pub fn trunc(&self) -> Self {
-        let adj = |_: u32| false;
-        self.nearest_integral(adj)
+        self.to_integer(
+            |sign, abs_bits| Self::ZERO,
+            |sign, abs_bits| {
+                let n_fract_bits =
+                    FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
+                let mut int_bits =
+                    &(&abs_bits >> n_fract_bits) << n_fract_bits;
+                int_bits.hi.0 |= (sign as u128) << HI_SIGN_SHIFT;
+                Self { bits: int_bits }
+            },
+        )
     }
 
     /// Returns the fractional part of `self`.
@@ -996,11 +993,20 @@ impl f256 {
     /// assert_eq!(g.ceil(), f);
     /// assert_eq!(h.ceil(), f256::ONE - f);
     //// ```
-    #[inline]
     #[must_use]
     pub fn ceil(&self) -> Self {
-        let adj = |sign: u32| sign == 0;
-        self.nearest_integral(adj)
+        self.to_integer(
+            |sign, abs_bits| [Self::ONE, Self::ZERO][sign as usize],
+            |sign, abs_bits| {
+                let n_fract_bits =
+                    FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
+                let mut int_bits = &abs_bits >> n_fract_bits;
+                int_bits += &U256::new(0, (sign == 0) as u128);
+                int_bits <<= n_fract_bits;
+                int_bits.hi.0 |= (sign as u128) << HI_SIGN_SHIFT;
+                Self { bits: int_bits }
+            },
+        )
     }
 
     /// Returns the largest integer less than or equal to `self`.
@@ -1017,11 +1023,20 @@ impl f256 {
     /// assert_eq!(g.floor(), f);
     /// assert_eq!(h.floor(), -f - f256::ONE);
     //// ```
-    #[inline]
     #[must_use]
     pub fn floor(&self) -> Self {
-        let adj = |sign: u32| sign == 1;
-        self.nearest_integral(adj)
+        self.to_integer(
+            |sign, abs_bits| [Self::ZERO, Self::NEG_ONE][sign as usize],
+            |sign, abs_bits| {
+                let n_fract_bits =
+                    FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
+                let mut int_bits = &abs_bits >> n_fract_bits;
+                int_bits += &U256::new(0, sign as u128);
+                int_bits <<= n_fract_bits;
+                int_bits.hi.0 |= (sign as u128) << HI_SIGN_SHIFT;
+                Self { bits: int_bits }
+            },
+        )
     }
 
     /// Returns the nearest integer to `self`. Rounds half-way cases away from
@@ -1040,41 +1055,30 @@ impl f256 {
     //// ```
     #[must_use]
     pub fn round(&self) -> Self {
-        let mut abs_bits = abs_bits(self);
-        if abs_bits.is_special() {
-            // self is special
-            return *self;
-        }
-        // self is finite and non-zero.
-        if abs_bits.hi.0 >= MIN_NO_FRACT_HI {
-            // |self| >= 2²³⁶, i. e. self is integral.
-            return *self;
-        }
-        if abs_bits.hi.0 < ONE_HALF.bits.hi.0 {
-            // 0 < |self| < ½
-            return Self::ZERO;
-        }
-        if abs_bits.hi.0 <= ONE.bits.hi.0 {
-            // ½ <= |self| <= 1
-            return Self {
-                bits: U256::new(ONE.bits.hi.0 | sign_bits_hi(self), 0),
-            };
-        }
-        // 1 < |self| < 2²³⁶
-        let n_fract_bits = FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
-        let tie = &U256::ONE << (n_fract_bits - 1);
-        let rem = abs_bits.rem_pow2(n_fract_bits);
-        abs_bits >>= n_fract_bits;
-        if rem >= tie {
-            abs_bits.incr();
-        }
-        abs_bits <<= n_fract_bits;
-        Self {
-            bits: U256::new(
-                abs_bits.hi.0 | sign_bits_hi(self),
-                abs_bits.lo.0,
-            ),
-        }
+        self.to_integer(
+            |sign, abs_bits| {
+                if abs_bits.hi.0 < ONE_HALF.bits.hi.0 {
+                    // 0 < |self| < ½
+                    Self::ZERO
+                } else {
+                    // ½ <= |self| < 1
+                    [Self::ONE, Self::NEG_ONE][sign as usize]
+                }
+            },
+            |sign, abs_bits| {
+                let n_fract_bits =
+                    FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
+                let tie = &U256::ONE << (n_fract_bits - 1);
+                let rem = abs_bits.rem_pow2(n_fract_bits);
+                let mut int_bits = &abs_bits >> n_fract_bits;
+                if rem >= tie {
+                    int_bits.incr();
+                }
+                int_bits <<= n_fract_bits;
+                int_bits.hi.0 |= (sign as u128) << HI_SIGN_SHIFT;
+                Self { bits: int_bits }
+            },
+        )
     }
 
     /// Returns the nearest integer to `self`. Rounds half-way cases to the
@@ -1094,37 +1098,25 @@ impl f256 {
     //// ```
     #[must_use]
     pub fn round_tie_even(&self) -> Self {
-        let mut abs_bits = abs_bits(self);
-        if abs_bits.is_special() {
-            // self is special
-            return *self;
-        }
-        // self is finite and non-zero.
-        if abs_bits.hi.0 >= MIN_NO_FRACT_HI {
-            // |self| >= 2²³⁶, i. e. self is integral.
-            return *self;
-        }
-        if abs_bits.hi.0 <= ONE_HALF.bits.hi.0 {
-            // 0 < |self| <= ½
-            return Self::ZERO;
-        }
-        if abs_bits.hi.0 <= ONE.bits.hi.0 {
-            // ½ < |self| <= 1
-            return Self {
-                bits: U256::new(ONE.bits.hi.0 | sign_bits_hi(self), 0),
-            };
-        }
-        // 1 < |self| < 2²³⁶
-        let n_fract_bits = FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
-        let mut n = n_fract_bits;
-        abs_bits = abs_bits.rounding_div_pow2(n);
-        abs_bits <<= n_fract_bits;
-        Self {
-            bits: U256::new(
-                abs_bits.hi.0 | sign_bits_hi(self),
-                abs_bits.lo.0,
-            ),
-        }
+        self.to_integer(
+            |sign, abs_bits| {
+                if abs_bits.hi.0 <= ONE_HALF.bits.hi.0 {
+                    // 0 < |self| <= ½
+                    Self::ZERO
+                } else {
+                    // ½ < |self| < 1
+                    [Self::ONE, Self::NEG_ONE][sign as usize]
+                }
+            },
+            |sign, abs_bits| {
+                let n_fract_bits =
+                    FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
+                let mut int_bits = abs_bits.rounding_div_pow2(n_fract_bits);
+                int_bits <<= n_fract_bits;
+                int_bits.hi.0 |= (sign as u128) << HI_SIGN_SHIFT;
+                Self { bits: int_bits }
+            },
+        )
     }
 
     /// Returns the additive inverse of `self`.
