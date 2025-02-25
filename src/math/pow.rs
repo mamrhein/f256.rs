@@ -52,24 +52,55 @@ fn powi(x: &f256, mut n: i32) -> f256 {
 impl f256 {
     /// Raises a number to an integer power.
     pub fn powi(&self, n: i32) -> Self {
-        match (n, self.classify()) {
-            (0, _) => Self::ONE,
-            (1, _) => *self,
-            (-1, _) => self.recip(),
-            (2.., FpCategory::Zero) | (..=-2, FpCategory::Infinite) => {
-                [Self::NEG_ZERO, Self::ZERO]
-                    [(self.is_sign_positive() || n % 2 == 0) as usize]
+        // x⁰ = 1 for any x, incl. NaN
+        // 1ⁿ = 1 for any n
+        if n == 0 || *self == Self::ONE {
+            return Self::ONE;
+        }
+        // x¹ = x for any x, incl. NaN
+        if n == 1 {
+            return *self;
+        }
+        // x⁻¹ = 1/x for any x, incl. NaN (note: 1/NaN = NaN)
+        if n == -1 {
+            return self.recip();
+        }
+        // This test for special values is redundant, but it reduces the
+        // number of tests for normal cases.
+        if self.is_special() {
+            // NaNⁿ = NaN for n != 0
+            if self.is_nan() {
+                return Self::NAN;
             }
-            (..=-2, FpCategory::Zero) | (2.., FpCategory::Infinite) => {
-                [Self::NEG_INFINITY, Self::INFINITY]
-                    [(self.is_sign_positive() || n % 2 == 0) as usize]
+            // 0ⁿ = 0 for n > 0
+            // 0ⁿ = ∞ for n < 0
+            if self.eq_zero() {
+                return [Self::ZERO, Self::INFINITY][(n < 0) as usize];
             }
-            (_, FpCategory::Nan) => Self::NAN,
-            _ => {
-                // self is finite and != 0, n ∉ [-1…1]
-                powi(self, n)
+            // ∞ⁿ = ∞ for n > 0
+            // ∞ⁿ = 0 for n < 0
+            // (-∞)ⁿ = ∞ for n > 0 and n is even
+            // (-∞)ⁿ = -∞ for n > 0 and n is odd
+            // (-∞)ⁿ = 0 for n < 0 and n is even
+            // (-∞)ⁿ = -0 for n < 0 and n is odd
+            if self.is_infinite() {
+                match (self.sign(), n.signum()) {
+                    (0, 1) => return Self::INFINITY,
+                    (0, -1) => return Self::ZERO,
+                    (1, 1) => {
+                        return [Self::INFINITY, Self::NEG_INFINITY]
+                            [(n & 1 == 1) as usize]
+                    }
+                    (1, -1) => {
+                        return [Self::ZERO, Self::NEG_ZERO]
+                            [(n & 1 == 1) as usize]
+                    }
+                    _ => unreachable!(),
+                }
             }
         }
+        // self is finite and != 0, n ∉ [-1…1]
+        powi(self, n)
     }
 }
 
