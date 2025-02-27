@@ -39,6 +39,12 @@ impl FP492 {
         Self::new(1_u128 << HI_FRACTION_BITS + 1, 0_u128, 0_u128, 0_u128);
     pub(super) const ONE_HALF: Self =
         Self::new(1_u128 << HI_FRACTION_BITS - 1, 0_u128, 0_u128, 0_u128);
+    pub(super) const THREE_HALF: Self = Self::new(
+        Self::ONE.0.hi.hi.0 | Self::ONE_HALF.0.hi.hi.0,
+        0_u128,
+        0_u128,
+        0_u128,
+    );
     pub(super) const EPSILON: Self =
         Self::new(0_u128, 0_u128, 0_u128, 1_u128);
 
