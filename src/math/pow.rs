@@ -14,6 +14,22 @@ use crate::{
     EMIN, FRACTION_BITS,
 };
 
+pub(crate) fn approx_powi(mut base: BigFloat, mut n: i32) -> BigFloat {
+    let mut result = BigFloat::ONE;
+    if n < 0 {
+        n = -n;
+        base = base.recip();
+    }
+    while n > 0 {
+        if n % 2 != 0 {
+            result *= base;
+        }
+        base *= base;
+        n /= 2;
+    }
+    result
+}
+
 #[inline(always)]
 fn powi(x: &f256, mut n: i32) -> f256 {
     debug_assert!(x.is_finite() && !x.eq_zero());
@@ -33,19 +49,8 @@ fn powi(x: &f256, mut n: i32) -> f256 {
         return [f256::ZERO, f256::NEG_ZERO][s as usize];
     }
     // Result is most likely finite.
-    let mut base = BigFloat::from(x);
-    let mut result = BigFloat::ONE;
-    if n < 0 {
-        n = -n;
-        base = base.recip();
-    }
-    while n > 0 {
-        if n % 2 != 0 {
-            result *= base;
-        }
-        base *= base;
-        n /= 2;
-    }
+    let base = BigFloat::from(x);
+    let result = approx_powi(base, n);
     f256::from(&result)
 }
 
