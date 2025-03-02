@@ -16,7 +16,6 @@ use core::{
     },
 };
 
-use super::FP492;
 use crate::{
     abs_bits, exp_bits, f256, norm_bit, signif, BigUInt, DivRem, HiLo, EMAX,
     EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BIAS,
