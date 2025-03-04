@@ -597,6 +597,15 @@ mod ln_1p_tests {
     }
 
     #[test]
+    fn test_ln_near_1() {
+        assert_eq!(f256::ONE.ln(), f256::ZERO);
+        let f = f256::ONE - f256::EPSILON;
+        assert_eq!(f.ln(), -f256::EPSILON);
+        let f = f256::ONE + f256::EPSILON;
+        assert_eq!(f.ln(), f256::EPSILON - f256::EPSILON.ulp() / f256::TWO);
+    }
+
+    #[test]
     fn test_ln_1p_0() {
         assert_eq!(f256::ZERO.ln_1p(), f256::ZERO);
     }
