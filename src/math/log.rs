@@ -55,7 +55,7 @@ pub(crate) const LOG10_E: FP492 = FP492::new(
 
 #[inline(always)]
 fn approx_ln(m: &FP492, e: i32) -> FP492 {
-    debug_assert!(m > &FP492::ONE);
+    debug_assert!(m >= &FP492::ONE);
     let ln_m = bkm_l(&m);
     let mut ln = LN_2;
     ln *= &FP492::from(e);
