@@ -158,12 +158,6 @@ impl FP492 {
         self.0 >>= n;
     }
 
-    /// Returns self + ⌊self * 2⁻ⁿ⌋₄₉₂
-    #[inline(always)]
-    pub(super) fn add_self_shr(self, n: u32) -> Self {
-        Self(self.0 + (self.0 >> n))
-    }
-
     /// Returns ⌊self * 256⌋, ⌊self * 256⌋ / 256, self - ⌊self * 256⌋ / 256
     pub(super) fn divmod_1_over_256(mut self) -> (i32, Self, Self) {
         let signum = self.signum();
@@ -303,6 +297,13 @@ impl From<U512> for FP492 {
     #[inline(always)]
     fn from(value: U512) -> Self {
         Self(value)
+    }
+}
+
+impl Into<U512> for &FP492 {
+    #[inline(always)]
+    fn into(self) -> U512 {
+        self.0
     }
 }
 
@@ -461,7 +462,7 @@ mod test_fp492 {
 }
 
 #[cfg(test)]
-mod test_fp509_conv {
+mod test_fp492_conv {
     use super::*;
 
     #[test]
