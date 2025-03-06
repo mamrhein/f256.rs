@@ -42,7 +42,7 @@ const FP492_NEG_FRAC_PI_4: FP492 = FP492::new(
 /// Computes the arctangent of a number (in radians).
 fn atan(x: &BigFloat) -> FP492 {
     let x_abs = x.abs();
-    let sign = (x.signum < 0) as usize;
+    let sign = (x.signum() < 0) as usize;
     if x_abs < BigFloat::ONE {
         approx_atan(&FP492::from(x))
     } else if x_abs > BigFloat::ONE {

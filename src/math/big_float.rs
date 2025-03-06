@@ -78,13 +78,13 @@ fn div_signifs(x: &U256, y: &U256) -> (U256, i32) {
 /// Representation of the number signum ⋅ signif ⋅ 2⁻²⁵⁴ ⋅ 2ᵉ.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct BigFloat {
-    pub(crate) signum: i32,
-    pub(crate) exp: i32,
+    signum: i32,
+    exp: i32,
     // Layout of the 256 bits of the `signif` member: olfff…fff
     // o = reserved bit for overflow handling in addition
     // l = 1 leading bit (always 1 except for BigFloat::ZERO)
     // f = 254 fractional bits
-    pub(crate) signif: U256,
+    signif: U256,
 }
 
 const SIGNIF_ONE: U256 =
@@ -316,6 +316,21 @@ impl BigFloat {
             exp: exp_f,
             signif: signif_f.shift_left(shl),
         }
+    }
+
+    #[inline(always)]
+    pub(crate) const fn signum(&self) -> i32 {
+        self.signum
+    }
+
+    #[inline(always)]
+    pub(crate) const fn exp(&self) -> i32 {
+        self.exp
+    }
+
+    #[inline(always)]
+    pub(crate) const fn signif(&self) -> U256 {
+        self.signif
     }
 
     #[inline(always)]

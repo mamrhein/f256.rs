@@ -192,13 +192,14 @@ impl From<i32> for FP492 {
 
 impl From<&BigFloat> for FP492 {
     fn from(value: &BigFloat) -> Self {
-        debug_assert!(value.exp <= Self::INT_BITS as i32);
-        let sh = (Self::INT_BITS as i32 - 1 - value.exp) as u32;
+        debug_assert!(value.exp() <= Self::INT_BITS as i32);
+        let sh = (Self::INT_BITS as i32 - 1 - value.exp()) as u32;
         if sh >= U512::BITS {
             return FP492::ZERO;
         }
-        let mut res = Self(&U512::from_hi_lo(value.signif, U256::ZERO) >> sh);
-        if value.signum < 0 {
+        let mut res =
+            Self(&U512::from_hi_lo(value.signif(), U256::ZERO) >> sh);
+        if value.signum() < 0 {
             res.ineg();
         }
         res

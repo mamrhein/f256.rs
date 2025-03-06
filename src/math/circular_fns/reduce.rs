@@ -189,7 +189,8 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
         let x = BigFloat::from(x);
         let z = x.mul_add(&R, &D) - &D;
         let u1 = z.neg().mul_add(&C1, &x);
-        let needed_bits = 1 - u1.exp + BigFloat::FRACTION_BITS as i32 + x.exp;
+        let needed_bits =
+            1 - u1.exp() + BigFloat::FRACTION_BITS as i32 + x.exp();
         let (v1, v2) = if needed_bits <= C1_C2_PREC as i32 {
             let v1 = z.neg().mul_add(&C2, &u1);
             let (p1, p2) = z.mul_exact(&C2);
@@ -203,8 +204,8 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
             (v1, ((t1 - &v1) + &t2) - &p2)
         };
         // x <= M => z < 2ᴾ⁻²
-        let e = z.exp - BigFloat::FRACTION_BITS as i32;
-        let q = (&z.signif >> e.unsigned_abs()).lo.0 as u32 & 0x3;
+        let e = z.exp() - BigFloat::FRACTION_BITS as i32;
+        let q = (&z.signif() >> e.unsigned_abs()).lo.0 as u32 & 0x3;
         // Convert (v1 + v2) into a fixed-point number with 509-bit-fraction
         // |v1| <= ½π => v1.exp <= 0
         let mut fx = FP492::from(&v1);
