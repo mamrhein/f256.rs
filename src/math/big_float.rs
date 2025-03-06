@@ -876,25 +876,6 @@ impl PartialOrd for Float256 {
     }
 }
 
-impl Shr<u32> for &Float256 {
-    type Output = Float256;
-
-    fn shr(self, rhs: u32) -> Self::Output {
-        let exp_adj = [rhs as i32, 0][self.signif.is_zero() as usize];
-        Self::Output {
-            signum: self.signum,
-            exp: self.exp - exp_adj,
-            signif: self.signif,
-        }
-    }
-}
-
-impl ShrAssign<u32> for Float256 {
-    fn shr_assign(&mut self, rhs: u32) {
-        self.exp -= [rhs as i32, 0][self.signif.is_zero() as usize];
-    }
-}
-
 impl AddAssign<Self> for Float256 {
     #[inline(always)]
     fn add_assign(&mut self, rhs: Self) {
