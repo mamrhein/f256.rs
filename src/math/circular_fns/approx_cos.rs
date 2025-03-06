@@ -273,7 +273,7 @@ pub(crate) fn approx_cos(x: &FP492) -> FP492 {
 #[cfg(test)]
 mod test_approx_cos {
     use super::*;
-    use crate::{f256, math::BigFloat};
+    use crate::{f256, math::Float256};
 
     #[test]
     fn calc_small_cutoff() {
@@ -290,7 +290,7 @@ mod test_approx_cos {
             }
             f = (lf + uf) / f256::TWO;
         }
-        let cutoff = FP492::from(&BigFloat::from(&f));
+        let cutoff = FP492::from(&Float256::from(&f));
         // println!("\n{lf:?}\n{:?}", lf.cos());
         // println!("\n{f:?}\n{:?}", f.cos());
         // println!("\n{uf:?}\n{:?}", uf.cos());

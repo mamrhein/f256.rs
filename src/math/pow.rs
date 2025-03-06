@@ -10,12 +10,12 @@
 use core::num::FpCategory;
 
 use crate::{
-    abs_bits, exp, f256, math::big_float::BigFloat, norm_signif_exp, EMAX,
+    abs_bits, exp, f256, math::big_float::Float256, norm_signif_exp, EMAX,
     EMIN, FRACTION_BITS,
 };
 
-pub(crate) fn approx_powi(mut base: BigFloat, mut n: i32) -> BigFloat {
-    let mut result = BigFloat::ONE;
+pub(crate) fn approx_powi(mut base: Float256, mut n: i32) -> Float256 {
+    let mut result = Float256::ONE;
     if n < 0 {
         n = -n;
         base = base.recip();
@@ -49,7 +49,7 @@ fn powi(x: &f256, mut n: i32) -> f256 {
         return [f256::ZERO, f256::NEG_ZERO][s as usize];
     }
     // Result is most likely finite.
-    let base = BigFloat::from(x);
+    let base = Float256::from(x);
     let result = approx_powi(base, n);
     f256::from(&result)
 }

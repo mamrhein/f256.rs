@@ -261,7 +261,7 @@ pub(crate) fn approx_sin(x: &FP492) -> FP492 {
 #[cfg(test)]
 mod test_approx_sin {
     use super::*;
-    use crate::{f256, math::BigFloat};
+    use crate::{f256, math::Float256};
 
     #[test]
     fn calc_small_cutoff() {

@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use super::{BigFloat, FP492};
+use super::{Float256, FP492};
 use crate::f256;
 
 const N: usize = 33;

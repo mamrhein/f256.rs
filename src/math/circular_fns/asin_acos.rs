@@ -7,7 +7,7 @@
 // $Source$
 // $Revision$
 
-use super::{approx_atan::approx_atan, BigFloat, FP492};
+use super::{approx_atan::approx_atan, Float256, FP492};
 use crate::{
     abs_bits,
     consts::{FRAC_PI_2, PI},
@@ -40,12 +40,12 @@ const FP492_NEG_FRAC_PI_4: FP492 = FP492::new(
 );
 
 /// Computes the arctangent of a number (in radians).
-fn atan(x: &BigFloat) -> FP492 {
+fn atan(x: &Float256) -> FP492 {
     let x_abs = x.abs();
     let sign = (x.signum() < 0) as usize;
-    if x_abs < BigFloat::ONE {
+    if x_abs < Float256::ONE {
         approx_atan(&FP492::from(x))
-    } else if x_abs > BigFloat::ONE {
+    } else if x_abs > Float256::ONE {
         // atan(±x) = ±½π - atan(1/x) for |x| > 1
         let xr = x.recip();
         &[FP492_FRAC_PI_2, FP492_NEG_FRAC_PI_2][sign]
@@ -93,8 +93,8 @@ impl f256 {
         }
         // Now we have ε < |self| < 1
         // asin(x) = atan(x/√(1-x²))
-        let mut x = BigFloat::from(self);
-        x /= &(BigFloat::ONE - &x.square()).sqrt();
+        let mut x = Float256::from(self);
+        x /= &(Float256::ONE - &x.square()).sqrt();
         Self::from(&atan(&x))
     }
 
@@ -118,8 +118,8 @@ impl f256 {
         // }
         // Now we have ε < |self| < 1
         // acos(x) = ½π - asin(x) = ½π - atan(x/√(1-x²))
-        let mut x = BigFloat::from(self);
-        x /= &(BigFloat::ONE - &x.square()).sqrt();
+        let mut x = Float256::from(self);
+        x /= &(Float256::ONE - &x.square()).sqrt();
         Self::from(&(&FP492_FRAC_PI_2 - &atan(&x)))
     }
 }

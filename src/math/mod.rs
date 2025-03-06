@@ -16,7 +16,7 @@ mod log;
 mod pow;
 mod sqrt;
 
-use big_float::BigFloat;
+use big_float::Float256;
 use fp492::FP492;
 
 use super::{BigUInt, U256};

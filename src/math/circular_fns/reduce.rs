@@ -9,7 +9,7 @@
 
 use core::ops::Neg;
 
-use super::{two_over_pi::get_256_bits, BigFloat, FP492, U256};
+use super::{two_over_pi::get_256_bits, Float256, FP492, U256};
 use crate::{
     consts::TAU, f256, BigUInt, HiLo, FRACTION_BITS, SIGNIFICAND_BITS, TWO,
     U512,
@@ -130,7 +130,7 @@ fn fp_reduce(exp: i32, x: &f256) -> (u32, FP492) {
 fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
     // R = ◯₂₅₅(1/½π) =
     // 0.6366197723675813430755350534900574481378385829618257949906693762355871905369
-    const R: BigFloat = BigFloat::new(
+    const R: Float256 = Float256::new(
         1,
         -1,
         (
@@ -142,7 +142,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
     // 1.5707963267948966192313216916397514420985846996875529104874722961539082031431
     // C1 = ◯₂₅₃(C) =
     // 1.57079632679489661923132169163975144209858469968755291048747229615390820314306
-    const C1: BigFloat = BigFloat::new(
+    const C1: Float256 = Float256::new(
         1,
         0,
         (
@@ -152,7 +152,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
     );
     // C2 = ⌈(C - C1) / 8⋅ulp(ulp(C1))⌋ ⋅ 8⋅ulp(ulp(C1)) =
     // 4.0029261425274538885256060583180088389717792640288565295989842465635080655216e-77
-    const C2: BigFloat = BigFloat::new(
+    const C2: Float256 = Float256::new(
         1,
         -254,
         (
@@ -162,7 +162,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
     );
     // C3 = ◯₂₅₅(C - C1 - C2) =
     // 8.7899010274302568753719915932600646668568561314064066646591366424167272794258e-154
-    const C3: BigFloat = BigFloat::new(
+    const C3: Float256 = Float256::new(
         1,
         -509,
         (
@@ -172,7 +172,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
     );
     // D = 3⋅2²⁵³ =
     // 43422033463993573283839119378257965444976244249615211514796594002967423614976
-    const D: BigFloat = BigFloat::new(
+    const D: Float256 = Float256::new(
         1,
         254,
         (
@@ -183,14 +183,14 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
     // Max exponent for fast_reduce
     const M: i32 = 240;
     // Number of significant bits in C1 + C2
-    const C1_C2_PREC: u32 = 2 * BigFloat::FRACTION_BITS - 2;
+    const C1_C2_PREC: u32 = 2 * Float256::FRACTION_BITS - 2;
 
     if exp <= M {
-        let x = BigFloat::from(x);
+        let x = Float256::from(x);
         let z = x.mul_add(&R, &D) - &D;
         let u1 = z.neg().mul_add(&C1, &x);
         let needed_bits =
-            1 - u1.exp() + BigFloat::FRACTION_BITS as i32 + x.exp();
+            1 - u1.exp() + Float256::FRACTION_BITS as i32 + x.exp();
         let (v1, v2) = if needed_bits <= C1_C2_PREC as i32 {
             let v1 = z.neg().mul_add(&C2, &u1);
             let (p1, p2) = z.mul_exact(&C2);
@@ -204,7 +204,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
             (v1, ((t1 - &v1) + &t2) - &p2)
         };
         // x <= M => z < 2ᴾ⁻²
-        let e = z.exp() - BigFloat::FRACTION_BITS as i32;
+        let e = z.exp() - Float256::FRACTION_BITS as i32;
         let q = (&z.signif() >> e.unsigned_abs()).lo.0 as u32 & 0x3;
         // Convert (v1 + v2) into a fixed-point number with 509-bit-fraction
         // |v1| <= ½π => v1.exp <= 0
@@ -349,7 +349,7 @@ mod reduce_tests {
             ),
         );
         // -4.081838735141263582281490600494564033380656130039804322382899197982948856e-72
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             1,
             -492,
             (
@@ -359,7 +359,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -374,7 +374,7 @@ mod reduce_tests {
             ),
         );
         // -2.297835518052893176389214420697236605538218253920745232749266210043741685e-72
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             1,
             -492,
             (
@@ -384,7 +384,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -399,7 +399,7 @@ mod reduce_tests {
             ),
         );
         // -0.252291083838150703047132073301933401753305159681715343517117525111538028
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             1,
             -256,
             (
@@ -409,7 +409,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 2);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -424,7 +424,7 @@ mod reduce_tests {
             ),
         );
         // -2.6902318393958948138169491581374663396316393610919104502987401460736171854647e-72
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             1,
             -492,
             (
@@ -434,7 +434,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 2);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -449,7 +449,7 @@ mod reduce_tests {
             ),
         );
         // 4.766543275114000144936176176450192810718081377608351404051118669257945354e-74
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             0,
             -498,
             (
@@ -459,7 +459,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 3);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -472,7 +472,7 @@ mod reduce_tests {
                 0x00000000000000000000000000000000,
             ),
         );
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             1,
             -257,
             (
@@ -482,7 +482,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -496,7 +496,7 @@ mod reduce_tests {
             ),
         );
         // 0.3742030203459253563266600098797338765224469432914356135160726857543409513358
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             0,
             -256,
             (
@@ -506,7 +506,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -521,7 +521,7 @@ mod reduce_tests {
             ),
         );
         // -2.527328175159062957858376845625879143718591676321917217167170433107217977e-72
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             0,
             -493,
             (
@@ -531,7 +531,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -546,7 +546,7 @@ mod reduce_tests {
             ),
         );
         // -3.593598548722686367734065727968384533432676656819918617957851704757758941e-72
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             1,
             -491,
             (
@@ -556,7 +556,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 0);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -571,7 +571,7 @@ mod reduce_tests {
             ),
         );
         // 1.282737695342710736362054776460251633047745905692069344578841449121727160e-76
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             0,
             -507,
             (
@@ -581,7 +581,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -596,7 +596,7 @@ mod reduce_tests {
             ),
         );
         // 5.3000082033723996815145259318245602730807565681733856260129980134004324e-1
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             0,
             -255,
             (
@@ -606,7 +606,7 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 0);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 
     #[test]
@@ -614,7 +614,7 @@ mod reduce_tests {
         // 1.61132571748576047361957211845200501064402387454966951747637125049607183e78913
         let f = f256::MAX;
         // -6.86138758120745087463500856749052818411548780495917644493902245327224695e-1
-        let r = BigFloat::from_sign_exp_signif(
+        let r = Float256::from_sign_exp_signif(
             1,
             -255,
             (
@@ -624,6 +624,6 @@ mod reduce_tests {
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
-        assert_eq!(BigFloat::from(&fx), r);
+        assert_eq!(Float256::from(&fx), r);
     }
 }

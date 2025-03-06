@@ -13,7 +13,7 @@ use core::{
     ops::{AddAssign, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-use super::BigFloat;
+use super::Float256;
 use crate::{
     f256, split_f256_enc, BigUInt, HiLo, EXP_BITS, FRACTION_BITS,
     SIGNIFICAND_BITS, U1024, U256, U512,
@@ -190,8 +190,8 @@ impl From<i32> for FP492 {
     }
 }
 
-impl From<&BigFloat> for FP492 {
-    fn from(value: &BigFloat) -> Self {
+impl From<&Float256> for FP492 {
+    fn from(value: &Float256) -> Self {
         debug_assert!(value.exp() <= Self::INT_BITS as i32);
         let sh = (Self::INT_BITS as i32 - 1 - value.exp()) as u32;
         if sh >= U512::BITS {
@@ -206,7 +206,7 @@ impl From<&BigFloat> for FP492 {
     }
 }
 
-impl From<&FP492> for BigFloat {
+impl From<&FP492> for Float256 {
     fn from(value: &FP492) -> Self {
         let signum = value.signum();
         let mut fp_abs_signif = if signum >= 0 {
@@ -218,7 +218,7 @@ impl From<&FP492> for BigFloat {
         };
         let nlz = fp_abs_signif.leading_zeros();
         let mut exp = FP492::INT_BITS as i32 - nlz as i32;
-        const N: u32 = U512::BITS - BigFloat::FRACTION_BITS - 1;
+        const N: u32 = U512::BITS - Float256::FRACTION_BITS - 1;
         match nlz {
             // nlz < N = 257 => shift right and round
             0..=256 => {
@@ -234,7 +234,7 @@ impl From<&FP492> for BigFloat {
             // nlz > N = 257 => shift left
             258..=511 => fp_abs_signif <<= nlz - N,
             _ => {
-                return BigFloat::ZERO;
+                return Float256::ZERO;
             }
         };
         Self::new(signum, exp, (fp_abs_signif.lo.hi.0, fp_abs_signif.lo.lo.0))
@@ -472,18 +472,18 @@ mod test_fp492_conv {
         let y = -x;
         assert_eq!(f256::from(&x), f256::ONE);
         assert_eq!(f256::from(&y), f256::NEG_ONE);
-        assert_eq!(BigFloat::from(&x), BigFloat::ONE);
-        assert_eq!(BigFloat::from(&y), BigFloat::NEG_ONE);
+        assert_eq!(Float256::from(&x), Float256::ONE);
+        assert_eq!(Float256::from(&y), Float256::NEG_ONE);
     }
 
     #[test]
     fn test_some() {
         let x = f256::from(7) + f256::from(f64::EPSILON) * f256::TEN;
-        let y = BigFloat::from(&x);
+        let y = Float256::from(&x);
         let a = FP492::from(&x);
         let b = FP492::from(&y);
         assert_eq!(f256::from(&a), x);
-        assert_eq!(BigFloat::from(&b), y);
+        assert_eq!(Float256::from(&b), y);
         assert_eq!(a, b);
     }
 

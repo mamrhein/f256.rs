@@ -9,7 +9,7 @@
 
 use core::cmp::max;
 
-use super::{approx_atan::approx_atan, BigFloat, FP492};
+use super::{approx_atan::approx_atan, Float256, FP492};
 use crate::{
     abs_bits, abs_bits_sticky,
     consts::{FRAC_PI_2, FRAC_PI_4, PI},
@@ -59,10 +59,10 @@ impl f256 {
             Self::from(&approx_atan(&FP492::from(self)))
         } else if abs_bits_self > Self::ONE.bits {
             // atan(±x) = ±½π - atan(1/x) for |x| > 1
-            let xr = BigFloat::from(self).recip();
-            let atan = [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2]
+            let xr = Float256::from(self).recip();
+            let atan = [Float256::FRAC_PI_2, -Float256::FRAC_PI_2]
                 [self.sign() as usize]
-                - &BigFloat::from(&approx_atan(&FP492::from(&xr)));
+                - &Float256::from(&approx_atan(&FP492::from(&xr)));
             Self::from(&atan)
         } else {
             // atan(±1) = ±¼π
@@ -122,23 +122,23 @@ impl f256 {
 
         let sign_q = (self.sign() + other.sign()) % 2;
         let mut atan = if abs_bits_y < abs_bits_x {
-            let mut q = BigFloat::from(self);
-            q /= &BigFloat::from(other);
-            BigFloat::from(&approx_atan(&FP492::from(&q)))
+            let mut q = Float256::from(self);
+            q /= &Float256::from(other);
+            Float256::from(&approx_atan(&FP492::from(&q)))
         } else if abs_bits_y > abs_bits_x {
-            let mut q = BigFloat::from(other);
-            q /= &BigFloat::from(self);
-            [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2][sign_q as usize]
-                - &BigFloat::from(&approx_atan(&FP492::from(&q)))
+            let mut q = Float256::from(other);
+            q /= &Float256::from(self);
+            [Float256::FRAC_PI_2, -Float256::FRAC_PI_2][sign_q as usize]
+                - &Float256::from(&approx_atan(&FP492::from(&q)))
         } else {
-            [BigFloat::FRAC_PI_2, -BigFloat::FRAC_PI_2][sign_q as usize]
+            [Float256::FRAC_PI_2, -Float256::FRAC_PI_2][sign_q as usize]
         };
         match (self.sign(), other.sign()) {
             (0, 1) => {
-                atan += &BigFloat::PI;
+                atan += &Float256::PI;
             }
             (1, 1) => {
-                atan -= &BigFloat::PI;
+                atan -= &Float256::PI;
             }
             _ => {}
         }

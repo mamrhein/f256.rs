@@ -9,7 +9,7 @@
 
 use core::{cmp::Ordering, num::FpCategory};
 
-use super::{bkm::bkm_l, BigFloat, FP492};
+use super::{bkm::bkm_l, Float256, FP492};
 use crate::{exp, f256, norm_signif_exp, signif, BigUInt};
 
 // LN_2 = ◯₄₉₂(logₑ(2)) =
@@ -120,8 +120,8 @@ impl f256 {
                                 Ordering::Less => Self::NEG_INFINITY,
                             }
                         } else {
-                            let mut t = BigFloat::from(&ln(self));
-                            t /= &BigFloat::from(&ln(base));
+                            let mut t = Float256::from(&ln(self));
+                            t /= &Float256::from(&ln(base));
                             Self::from(&t)
                         }
                     }
