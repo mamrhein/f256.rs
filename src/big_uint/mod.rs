@@ -67,6 +67,7 @@ where
         + DivRem<Output = (Self, Self)>
         + for<'a> From<&'a u128>
         + for<'a> From<&'a [u128]>
+        + for<'a> From<&'a Vec<u128>>
         + Mul<Output = Self>
         + for<'a> MulAssign<&'a Self>
         + PartialEq

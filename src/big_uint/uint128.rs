@@ -379,6 +379,14 @@ impl<'a> From<&'a [u128]> for U128 {
     }
 }
 
+impl<'a> From<&'a Vec<u128>> for U128 {
+    #[inline(always)]
+    fn from(value: &'a Vec<u128>) -> Self {
+        debug_assert!(value.len() == 1);
+        Self::new(value[0])
+    }
+}
+
 impl fmt::Debug for U128 {
     #[inline(always)]
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -349,6 +349,20 @@ where
     }
 }
 
+impl<'a, SubUInt> From<&'a Vec<u128>> for UInt<SubUInt>
+where
+    SubUInt: BigUInt + HiLo,
+{
+    #[inline(always)]
+    fn from(value: &'a Vec<u128>) -> Self {
+        debug_assert!(value.len() == (Self::BITS / 128) as usize);
+        Self::from_hi_lo(
+            SubUInt::from(&value[0..value.len() / 2]),
+            SubUInt::from(&value[value.len() / 2..]),
+        )
+    }
+}
+
 impl<SubUInt> fmt::Debug for UInt<SubUInt>
 where
     SubUInt: BigUInt + HiLo,
