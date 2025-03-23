@@ -132,7 +132,7 @@ where
                     t -= &d;
                 }
                 Ordering::Less => {
-                    let (u, ovl) = t.overflowing_add(&rhs);
+                    let (_, ovl) = t.overflowing_add(&rhs);
                     if ovl {
                         let mut d = self - &t;
                         let (n, _) = d.div_rem(*rhs);
