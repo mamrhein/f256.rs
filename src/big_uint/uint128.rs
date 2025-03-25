@@ -383,8 +383,11 @@ impl<'a> From<&'a U128> for u128 {
 impl<'a> From<&'a [u128]> for U128 {
     #[inline(always)]
     fn from(value: &'a [u128]) -> Self {
-        debug_assert!(value.len() == 1);
-        Self::new(value[0])
+        match value.len() {
+            1 => Self::new(value[0]),
+            0 => Self::ZERO,
+            _ => panic!("Can't create a U128 from more than 1 u128!"),
+        }
     }
 }
 
