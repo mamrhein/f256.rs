@@ -29,6 +29,8 @@ where
     Self: Copy + Clone + Sized,
 {
     type T;
+    // Number of u128 chunks in Self
+    const N_CHUNKS: usize;
     /// Returns a new instance of Self.
     fn from_hi_lo(hi: Self::T, lo: Self::T) -> Self;
     fn hi_t(&self) -> Self::T;

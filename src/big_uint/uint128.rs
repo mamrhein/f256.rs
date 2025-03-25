@@ -41,6 +41,8 @@ impl U128 {
 
 impl HiLo for U128 {
     type T = u64;
+    // Number of u128 chunks in Self
+    const N_CHUNKS: usize = 1;
 
     #[inline(always)]
     fn from_hi_lo(hi: Self::T, lo: Self::T) -> Self {

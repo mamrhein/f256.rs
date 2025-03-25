@@ -30,6 +30,9 @@ where
 {
     type T = SubUInt;
 
+    // Number of u128 chunks in Self
+    const N_CHUNKS: usize = 2 * SubUInt::N_CHUNKS;
+
     /// Returns a new instance of Self.
     #[inline(always)]
     fn from_hi_lo(hi: SubUInt, lo: SubUInt) -> Self {
@@ -606,7 +609,7 @@ mod into_vec_tests {
         let a = [12_u128, 34_u128, 56_u128, 78_u128];
         let x = U512::from(&a[..]);
         let z = x.as_vec_u128();
-        assert_eq!(z.len(), 4);
+        assert_eq!(z.len(), U512::N_CHUNKS);
         assert_eq!(z[..], a);
     }
 }
