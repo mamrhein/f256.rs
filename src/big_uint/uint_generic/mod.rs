@@ -142,8 +142,6 @@ impl<SubUInt> BigUInt for UInt<SubUInt>
 where
     SubUInt: BigUInt + HiLo,
 {
-    type SubUInt = SubUInt;
-
     const ZERO: Self = Self {
         hi: SubUInt::ZERO,
         lo: SubUInt::ZERO,

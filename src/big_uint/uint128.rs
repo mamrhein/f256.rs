@@ -73,7 +73,6 @@ impl HiLo for U128 {
 }
 
 impl BigUInt for U128 {
-    type SubUInt = u64;
     const ZERO: Self = Self(0_u128);
     const ONE: Self = Self(1_u128);
     const TWO: Self = Self(2_u128);

@@ -53,11 +53,8 @@ where
         + Display
         + Sized
         + Add<Output = Self>
-        + Add<Self::SubUInt, Output = Self>
         + Add<u128, Output = Self>
         + for<'a> AddAssign<&'a Self>
-        + for<'a> AddAssign<&'a Self::SubUInt>
-        + for<'a> AddAssign<&'a u128>
         + BitAnd<Output = Self>
         + for<'a> BitAndAssign<&'a Self>
         + BitOr<Output = Self>
@@ -80,8 +77,6 @@ where
         + Sub<Output = Self>
         + for<'a> SubAssign<&'a Self>,
 {
-    type SubUInt;
-
     const BITS: u32 = size_of::<Self>() as u32 * 8;
     const ZERO: Self;
     const ONE: Self;
