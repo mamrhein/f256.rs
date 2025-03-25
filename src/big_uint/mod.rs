@@ -84,6 +84,7 @@ where
     const ONE: Self;
     const TWO: Self;
     const MAX: Self;
+    const TIE: Self;
 
     /// Return true, if `self` == 0.
     #[inline(always)]

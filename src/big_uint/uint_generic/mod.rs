@@ -161,6 +161,10 @@ where
         hi: SubUInt::MAX,
         lo: SubUInt::MAX,
     };
+    const TIE: Self = Self {
+        hi: SubUInt::TIE,
+        lo: SubUInt::ZERO,
+    };
 
     /// Return true, if `self` is even.
     fn is_even(&self) -> bool {

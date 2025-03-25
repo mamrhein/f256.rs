@@ -79,6 +79,7 @@ impl BigUInt for U128 {
     const ONE: Self = Self(1_u128);
     const TWO: Self = Self(2_u128);
     const MAX: Self = Self(u128::MAX);
+    const TIE: Self = Self(1_u128 << 127);
 
     #[inline(always)]
     fn is_even(&self) -> bool {
