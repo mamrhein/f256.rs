@@ -265,6 +265,13 @@ wrap_op_assign!(impl ShlAssign, shl_assign, U128, u32);
 wrap_op_assign!(impl ShrAssign, shr_assign, U128, u32);
 wrap_op_assign!(impl SubAssign, sub_assign, U128);
 
+impl BitOrAssign<bool> for U128 {
+    #[inline(always)]
+    fn bitor_assign(&mut self, rhs: bool) {
+        self.0 |= rhs as u128;
+    }
+}
+
 impl Add<u64> for U128 {
     type Output = Self;
 

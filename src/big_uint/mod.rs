@@ -61,6 +61,7 @@ where
         + for<'a> BitAndAssign<&'a Self>
         + BitOr<Output = Self>
         + for<'a> BitOrAssign<&'a Self>
+        + for<'a> BitOrAssign<bool>
         + Div<Output = Self>
         + DivRem<u128, Output = (Self, u128)>
         + DivRem<Output = (Self, Self)>
