@@ -46,3 +46,13 @@ impl<'a, SubUInt: BigUInt + HiLo> BitOrAssign<&'a Self> for UInt<SubUInt> {
         self.lo |= &rhs.lo;
     }
 }
+
+impl<SubUInt> BitOrAssign<bool> for UInt<SubUInt>
+where
+    SubUInt: BigUInt + HiLo + BitOrAssign<bool>,
+{
+    #[inline(always)]
+    fn bitor_assign(&mut self, rhs: bool) {
+        self.lo |= rhs;
+    }
+}

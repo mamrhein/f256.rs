@@ -30,6 +30,9 @@ where
 {
     type T = SubUInt;
 
+    // Number of u128 chunks in Self
+    const N_CHUNKS: usize = 2 * SubUInt::N_CHUNKS;
+
     /// Returns a new instance of Self.
     #[inline(always)]
     fn from_hi_lo(hi: SubUInt, lo: SubUInt) -> Self {
@@ -142,8 +145,6 @@ impl<SubUInt> BigUInt for UInt<SubUInt>
 where
     SubUInt: BigUInt + HiLo,
 {
-    type SubUInt = SubUInt;
-
     const ZERO: Self = Self {
         hi: SubUInt::ZERO,
         lo: SubUInt::ZERO,
@@ -159,6 +160,10 @@ where
     const MAX: Self = Self {
         hi: SubUInt::MAX,
         lo: SubUInt::MAX,
+    };
+    const TIE: Self = Self {
+        hi: SubUInt::TIE,
+        lo: SubUInt::ZERO,
     };
 
     /// Return true, if `self` is even.
@@ -339,13 +344,11 @@ impl<'a, SubUInt> From<&'a [u128]> for UInt<SubUInt>
 where
     SubUInt: BigUInt + HiLo,
 {
-    #[inline(always)]
     fn from(value: &'a [u128]) -> Self {
-        debug_assert!(value.len() == (Self::BITS / 128) as usize);
-        Self::from_hi_lo(
-            SubUInt::from(&value[0..value.len() / 2]),
-            SubUInt::from(&value[value.len() / 2..]),
-        )
+        debug_assert!(value.len() <= (Self::BITS / 128) as usize);
+        let idx = value.len().saturating_sub(SubUInt::N_CHUNKS);
+        let (hi, lo) = value.split_at(idx);
+        Self::from_hi_lo(SubUInt::from(hi), SubUInt::from(lo))
     }
 }
 
@@ -604,12 +607,16 @@ mod from_slice_tests {
 
     #[test]
     fn test_from_slice() {
-        let a = [12_u128, 34_u128, 56_u128, 78_u128];
-        let x = U256::from(&a[..2]);
-        assert_eq!(x, U256::from_hi_lo(12_u128.into(), 34_u128.into()));
-        let y = U256::from(&a[2..]);
+        let a = [12_u128, 34_u128, 56_u128];
+        let x = U256::from(&a[..1]);
+        assert_eq!(x, U256::from_hi_lo(U128::ZERO, a[0].into()));
+        let y = U256::from(&a[1..]);
+        assert_eq!(y, U256::from_hi_lo(a[1].into(), a[2].into()));
         let z = U512::from(&a[..]);
         assert_eq!(z, U512::from_hi_lo(x, y));
+        let z = U512::from(&a[..1]);
+        assert_eq!(z, U512::from_hi_lo(U256::ZERO, a[0].into()));
+        assert_eq!(U1024::from(&a[..0]), U1024::ZERO);
     }
 }
 
@@ -622,7 +629,7 @@ mod into_vec_tests {
         let a = [12_u128, 34_u128, 56_u128, 78_u128];
         let x = U512::from(&a[..]);
         let z = x.as_vec_u128();
-        assert_eq!(z.len(), 4);
+        assert_eq!(z.len(), U512::N_CHUNKS);
         assert_eq!(z[..], a);
     }
 }

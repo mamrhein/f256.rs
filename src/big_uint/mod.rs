@@ -29,6 +29,8 @@ where
     Self: Copy + Clone + Sized,
 {
     type T;
+    // Number of u128 chunks in Self
+    const N_CHUNKS: usize;
     /// Returns a new instance of Self.
     fn from_hi_lo(hi: Self::T, lo: Self::T) -> Self;
     fn hi_t(&self) -> Self::T;
@@ -53,15 +55,13 @@ where
         + Display
         + Sized
         + Add<Output = Self>
-        + Add<Self::SubUInt, Output = Self>
         + Add<u128, Output = Self>
         + for<'a> AddAssign<&'a Self>
-        + for<'a> AddAssign<&'a Self::SubUInt>
-        + for<'a> AddAssign<&'a u128>
         + BitAnd<Output = Self>
         + for<'a> BitAndAssign<&'a Self>
         + BitOr<Output = Self>
         + for<'a> BitOrAssign<&'a Self>
+        + for<'a> BitOrAssign<bool>
         + Div<Output = Self>
         + DivRem<u128, Output = (Self, u128)>
         + DivRem<Output = (Self, Self)>
@@ -81,13 +81,12 @@ where
         + Sub<Output = Self>
         + for<'a> SubAssign<&'a Self>,
 {
-    type SubUInt;
-
     const BITS: u32 = size_of::<Self>() as u32 * 8;
     const ZERO: Self;
     const ONE: Self;
     const TWO: Self;
     const MAX: Self;
+    const TIE: Self;
 
     /// Return true, if `self` == 0.
     #[inline(always)]

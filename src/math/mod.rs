@@ -10,7 +10,6 @@
 mod big_float;
 mod bkm;
 mod circular_fns;
-mod feynman;
 mod fp492;
 mod log;
 mod pow;

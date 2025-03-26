@@ -41,6 +41,8 @@ impl U128 {
 
 impl HiLo for U128 {
     type T = u64;
+    // Number of u128 chunks in Self
+    const N_CHUNKS: usize = 1;
 
     #[inline(always)]
     fn from_hi_lo(hi: Self::T, lo: Self::T) -> Self {
@@ -73,11 +75,11 @@ impl HiLo for U128 {
 }
 
 impl BigUInt for U128 {
-    type SubUInt = u64;
     const ZERO: Self = Self(0_u128);
     const ONE: Self = Self(1_u128);
     const TWO: Self = Self(2_u128);
     const MAX: Self = Self(u128::MAX);
+    const TIE: Self = Self(1_u128 << 127);
 
     #[inline(always)]
     fn is_even(&self) -> bool {
@@ -263,6 +265,13 @@ wrap_op_assign!(impl ShlAssign, shl_assign, U128, u32);
 wrap_op_assign!(impl ShrAssign, shr_assign, U128, u32);
 wrap_op_assign!(impl SubAssign, sub_assign, U128);
 
+impl BitOrAssign<bool> for U128 {
+    #[inline(always)]
+    fn bitor_assign(&mut self, rhs: bool) {
+        self.0 |= rhs as u128;
+    }
+}
+
 impl Add<u64> for U128 {
     type Output = Self;
 
@@ -374,8 +383,11 @@ impl<'a> From<&'a U128> for u128 {
 impl<'a> From<&'a [u128]> for U128 {
     #[inline(always)]
     fn from(value: &'a [u128]) -> Self {
-        debug_assert!(value.len() == 1);
-        Self::new(value[0])
+        match value.len() {
+            1 => Self::new(value[0]),
+            0 => Self::ZERO,
+            _ => panic!("Can't create a U128 from more than 1 u128!"),
+        }
     }
 }
 
