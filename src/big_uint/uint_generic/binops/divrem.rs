@@ -10,7 +10,7 @@
 use core::{
     cmp::Ordering,
     convert::From,
-    ops::{Div, Rem},
+    ops::{Div, DivAssign, Rem, RemAssign},
 };
 
 use super::{BigUInt, DivRem, HiLo, UInt, U128, U256};
@@ -96,6 +96,18 @@ where
     }
 }
 
+impl<SubUInt> DivRem<&Self> for UInt<SubUInt>
+where
+    SubUInt: BigUInt + HiLo,
+{
+    type Output = (Self, Self);
+
+    #[inline(always)]
+    fn div_rem(self, rhs: &Self) -> Self::Output {
+        (&self).div_rem(rhs)
+    }
+}
+
 impl<SubUInt> DivRem for &UInt<SubUInt>
 where
     SubUInt: BigUInt + HiLo,
@@ -175,6 +187,15 @@ where
     }
 }
 
+impl<SubUInt> DivAssign<&Self> for UInt<SubUInt>
+where
+    SubUInt: BigUInt + HiLo,
+{
+    fn div_assign(&mut self, rhs: &Self) {
+        *self = self.div_rem(rhs).0;
+    }
+}
+
 impl<SubUInt> Rem<u128> for UInt<SubUInt>
 where
     SubUInt: BigUInt + HiLo,
@@ -232,6 +253,15 @@ where
     #[inline(always)]
     fn rem(self, rhs: Self) -> Self::Output {
         self.div_rem(rhs).1
+    }
+}
+
+impl<SubUInt> RemAssign<&Self> for UInt<SubUInt>
+where
+    SubUInt: BigUInt + HiLo,
+{
+    fn rem_assign(&mut self, rhs: &Self) {
+        *self = self.div_rem(rhs).1;
     }
 }
 

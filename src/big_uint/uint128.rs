@@ -11,8 +11,9 @@ use alloc::{vec, vec::Vec};
 use core::{
     fmt,
     ops::{
-        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Div, Mul,
-        MulAssign, Rem, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
+        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Div,
+        DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr,
+        ShrAssign, Sub, SubAssign,
     },
 };
 
@@ -260,7 +261,9 @@ wrap_op_assign!(impl AddAssign, add_assign, U128, ref u128);
 wrap_op_assign!(impl AddAssign, add_assign, U128, ref u64);
 wrap_op_assign!(impl BitAndAssign, bitand_assign, U128);
 wrap_op_assign!(impl BitOrAssign, bitor_assign, U128);
+wrap_op_assign!(impl DivAssign, div_assign, U128);
 wrap_op_assign!(impl MulAssign, mul_assign, U128);
+wrap_op_assign!(impl RemAssign, rem_assign, U128);
 wrap_op_assign!(impl ShlAssign, shl_assign, U128, u32);
 wrap_op_assign!(impl ShrAssign, shr_assign, U128, u32);
 wrap_op_assign!(impl SubAssign, sub_assign, U128);

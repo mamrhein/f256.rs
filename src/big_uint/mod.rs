@@ -15,11 +15,11 @@ use core::{
     fmt::{Debug, Display},
     mem::size_of,
     ops::{
-        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Div, Mul,
-        MulAssign, Rem, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
+        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Div,
+        DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr,
+        ShrAssign, Sub, SubAssign,
     },
 };
-
 pub(crate) use uint128::U128;
 use uint128::{u128_hi, u128_lo};
 pub(crate) use uint_generic::{UInt, U1024, U256, U512};
@@ -63,6 +63,7 @@ where
         + for<'a> BitOrAssign<&'a Self>
         + for<'a> BitOrAssign<bool>
         + Div<Output = Self>
+        + for<'a> DivAssign<&'a Self>
         + DivRem<u128, Output = (Self, u128)>
         + DivRem<Output = (Self, Self)>
         + for<'a> From<&'a u128>
@@ -74,6 +75,7 @@ where
         + PartialOrd
         + Ord
         + Rem<Output = Self>
+        + for<'a> RemAssign<&'a Self>
         + Shl<u32, Output = Self>
         + ShlAssign<u32>
         + Shr<u32, Output = Self>
