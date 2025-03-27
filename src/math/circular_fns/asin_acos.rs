@@ -94,7 +94,7 @@ impl f256 {
         // Now we have ε < |self| < 1
         // asin(x) = atan(x/√(1-x²))
         let mut x = Float256::from(self);
-        x /= &(Float256::ONE - &x.square()).sqrt();
+        x /= &(Float256::ONE - x.square()).sqrt();
         Self::from(&atan(&x))
     }
 
@@ -119,7 +119,7 @@ impl f256 {
         // Now we have ε < |self| < 1
         // acos(x) = ½π - asin(x) = ½π - atan(x/√(1-x²))
         let mut x = Float256::from(self);
-        x /= &(Float256::ONE - &x.square()).sqrt();
+        x /= &(Float256::ONE - x.square()).sqrt();
         Self::from(&(&FP492_FRAC_PI_2 - &atan(&x)))
     }
 }

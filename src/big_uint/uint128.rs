@@ -70,8 +70,14 @@ impl HiLo for U128 {
         Self(u128_lo(self.0))
     }
 
+    #[inline(always)]
     fn as_vec_u128(&self) -> Vec<u128> {
         vec![self.0]
+    }
+
+    #[inline(always)]
+    fn last_chunk(&self) -> u128 {
+        self.0
     }
 }
 
@@ -81,6 +87,7 @@ impl BigUInt for U128 {
     const TWO: Self = Self(2_u128);
     const MAX: Self = Self(u128::MAX);
     const TIE: Self = Self(1_u128 << 127);
+    const TIE2: Self = Self(1_u128 << 126);
 
     #[inline(always)]
     fn is_even(&self) -> bool {

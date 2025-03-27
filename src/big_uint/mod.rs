@@ -38,6 +38,7 @@ where
     fn hi(&self) -> Self;
     fn lo(&self) -> Self;
     fn as_vec_u128(&self) -> Vec<u128>;
+    fn last_chunk(&self) -> u128;
 }
 
 pub(crate) trait DivRem<RHS = Self> {
@@ -88,7 +89,11 @@ where
     const ONE: Self;
     const TWO: Self;
     const MAX: Self;
+    // 2^(BITS-1)
     const TIE: Self;
+    // TODO: remove this (replace by TIE >> 1) when Shl::shl can be constant
+    // 2^(BITS-2)
+    const TIE2: Self;
 
     /// Return true, if `self` == 0.
     #[inline(always)]

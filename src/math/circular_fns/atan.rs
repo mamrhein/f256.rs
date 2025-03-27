@@ -62,7 +62,7 @@ impl f256 {
             let xr = Float256::from(self).recip();
             let atan = [Float256::FRAC_PI_2, -Float256::FRAC_PI_2]
                 [self.sign() as usize]
-                - &Float256::from(&approx_atan(&FP492::from(&xr)));
+                - Float256::from(&approx_atan(&FP492::from(&xr)));
             Self::from(&atan)
         } else {
             // atan(±1) = ±¼π
@@ -129,7 +129,7 @@ impl f256 {
             let mut q = Float256::from(other);
             q /= &Float256::from(self);
             [Float256::FRAC_PI_2, -Float256::FRAC_PI_2][sign_q as usize]
-                - &Float256::from(&approx_atan(&FP492::from(&q)))
+                - Float256::from(&approx_atan(&FP492::from(&q)))
         } else {
             [Float256::FRAC_PI_2, -Float256::FRAC_PI_2][sign_q as usize]
         };

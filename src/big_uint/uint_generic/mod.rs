@@ -62,6 +62,10 @@ where
     fn as_vec_u128(&self) -> Vec<u128> {
         [self.hi.as_vec_u128(), self.lo.as_vec_u128()].concat()
     }
+
+    fn last_chunk(&self) -> u128 {
+        self.lo_t().last_chunk()
+    }
 }
 
 impl<SubUInt> UInt<SubUInt>
@@ -163,6 +167,10 @@ where
     };
     const TIE: Self = Self {
         hi: SubUInt::TIE,
+        lo: SubUInt::ZERO,
+    };
+    const TIE2: Self = Self {
+        hi: SubUInt::TIE2,
         lo: SubUInt::ZERO,
     };
 

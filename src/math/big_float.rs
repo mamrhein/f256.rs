@@ -7,26 +7,32 @@
 // $Source$
 // $Revision$
 
+use crate::big_uint::{UInt, U128};
+use crate::{
+    abs_bits, exp, exp_bits, f256, left_adj_signif, norm_bit, signif,
+    BigUInt, DivRem, HiLo, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
+    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS,
+    U256, U512,
+};
 use core::{
-    cmp::{max, Ordering},
-    mem::swap,
+    cmp::{max, min, Ordering},
+    fmt::Debug,
+    mem::{size_of, swap},
     ops::{
-        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Shr, ShrAssign,
+        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Shl, Shr,
         Sub, SubAssign,
     },
 };
 
-use crate::{
-    abs_bits, exp_bits, f256, norm_bit, signif, BigUInt, DivRem, HiLo, EMAX,
-    EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BIAS,
-    HI_FRACTION_BITS, HI_SIGN_SHIFT, SIGNIFICAND_BITS, U256, U512,
-};
-
-fn add_signifs(x: &U256, y: &U256) -> (U256, i32) {
-    debug_assert!(x.hi.leading_zeros() == 1 || y.hi.leading_zeros() == 1);
-    let mut sum = x + y;
+fn add_signifs<T>(x: &T, y: &T) -> (T, i32)
+where
+    T: BigUInt + HiLo,
+{
+    debug_assert!(x.leading_zeros() == 1 || y.leading_zeros() == 1);
+    let mut sum = *x;
+    sum += y;
     let mut exp_adj = 0;
-    if sum.hi.leading_zeros() == 0 {
+    if sum.leading_zeros() == 0 {
         // sum.idiv_pow2(1);
         sum >>= 1;
         exp_adj = 1;
@@ -34,97 +40,822 @@ fn add_signifs(x: &U256, y: &U256) -> (U256, i32) {
     (sum, exp_adj)
 }
 
-fn sub_signifs(x: &U256, y: &U256) -> (U256, i32) {
+fn sub_signifs<T>(x: &T, y: &T) -> (T, i32)
+where
+    T: BigUInt + HiLo,
+{
     debug_assert!(x >= y);
-    debug_assert!(x.hi.leading_zeros() == 1);
-    let mut diff = x - y;
+    debug_assert!(x.leading_zeros() == 1);
+    let mut diff = *x;
+    diff -= y;
     let shl = diff.leading_zeros() - 1;
     diff <<= shl;
     (diff, -(shl as i32))
 }
 
-fn mul_signifs(x: &U256, y: &U256) -> (U512, i32) {
-    debug_assert!(x.hi.leading_zeros() == 1);
-    debug_assert!(y.hi.leading_zeros() == 1);
+fn mul_signifs<T: BigUInt + HiLo>(x: &T, y: &T) -> (UInt<T>, i32)
+where
+    T: BigUInt + HiLo,
+{
+    debug_assert!(x.leading_zeros() == 1);
+    debug_assert!(y.leading_zeros() == 1);
     let (lo, hi) = x.widening_mul(y);
     let nlz = hi.leading_zeros();
-    let res = &U512 { hi, lo } << (nlz - 1);
-    // TODO: do rounding here
+    let res = &UInt::<T>::from_hi_lo(hi, lo) << (nlz - 1);
     (res, (nlz == 2) as i32)
 }
 
-fn div_signifs(x: &U256, y: &U256) -> (U256, i32) {
-    debug_assert!(x.hi.leading_zeros() == 1);
-    debug_assert!(y.hi.leading_zeros() == 1);
-    // 2²⁵⁴ <= x < 2²⁵⁵ and 2²⁵⁴ <= y < 2²⁵⁵
+fn div_signifs<T: BigUInt + HiLo>(x: &T, y: &T, sh: u32) -> (T, i32)
+where
+    T: BigUInt + HiLo,
+{
+    debug_assert!(x.leading_zeros() == 1);
+    debug_assert!(y.leading_zeros() == 1);
+    // 2ⁿ <= x < 2ⁿ⁺¹ and 2ⁿ <= y < 2ⁿ⁺¹
     // => ½ < x/y < 2
-    // => 2²⁵³ < (x/y⋅2²⁵⁴) < 2²⁵⁵
-    const N: u32 = Float256::FRACTION_BITS - u128::BITS;
+    // => 2ⁿ⁻¹ < (x/y⋅2ⁿ) < 2ⁿ⁺¹
     let exp_adj = (x < y) as i32;
-    let mut quot = U256::new(((exp_adj == 0) as u128) << N, 0);
-    debug_assert!(quot.hi.leading_zeros() == 1 || quot.is_zero());
-    let mut x_hat = &U512::from(&(x % y)) << Float256::FRACTION_BITS;
-    let (q, r) = x_hat.div_rem_subuint_special(&y);
-    debug_assert_eq!(q.hi, U256::ZERO);
-    debug_assert!(q.lo.leading_zeros() >= 2);
-    quot += &q.lo;
-    let rnd = r > (y >> 1);
-    quot.incr_if(rnd);
-    let nlz = quot.hi.leading_zeros();
+    let x = UInt::<T>::from(x).shl(sh);
+    let y = UInt::<T>::from(y);
+    let q = x.rounding_div(&y);
+    debug_assert!(q.hi().is_zero());
+    debug_assert!(q.lo().leading_zeros() >= 2);
+    let mut quot = q.lo_t();
+    let nlz = quot.leading_zeros();
     quot <<= nlz - 1;
     (quot, exp_adj)
 }
 
-/// Representation of the number signum ⋅ signif ⋅ 2⁻²⁵⁴ ⋅ 2ᵉ.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) struct Float256 {
+/// Representation of the number s⋅m⋅2⁻ⁿ⋅2ᵉ with
+/// signum s, signif m, exp e and n fractional bits.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub(crate) struct Float<T> {
     signum: i32,
     exp: i32,
-    // Layout of the 256 bits of the `signif` member: olfff…fff
+    // Layout of the bits of the `signif` member: olfff…fff
     // o = reserved bit for overflow handling in addition
     // l = 1 leading bit (always 1 except for BigFloat::ZERO)
-    // f = 254 fractional bits
-    signif: U256,
+    // f = n fractional bits
+    signif: T,
 }
 
-const SIGNIF_ONE: U256 =
-    U256::new(1_u128 << (Float256::FRACTION_BITS - 128), 0_u128);
+impl<T> Float<T>
+where
+    T: BigUInt + HiLo + for<'a> From<&'a [u128]>,
+{
+    const SIZE_OF_SIGNIF: usize = T::BITS as usize / 8;
+    pub(crate) const FRACTION_BITS: u32 = T::BITS - 2;
 
-const TIE: U256 = U256::new(1_u128 << 127, 0_u128);
+    const SIGNIF_ONE: T = T::TIE2;
 
-impl Float256 {
-    pub(crate) const FRACTION_BITS: u32 = 254;
     pub(crate) const ZERO: Self = Self {
         signum: 0,
-        signif: U256::ZERO,
+        signif: T::ZERO,
         exp: 0,
     };
     pub(crate) const ONE: Self = Self {
         signum: 1,
-        signif: SIGNIF_ONE,
+        signif: Self::SIGNIF_ONE,
         exp: 0,
     };
     pub(crate) const NEG_ONE: Self = Self {
         signum: -1,
-        signif: SIGNIF_ONE,
+        signif: Self::SIGNIF_ONE,
         exp: 0,
     };
     pub(crate) const TWO: Self = Self {
         signum: 1,
-        signif: SIGNIF_ONE,
+        signif: Self::SIGNIF_ONE,
         exp: 1,
     };
     pub(crate) const ONE_HALF: Self = Self {
         signum: 1,
-        signif: SIGNIF_ONE,
+        signif: Self::SIGNIF_ONE,
         exp: -1,
     };
     // 2^-254
     pub(crate) const EPSILON: Self = Self {
         signum: 1,
-        signif: SIGNIF_ONE,
+        signif: Self::SIGNIF_ONE,
         exp: -(Self::FRACTION_BITS as i32),
     };
+
+    // TODO: remove (inline) this fn when trait fns can be constant!
+    pub(crate) fn from_f256(f: &f256) -> Self {
+        if f.eq_zero() {
+            return Self::ZERO;
+        }
+        let prec_adj: u32 = Self::FRACTION_BITS - FRACTION_BITS;
+        let abs_bits_f = abs_bits(f);
+        debug_assert!(abs_bits_f.hi.0 < HI_EXP_MASK); // f is finite?
+        debug_assert!(!abs_bits_f.is_zero());
+        let mut signif_f = signif(&abs_bits_f);
+        let shl = signif_f.leading_zeros() - 1;
+        signif_f <<= shl;
+        let exp_f = exp(&abs_bits_f) - shl as i32 + prec_adj as i32;
+        let mut t = T::default().as_vec_u128();
+        t[0] = signif_f.hi.0;
+        t[1] = signif_f.lo.0;
+        Self {
+            signum: (-1_i32).pow(f.sign()),
+            exp: exp_f,
+            signif: T::from(&t),
+        }
+    }
+
+    #[inline(always)]
+    pub(crate) const fn signum(&self) -> i32 {
+        self.signum
+    }
+
+    #[inline(always)]
+    pub(crate) const fn exp(&self) -> i32 {
+        self.exp
+    }
+
+    #[inline(always)]
+    pub(crate) const fn signif(&self) -> T {
+        self.signif
+    }
+
+    #[inline(always)]
+    pub(crate) const fn quantum(&self) -> Self {
+        Self {
+            signum: 1,
+            exp: self.exp - Self::FRACTION_BITS as i32,
+            signif: Self::SIGNIF_ONE,
+        }
+    }
+
+    #[inline(always)]
+    pub(crate) const fn is_zero(&self) -> bool {
+        self.signum == 0
+    }
+
+    #[inline(always)]
+    pub(crate) fn flip_sign(&mut self) {
+        self.signum *= -1;
+    }
+
+    #[inline(always)]
+    pub(crate) fn copy_sign(&mut self, other: &Self) {
+        self.signum = other.signum;
+    }
+
+    #[inline(always)]
+    pub(crate) const fn abs(&self) -> Self {
+        Self {
+            signum: self.signum.abs(),
+            exp: self.exp,
+            signif: self.signif,
+        }
+    }
+
+    pub(crate) fn trunc(&self) -> Self {
+        let sh = max(Self::FRACTION_BITS as i32 - self.exp, 0) as u32;
+        Self {
+            signum: self.signum,
+            exp: self.exp,
+            signif: (self.signif >> sh) << sh,
+        }
+    }
+
+    fn iadd(&mut self, other: &Self) {
+        let exp = max(self.exp, other.exp);
+        if self.is_zero() || (exp - self.exp) > Self::FRACTION_BITS as i32 {
+            *self = *other;
+            return;
+        }
+        if other.is_zero() || (exp - other.exp) > Self::FRACTION_BITS as i32 {
+            return;
+        }
+        let (mut signif_self, rem_self) = match (exp - self.exp) as u32 {
+            0 => (self.signif, T::ZERO),
+            sh @ _ => self.signif.widening_shr(sh),
+        };
+        let (mut signif_other, rem_other) = match (exp - other.exp) as u32 {
+            0 => (other.signif, T::ZERO),
+            sh @ _ => other.signif.widening_shr(sh),
+        };
+        let op = [add_signifs, sub_signifs]
+            [(self.signum != other.signum) as usize];
+        if signif_self < signif_other {
+            swap(&mut signif_self, &mut signif_other);
+            self.signum = other.signum;
+        }
+        let mut exp_adj = 0_i32;
+        (self.signif, exp_adj) = op(&signif_self, &signif_other);
+        if self.signif.is_zero() {
+            self.signum = 0;
+            self.exp = 0;
+        } else {
+            self.exp = (exp + exp_adj)
+        };
+    }
+
+    fn isub(&mut self, other: &Self) {
+        if self == other {
+            *self = Self::ZERO;
+        } else {
+            self.iadd(&other.neg());
+        }
+    }
+
+    fn imul(&mut self, other: &Self) {
+        self.signum *= other.signum;
+        if self.signum == 0 {
+            *self = Self::ZERO;
+        } else {
+            let (mut prod_signif, exp_adj) =
+                mul_signifs(&self.signif, &other.signif);
+            // round significand of product to 255 bits
+            // TODO: do rounding in fn mul_signifs
+            let rnd = prod_signif.lo > T::TIE
+                || (prod_signif.lo == T::TIE && prod_signif.hi.is_odd());
+            prod_signif.hi.incr_if(rnd);
+            prod_signif.hi >>= (prod_signif.hi.leading_zeros() == 0) as u32;
+            self.signif = prod_signif.hi;
+            self.exp += other.exp + exp_adj;
+        }
+    }
+
+    fn idiv(&mut self, other: &Self) {
+        assert!(!other.is_zero(), "Division by zero.");
+        if self.signum == 0 {
+            return;
+        }
+        self.signum *= other.signum;
+        let (mut quot_signif, exp_adj) =
+            div_signifs(&self.signif, &other.signif, Self::FRACTION_BITS);
+        self.signif = quot_signif;
+        self.exp -= other.exp + exp_adj;
+    }
+
+    pub(crate) fn recip(&self) -> Self {
+        let mut recip = Self::ONE;
+        recip.idiv(self);
+        recip
+    }
+
+    fn imul_add(&mut self, f: &Self, a: &Self) {
+        if self.is_zero() || f.is_zero() {
+            *self = *a;
+            return;
+        }
+        if a.is_zero() {
+            self.imul(f);
+            return;
+        }
+        let mut prod_exp = self.exp + f.exp;
+        let mut exp_diff = prod_exp - a.exp;
+        if exp_diff <= -(Self::FRACTION_BITS as i32) - 2 {
+            // Product is too small
+            *self = *a;
+        } else if exp_diff < (2 * Self::FRACTION_BITS as i32 + 3) {
+            let prod_signum = self.signum * f.signum;
+            let (mut prod_signif, exp_adj) =
+                mul_signifs(&self.signif, &f.signif);
+            prod_exp += exp_adj;
+            exp_diff += exp_adj;
+            let mut addend_signif = UInt::<T> {
+                hi: a.signif,
+                lo: T::ZERO,
+            };
+            let (x_sign, mut x_signif, mut x_exp, y_signif) = match exp_diff {
+                0 => {
+                    // exponents equal => check significands
+                    if prod_signif >= addend_signif {
+                        // |prod| >= |addend|
+                        (prod_signum, prod_signif, prod_exp, addend_signif)
+                    } else {
+                        // |addend| > |prod|
+                        (a.signum, addend_signif, a.exp, prod_signif)
+                    }
+                }
+                1..=i32::MAX => {
+                    // |prod| > |addend|
+                    let (q, r) = addend_signif.widening_shr(exp_diff as u32);
+                    addend_signif = q;
+                    addend_signif |= !r.is_zero();
+                    (prod_signum, prod_signif, prod_exp, addend_signif)
+                }
+                i32::MIN..=-1 => {
+                    // |addend| > |prod|
+                    let (q, r) =
+                        prod_signif.widening_shr(exp_diff.unsigned_abs());
+                    prod_signif = q;
+                    prod_signif |= !r.is_zero();
+                    (a.signum, addend_signif, a.exp, prod_signif)
+                }
+            };
+            self.signum = x_sign;
+            self.exp = x_exp;
+            if prod_signum == a.signum {
+                x_signif += &y_signif;
+                // addition may have overflowed
+                let mut ovl = (x_signif.leading_zeros() == 0) as u32;
+                self.exp += ovl as i32;
+                self.signif =
+                    x_signif.rounding_div_pow2(T::BITS + ovl).lo_t();
+                // rounding may have overflowed
+                ovl = (self.signif.leading_zeros() == 0) as u32;
+                self.exp += ovl as i32;
+                self.signif >>= ovl;
+            } else {
+                x_signif -= &y_signif;
+                // subtraction may have cancelled some or all leading bits
+                let shl = x_signif.leading_zeros() - 1;
+                self.exp -= shl as i32;
+                if shl <= T::BITS {
+                    // shifting left by shl bits and then rounding the
+                    // low bits => shift right and round by
+                    // T::BITS - shl bits
+                    x_signif = x_signif.rounding_div_pow2(T::BITS - shl);
+                    self.signif = x_signif.lo;
+                } else if shl == UInt::<T>::BITS {
+                    // all bits cancelled => result is zero
+                    *self = Self::ZERO;
+                } else {
+                    // less than T::BITS - 1 bits left
+                    // => shift left, no rounding
+                    self.signif = x_signif.lo_t() << shl - T::BITS;
+                }
+            };
+        } else {
+            // Addend is too small
+            self.imul(f);
+        }
+    }
+
+    #[inline]
+    pub(crate) fn mul_add(self, f: &Self, a: &Self) -> Self {
+        let mut res = self;
+        res.imul_add(f, a);
+        res
+    }
+
+    /// Computes the rounded sum of two BigFloat values and the remainder.
+    #[inline]
+    pub(crate) fn sum_exact(&self, rhs: &Self) -> (Self, Self) {
+        let s = self + rhs;
+        let d = s - *rhs;
+        let t1 = *self - d;
+        let t2 = *rhs - (s - d);
+        let r = t1 + t2;
+        (s, r)
+    }
+
+    /// Computes the rounded product of two BigFloat values and the remainder.
+    #[inline]
+    pub(crate) fn mul_exact(&self, rhs: &Self) -> (Self, Self) {
+        let p = *self * *rhs;
+        let r = self.mul_add(rhs, &p.neg());
+        (p, r)
+    }
+
+    /// Computes `self * self` .
+    #[inline(always)]
+    #[must_use]
+    pub fn square(self) -> Self {
+        self * self
+    }
+
+    /// Returns the square root of `self`.
+    #[must_use]
+    pub fn sqrt(&self) -> Self {
+        debug_assert!(self.signum >= 0);
+        if self.signum == 0 {
+            return *self;
+        }
+        // Calculate the exponent
+        let mut exp = self.exp;
+        let exp_is_odd = exp & 1;
+        exp = (exp - exp_is_odd) / 2;
+        // Calculate the significand, gain extra bit for final rounding
+        let mut q = Self::SIGNIF_ONE << 1;
+        let mut r =
+            (UInt::<T>::from(&self.signif) << (1 + exp_is_odd as u32)) - q;
+        let mut s = q;
+        for _ in 0..=Self::FRACTION_BITS {
+            if r.is_zero() {
+                break;
+            }
+            s >>= 1;
+            let t = &r << 1;
+            let u = (UInt::<T>::from(&q) << 1) + s;
+            if t < u {
+                r = t;
+            } else {
+                q += &s;
+                r = t - u;
+            }
+        }
+        // Final rounding
+        let rnd_bits = (q.last_chunk() & 3_u128) as u32;
+        q.incr_if(rnd_bits == 3 || rnd_bits == 1 && !r.is_zero());
+        q >>= 1;
+        Self {
+            signum: 1,
+            exp,
+            signif: q,
+        }
+    }
+}
+
+impl<T: BigUInt> From<&T> for Float<T> {
+    /// Convert a raw BigUInt into a Float, without any modification, i.e
+    /// interpret the given value ui as ui⋅2⁻ⁿ with n = number of fractional
+    /// digits of Self
+    #[inline(always)]
+    fn from(ui: &T) -> Self {
+        Self {
+            signum: 1,
+            exp: 0,
+            signif: *ui,
+        }
+    }
+}
+
+impl<T> From<&f256> for Float<T>
+where
+    T: BigUInt + HiLo + for<'a> From<&'a [u128]>,
+{
+    #[inline(always)]
+    fn from(f: &f256) -> Self {
+        Self::from_f256(f)
+    }
+}
+
+impl<T> From<&Float<T>> for f256
+where
+    T: BigUInt + HiLo,
+{
+    fn from(fp: &Float<T>) -> Self {
+        if fp.is_zero() {
+            return Self::ZERO;
+        }
+        const EXP_UNDERFLOW: i32 = EMIN - SIGNIFICAND_BITS as i32 - 1; // -262380
+        const EXP_LOWER_SUBNORMAL: i32 = EXP_UNDERFLOW + 1; // -262379
+        const EXP_UPPER_SUBNORMAL: i32 = EMIN - 1; // -262143
+        const EXP_OVERFLOW: i32 = f256::MAX_EXP; //  262144
+        let prec_adj: u32 =
+            Float::<T>::FRACTION_BITS.saturating_sub(FRACTION_BITS);
+        let mut f256_bits = match fp.exp {
+            ..=EXP_UNDERFLOW => U256::ZERO,
+            EXP_LOWER_SUBNORMAL..=EXP_UPPER_SUBNORMAL => {
+                let f256_signif = fp.signif.rounding_div_pow2(
+                    prec_adj.saturating_add_signed(EMIN - fp.exp),
+                );
+                let [hi, lo] = match T::N_CHUNKS {
+                    2.. => {
+                        *f256_signif.as_vec_u128().last_chunk::<2>().unwrap()
+                    }
+                    _ => [f256_signif.as_vec_u128()[0], 0_u128],
+                };
+                U256::new(hi, lo)
+            }
+            EMIN..=EMAX => {
+                let (f256_signif, rem) = fp.signif.widening_shr(prec_adj);
+                // -1 because we add the significand incl. hidden bit.
+                let exp_bits = (EXP_BIAS.saturating_add_signed(fp.exp - 1)
+                    as u128)
+                    << HI_FRACTION_BITS;
+                let [hi, lo] = match T::N_CHUNKS {
+                    2.. => {
+                        *f256_signif.as_vec_u128().last_chunk::<2>().unwrap()
+                    }
+                    _ => [f256_signif.as_vec_u128()[0], 0_u128],
+                };
+                let mut bits = U256::new(hi, lo);
+                bits.hi.0 += exp_bits;
+                // Final rounding. Possibly overflowing into the exponent,
+                // but that is ok.
+                if rem > T::TIE || (rem == T::TIE && bits.is_odd()) {
+                    bits.incr();
+                }
+                bits
+            }
+            EXP_OVERFLOW.. => f256::INFINITY.bits,
+        };
+        f256_bits.hi.0 |= ((fp.signum < 0) as u128) << HI_SIGN_SHIFT;
+        f256 { bits: f256_bits }
+    }
+}
+
+#[cfg(test)]
+mod from_into_f256_tests {
+    use super::*;
+
+    fn assert_normal_eq(f: &f256, g: &Float256) {
+        const PREC_DIFF: u32 = Float256::FRACTION_BITS - FRACTION_BITS;
+        debug_assert!(f.is_normal());
+        assert_eq!((-1_i32).pow(f.sign()), g.signum);
+        assert_eq!(f.quantum_exponent() + FRACTION_BITS as i32, g.exp);
+        assert_eq!(&f.integral_significand() << PREC_DIFF, g.signif)
+    }
+
+    #[test]
+    fn test_neg_one() {
+        let fp = Float256::from(&f256::NEG_ONE);
+        assert_eq!(fp, Float256::NEG_ONE);
+        let f = f256::from(&fp);
+        assert_normal_eq(&f, &fp);
+    }
+
+    #[test]
+    fn test_normal_gt_one() {
+        let f = f256::from(1.5);
+        let fp = Float256::from(&f);
+        assert_normal_eq(&f, &fp);
+        let f = f256::from(&fp);
+        assert_normal_eq(&f, &fp);
+    }
+
+    #[test]
+    fn test_normal_lt_one() {
+        let f = f256::from(0.625);
+        let fp = Float256::from(&f);
+        assert_normal_eq(&f, &fp);
+        let f = f256::from(&fp);
+        assert_normal_eq(&f, &fp);
+    }
+
+    #[test]
+    fn test_normal_lt_minus_one() {
+        let f = f256::from(-7.5);
+        let fp = Float256::from(&f);
+        assert_normal_eq(&f, &fp);
+        let f = f256::from(&fp);
+        assert_normal_eq(&f, &fp);
+    }
+
+    #[test]
+    fn test_min_f256() {
+        let f = f256::MIN;
+        let fp = Float256::from(&f);
+        assert_normal_eq(&f, &fp);
+        let f = f256::from(&fp);
+        assert_normal_eq(&f, &fp);
+    }
+
+    #[test]
+    fn test_epsilon() {
+        let f = f256::EPSILON;
+        let fp = Float256::from(&f);
+        assert_normal_eq(&f, &fp);
+        let f = f256::from(&fp);
+        assert_normal_eq(&f, &fp);
+    }
+
+    #[test]
+    fn test_min_gt_zero() {
+        let f = f256::MIN_GT_ZERO;
+        let fp = Float256::from(&f);
+        assert_eq!((-1_i32).pow(f.sign()), fp.signum);
+        assert_eq!(f.quantum_exponent(), fp.exp);
+        assert_eq!(
+            &f.integral_significand() << Float256::FRACTION_BITS,
+            fp.signif
+        );
+        let f = f256::from(&fp);
+        assert_eq!((-1_i32).pow(f.sign()), fp.signum);
+        assert_eq!(f.quantum_exponent(), fp.exp);
+        assert_eq!(
+            &f.integral_significand() << Float256::FRACTION_BITS,
+            fp.signif
+        )
+    }
+}
+
+#[cfg(test)]
+mod into_f256_tests {
+    use super::*;
+    use crate::consts::PI;
+
+    #[test]
+    fn test_overflow_1() {
+        let fp = Float256 {
+            signum: -1,
+            exp: f256::MAX_EXP,
+            signif: Float256::ONE.signif,
+        };
+        let f = f256::from(&fp);
+        assert_eq!(f, f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_overflow_2() {
+        let fp = Float256 {
+            signum: 1,
+            exp: EMAX,
+            signif: U256::new(u128::MAX >> 1, u128::MAX - 7),
+        };
+        let f = f256::from(&fp);
+        assert_eq!(f, f256::INFINITY);
+    }
+
+    #[test]
+    fn test_overflow_3() {
+        let sh = Float256::FRACTION_BITS - FRACTION_BITS - 1;
+        let fp = Float256 {
+            signum: 1,
+            exp: 0,
+            signif: U256::new(u128::MAX >> 1, (u128::MAX >> sh) << sh),
+        };
+        let f = f256::from(&fp);
+        assert_eq!(f, f256::TWO);
+    }
+
+    #[test]
+    fn test_underflow() {
+        let fp = Float256 {
+            signum: 1,
+            exp: EMIN - SIGNIFICAND_BITS as i32,
+            signif: Float256::SIGNIF_ONE,
+        };
+        let f = f256::from(&fp);
+        assert_eq!(f, f256::ZERO);
+    }
+
+    #[test]
+    fn test_round_to_min_gt_zero() {
+        let fp = Float256 {
+            signum: 1,
+            exp: EMIN - SIGNIFICAND_BITS as i32,
+            signif: Float256::SIGNIF_ONE + U256::ONE,
+        };
+        let f = f256::from(&fp);
+        assert_eq!(f, f256::MIN_GT_ZERO);
+    }
+
+    #[test]
+    fn test_round_to_epsilon() {
+        let fp = Float256 {
+            signum: 1,
+            exp: -237,
+            signif: U256::new(u128::MAX >> 1, u128::MAX),
+        };
+        let f = f256::from(&fp);
+        assert_eq!(f, f256::EPSILON);
+    }
+
+    #[test]
+    fn test_f256_pi() {
+        let f = PI;
+        let fp = Float256::from(&f);
+        let g = f256::from(&fp);
+        assert_eq!(f, g);
+    }
+}
+
+impl<T: BigUInt + HiLo> Neg for Float<T> {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        Self::Output {
+            signum: self.signum * -1,
+            exp: self.exp,
+            signif: self.signif,
+        }
+    }
+}
+
+impl<T: BigUInt + HiLo> AddAssign<Self> for Float<T> {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: Self) {
+        self.iadd(&rhs);
+    }
+}
+
+impl<T: BigUInt + HiLo> AddAssign<&Self> for Float<T> {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: &Self) {
+        self.iadd(rhs);
+    }
+}
+
+impl<T: BigUInt + HiLo> Add for Float<T> {
+    type Output = Self;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl<'a, T: BigUInt + HiLo> Add for &'a Float<T> {
+    type Output = <Float<T> as Add>::Output;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let mut res = *self;
+        res += rhs;
+        res
+    }
+}
+
+impl<T: BigUInt + HiLo> SubAssign<Self> for Float<T> {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: Self) {
+        self.isub(&rhs);
+    }
+}
+
+impl<T: BigUInt + HiLo> SubAssign<&Self> for Float<T> {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: &Self) {
+        self.isub(rhs);
+    }
+}
+
+impl<T: BigUInt + HiLo> Sub for Float<T> {
+    type Output = Self;
+
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self -= rhs;
+        self
+    }
+}
+
+impl<'a, T: BigUInt + HiLo> Sub for &'a Float<T> {
+    type Output = <Float<T> as Sub>::Output;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        let mut res = *self;
+        res -= rhs;
+        res
+    }
+}
+
+impl<T: BigUInt + HiLo> MulAssign<Self> for Float<T> {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: Self) {
+        self.imul(&rhs);
+    }
+}
+
+impl<T: BigUInt + HiLo> MulAssign<&Self> for Float<T> {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: &Self) {
+        self.imul(rhs);
+    }
+}
+
+impl<T: BigUInt + HiLo> Mul for Float<T> {
+    type Output = Self;
+
+    fn mul(mut self, rhs: Self) -> Self::Output {
+        self *= rhs;
+        self
+    }
+}
+
+impl<'a, T: BigUInt + HiLo> Mul for &'a Float<T> {
+    type Output = <Float<T> as Mul>::Output;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let mut res = *self;
+        res *= rhs;
+        res
+    }
+}
+
+impl<T: BigUInt + HiLo> DivAssign<Self> for Float<T> {
+    #[inline(always)]
+    fn div_assign(&mut self, rhs: Self) {
+        self.idiv(&rhs);
+    }
+}
+
+impl<T: BigUInt + HiLo> DivAssign<&Self> for Float<T> {
+    #[inline(always)]
+    fn div_assign(&mut self, rhs: &Self) {
+        self.idiv(rhs);
+    }
+}
+
+impl<T: BigUInt + HiLo> Div for Float<T> {
+    type Output = Self;
+
+    fn div(mut self, rhs: Self) -> Self::Output {
+        self /= rhs;
+        self
+    }
+}
+
+impl<'a, T: BigUInt + HiLo> Div for &'a Float<T> {
+    type Output = <Float<T> as Div>::Output;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        let mut res = *self;
+        res /= rhs;
+        res
+    }
+}
+
+pub(crate) type Float256 = Float<U256>;
+
+impl Float256 {
     // PI = ◯₂₅₅(π) =
     // 3.1415926535897932384626433832795028841971693993751058209749445923078164062862
     pub(crate) const PI: Float256 = Float256::new(
@@ -293,683 +1024,6 @@ impl Float256 {
             signif,
         }
     }
-
-    // TODO: remove (inline) this fn when trait fns can be constant!
-    pub(crate) fn from_f256(f: &f256) -> Self {
-        if f.eq_zero() {
-            return Self::ZERO;
-        }
-        const PREC_ADJ: u32 = Float256::FRACTION_BITS - FRACTION_BITS;
-        let abs_bits_f = abs_bits(f);
-        debug_assert!(abs_bits_f.hi.0 < HI_EXP_MASK); // f is finite?
-        debug_assert!(!abs_bits_f.is_zero());
-        let signif_f = signif(&abs_bits_f);
-        let shl = signif_f.leading_zeros()
-            - (U256::BITS - Float256::FRACTION_BITS - 1);
-        let exp_f = exp_bits(&abs_bits_f) as i32 + 1
-            - norm_bit(&abs_bits_f) as i32
-            - EXP_BIAS as i32
-            - shl as i32
-            + PREC_ADJ as i32;
-        Self {
-            signum: (-1_i32).pow(f.sign()),
-            exp: exp_f,
-            signif: signif_f.shift_left(shl),
-        }
-    }
-
-    #[inline(always)]
-    pub(crate) const fn signum(&self) -> i32 {
-        self.signum
-    }
-
-    #[inline(always)]
-    pub(crate) const fn exp(&self) -> i32 {
-        self.exp
-    }
-
-    #[inline(always)]
-    pub(crate) const fn signif(&self) -> U256 {
-        self.signif
-    }
-
-    #[inline(always)]
-    pub(crate) const fn quantum(&self) -> Self {
-        Self {
-            signum: 1,
-            exp: self.exp - Self::FRACTION_BITS as i32,
-            signif: SIGNIF_ONE,
-        }
-    }
-
-    #[inline(always)]
-    pub(crate) const fn is_zero(&self) -> bool {
-        self.signum == 0
-    }
-
-    #[inline(always)]
-    pub(crate) fn flip_sign(&mut self) {
-        self.signum *= -1;
-    }
-
-    #[inline(always)]
-    pub(crate) fn copy_sign(&mut self, other: &Self) {
-        self.signum = other.signum;
-    }
-
-    #[inline(always)]
-    pub(crate) const fn abs(&self) -> Self {
-        Self {
-            signum: self.signum.abs(),
-            exp: self.exp,
-            signif: self.signif,
-        }
-    }
-
-    pub(crate) fn trunc(&self) -> Self {
-        let sh = max(Self::FRACTION_BITS as i32 - self.exp, 0) as u32;
-        Self {
-            signum: self.signum,
-            exp: self.exp,
-            signif: &(&self.signif >> sh) << sh,
-        }
-    }
-
-    fn iadd(&mut self, other: &Self) {
-        let exp = max(self.exp, other.exp);
-        if self.is_zero() || (exp - self.exp) > Self::FRACTION_BITS as i32 {
-            *self = *other;
-            return;
-        }
-        if other.is_zero() || (exp - other.exp) > Self::FRACTION_BITS as i32 {
-            return;
-        }
-        let (mut signif_self, rem_self) = match (exp - self.exp) as u32 {
-            0 => (self.signif, U256::ZERO),
-            sh @ _ => self.signif.widening_shr(sh),
-        };
-        let (mut signif_other, rem_other) = match (exp - other.exp) as u32 {
-            0 => (other.signif, U256::ZERO),
-            sh @ _ => other.signif.widening_shr(sh),
-        };
-        let op = [add_signifs, sub_signifs]
-            [(self.signum != other.signum) as usize];
-        if signif_self < signif_other {
-            swap(&mut signif_self, &mut signif_other);
-            self.signum = other.signum;
-        }
-        let mut exp_adj = 0_i32;
-        (self.signif, exp_adj) = op(&signif_self, &signif_other);
-        if self.signif.is_zero() {
-            self.signum = 0;
-            self.exp = 0;
-        } else {
-            self.exp = (exp + exp_adj)
-        };
-    }
-
-    fn isub(&mut self, other: &Self) {
-        if self == other {
-            *self = Float256::ZERO;
-        } else {
-            self.iadd(&other.neg());
-        }
-    }
-
-    fn imul(&mut self, other: &Self) {
-        self.signum *= other.signum;
-        if self.signum == 0 {
-            *self = Self::ZERO;
-        } else {
-            let (mut prod_signif, exp_adj) =
-                mul_signifs(&self.signif, &other.signif);
-            // round significand of product to 255 bits
-            // TODO: do rounding in fn mul_signifs
-            let rnd = prod_signif.lo > TIE
-                || (prod_signif.lo == TIE && prod_signif.hi.is_odd());
-            prod_signif.hi.incr_if(rnd);
-            prod_signif.hi >>= (prod_signif.hi.leading_zeros() == 0) as u32;
-            self.signif = prod_signif.hi;
-            self.exp += other.exp + exp_adj;
-        }
-    }
-
-    fn idiv(&mut self, other: &Self) {
-        assert!(!other.is_zero(), "Division by zero.");
-        if self.signum == 0 {
-            return;
-        }
-        self.signum *= other.signum;
-        let (mut quot_signif, exp_adj) =
-            div_signifs(&self.signif, &other.signif);
-        self.signif = quot_signif;
-        self.exp -= other.exp + exp_adj;
-    }
-
-    pub(crate) fn recip(&self) -> Self {
-        let mut recip = Self::ONE;
-        recip.idiv(self);
-        recip
-    }
-
-    fn imul_add(&mut self, f: &Self, a: &Self) {
-        if self.is_zero() || f.is_zero() {
-            *self = *a;
-            return;
-        }
-        if a.is_zero() {
-            self.imul(f);
-            return;
-        }
-        let mut prod_exp = self.exp + f.exp;
-        let mut exp_diff = prod_exp - a.exp;
-        const UPPER_LIM_PROD_TOO_SMALL: i32 =
-            -(Float256::FRACTION_BITS as i32) - 2;
-        const LOWER_LIM_ADDEND_TOO_SMALL: i32 =
-            2 * Float256::FRACTION_BITS as i32 + 3;
-        match exp_diff {
-            i32::MIN..=UPPER_LIM_PROD_TOO_SMALL => {
-                *self = *a;
-            }
-            LOWER_LIM_ADDEND_TOO_SMALL..=i32::MAX => {
-                self.imul(f);
-            }
-            _ => {
-                // -256 < exp_diff < 511
-                let prod_sign = self.signum * f.signum;
-                let (mut prod_signif, exp_adj) =
-                    mul_signifs(&self.signif, &f.signif);
-                prod_exp += exp_adj;
-                exp_diff += exp_adj;
-                let mut addend_signif = U512 {
-                    hi: a.signif,
-                    lo: U256::ZERO,
-                };
-                let (x_sign, mut x_signif, mut x_exp, y_signif) =
-                    match exp_diff {
-                        0 => {
-                            // exponents equal => check significands
-                            if prod_signif >= addend_signif {
-                                // |prod| >= |addend|
-                                (
-                                    prod_sign,
-                                    prod_signif,
-                                    prod_exp,
-                                    addend_signif,
-                                )
-                            } else {
-                                // |addend| > |prod|
-                                (a.signum, addend_signif, a.exp, prod_signif)
-                            }
-                        }
-                        1..=i32::MAX => {
-                            // |prod| > |addend|
-                            let (q, r) =
-                                addend_signif.widening_shr(exp_diff as u32);
-                            addend_signif = q;
-                            addend_signif.lo.lo.0 |=
-                                (r != U512::ZERO) as u128;
-                            (prod_sign, prod_signif, prod_exp, addend_signif)
-                        }
-                        i32::MIN..=-1 => {
-                            // |addend| > |prod|
-                            let (q, r) = prod_signif
-                                .widening_shr(exp_diff.unsigned_abs());
-                            prod_signif = q;
-                            prod_signif.lo.lo.0 |= (r != U512::ZERO) as u128;
-                            (a.signum, addend_signif, a.exp, prod_signif)
-                        }
-                    };
-                self.signum = x_sign;
-                self.exp = x_exp;
-                if prod_sign == a.signum {
-                    x_signif += &y_signif;
-                    // addition may have overflowed
-                    let mut shr = (x_signif.leading_zeros() == 0) as u32;
-                    self.exp += shr as i32;
-                    let mut rnd = (x_signif.hi.lo.0 & shr as u128) == 1;
-                    x_signif.hi >>= shr;
-                    rnd &= (x_signif.lo != U256::ZERO)
-                        || (x_signif.lo == U256::ZERO
-                            && x_signif.hi.is_odd());
-                    rnd |= (x_signif.lo > TIE)
-                        || (x_signif.lo == TIE && x_signif.hi.is_odd());
-                    x_signif.hi.incr_if(rnd);
-                    shr = (x_signif.hi.leading_zeros() == 0) as u32;
-                    self.exp += shr as i32;
-                    x_signif.hi >>= shr;
-                    self.signif = x_signif.hi;
-                } else {
-                    x_signif -= &y_signif;
-                    // subtraction may have cancelled some or all leading bits
-                    let shl = x_signif.leading_zeros() - 1;
-                    self.exp -= shl as i32;
-                    match shl {
-                        0..=256 => {
-                            // shifting left by shl bits and then rounding the
-                            // low 256 bits => shift right and round by
-                            // 256 - shl bits
-                            x_signif =
-                                x_signif.rounding_div_pow2(U256::BITS - shl);
-                            self.signif = x_signif.lo;
-                        }
-                        257..=510 => {
-                            // less than 255 bits left => shift left, no
-                            // rounding
-                            self.signif = &x_signif.lo << shl - 256;
-                        }
-                        _ => {
-                            // all bits cancelled => result is zero
-                            *self = Float256::ZERO;
-                        }
-                    }
-                };
-            }
-        }
-    }
-
-    #[inline]
-    pub(crate) fn mul_add(self, f: &Self, a: &Self) -> Self {
-        let mut res = self;
-        res.imul_add(f, a);
-        res
-    }
-
-    /// Computes the rounded sum of two BigFloat values and the remainder.
-    #[inline]
-    pub(crate) fn sum_exact(&self, rhs: &Self) -> (Self, Self) {
-        let s = *self + rhs;
-        let d = s - rhs;
-        let t1 = *self - &d;
-        let t2 = *rhs - &(s - &d);
-        let r = t1 + &t2;
-        (s, r)
-    }
-
-    /// Computes the rounded product of two BigFloat values and the remainder.
-    #[inline]
-    pub(crate) fn mul_exact(&self, rhs: &Self) -> (Self, Self) {
-        let p = *self * rhs;
-        let r = self.mul_add(rhs, &p.neg());
-        (p, r)
-    }
-
-    /// Computes `self * self` .
-    #[inline(always)]
-    #[must_use]
-    pub fn square(self) -> Self {
-        self * &self
-    }
-
-    /// Returns the square root of `self`.
-    #[must_use]
-    pub fn sqrt(&self) -> Self {
-        debug_assert!(self.signum >= 0);
-        if self.signum == 0 {
-            return *self;
-        }
-        // Calculate the exponent
-        let mut exp = self.exp;
-        let exp_is_odd = exp & 1;
-        exp = (exp - exp_is_odd) / 2;
-        // Calculate the significand, gain extra bit for final rounding
-        let mut q = SIGNIF_ONE << 1;
-        let mut r = (U512::from(&self.signif) << (1 + exp_is_odd as u32)) - q;
-        let mut s = q;
-        for _ in 0..=Float256::FRACTION_BITS {
-            if r.is_zero() {
-                break;
-            }
-            s >>= 1;
-            let t = &r << 1;
-            let u = (U512::from(&q) << 1) + s;
-            if t < u {
-                r = t;
-            } else {
-                q += &s;
-                r = t - u;
-            }
-        }
-        // Final rounding
-        let rnd_bits = (q.lo.0 & 3_u128) as u32;
-        q.incr_if(rnd_bits == 3 || rnd_bits == 1 && !r.is_zero());
-        q >>= 1;
-        Self::new(1, exp, (q.hi.0, q.lo.0))
-    }
-}
-
-impl From<&U256> for Float256 {
-    /// Convert a raw U256 into a Float, without any modification, i.e
-    /// interptret the given value ui as ui⋅2⁻²⁵⁴
-    #[inline(always)]
-    fn from(ui: &U256) -> Self {
-        Self {
-            signum: 1,
-            exp: 0,
-            signif: *ui,
-        }
-    }
-}
-
-impl From<&f256> for Float256 {
-    #[inline(always)]
-    fn from(f: &f256) -> Self {
-        Self::from_f256(f)
-    }
-}
-
-impl From<&Float256> for f256 {
-    fn from(fp: &Float256) -> Self {
-        if fp.is_zero() {
-            return Self::ZERO;
-        }
-        const PREC_ADJ: u32 = Float256::FRACTION_BITS - FRACTION_BITS;
-        const EXP_UNDERFLOW: i32 = EMIN - SIGNIFICAND_BITS as i32;
-        const EXP_LOWER_SUBNORMAL: i32 = EXP_UNDERFLOW + 1;
-        const EXP_UPPER_SUBNORMAL: i32 = EMIN - 1;
-        const EXP_OVERFLOW: i32 = f256::MAX_EXP;
-        let mut f256_bits = match fp.exp {
-            ..=EXP_UNDERFLOW => U256::ZERO,
-            EXP_LOWER_SUBNORMAL..=EXP_UPPER_SUBNORMAL => {
-                fp.signif.rounding_div_pow2(
-                    PREC_ADJ.saturating_add_signed(EMIN - fp.exp),
-                )
-            }
-            EMIN..=EMAX => {
-                const TIE: U256 = U256::new(1_u128 << 127, 0);
-                let (mut bits, rem) = fp.signif.widening_shr(PREC_ADJ);
-                // -1 because we add the significand incl. hidden bit.
-                let exp_bits = (EXP_BIAS.saturating_add_signed(fp.exp - 1)
-                    as u128)
-                    << HI_FRACTION_BITS;
-                bits.hi.0 += exp_bits;
-                // Final rounding. Possibly overflowing into the exponent,
-                // but that is ok.
-                if rem > TIE || (rem == TIE && bits.lo.is_odd()) {
-                    bits.incr();
-                }
-                bits
-            }
-            EXP_OVERFLOW.. => f256::INFINITY.bits,
-        };
-        f256_bits.hi.0 |= ((fp.signum < 0) as u128) << HI_SIGN_SHIFT;
-        f256 { bits: f256_bits }
-    }
-}
-
-#[cfg(test)]
-mod from_into_f256_tests {
-    use super::*;
-
-    fn assert_normal_eq(f: &f256, g: &Float256) {
-        const PREC_DIFF: u32 = Float256::FRACTION_BITS - FRACTION_BITS;
-        debug_assert!(f.is_normal());
-        assert_eq!((-1_i32).pow(f.sign()), g.signum);
-        assert_eq!(f.quantum_exponent() + FRACTION_BITS as i32, g.exp);
-        assert_eq!(&f.integral_significand() << PREC_DIFF, g.signif)
-    }
-
-    #[test]
-    fn test_neg_one() {
-        let fp = Float256::from(&f256::NEG_ONE);
-        assert_eq!(fp, Float256::NEG_ONE);
-        let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
-    }
-
-    #[test]
-    fn test_normal_gt_one() {
-        let f = f256::from(1.5);
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
-        let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
-    }
-
-    #[test]
-    fn test_normal_lt_one() {
-        let f = f256::from(0.625);
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
-        let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
-    }
-
-    #[test]
-    fn test_normal_lt_minus_one() {
-        let f = f256::from(-7.5);
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
-        let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
-    }
-
-    #[test]
-    fn test_min_f256() {
-        let f = f256::MIN;
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
-        let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
-    }
-
-    #[test]
-    fn test_epsilon() {
-        let f = f256::EPSILON;
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
-        let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
-    }
-
-    #[test]
-    fn test_min_gt_zero() {
-        let f = f256::MIN_GT_ZERO;
-        let fp = Float256::from(&f);
-        assert_eq!((-1_i32).pow(f.sign()), fp.signum);
-        assert_eq!(f.quantum_exponent(), fp.exp);
-        assert_eq!(
-            &f.integral_significand() << Float256::FRACTION_BITS,
-            fp.signif
-        );
-        let f = f256::from(&fp);
-        assert_eq!((-1_i32).pow(f.sign()), fp.signum);
-        assert_eq!(f.quantum_exponent(), fp.exp);
-        assert_eq!(
-            &f.integral_significand() << Float256::FRACTION_BITS,
-            fp.signif
-        )
-    }
-}
-
-#[cfg(test)]
-mod into_f256_tests {
-    use super::*;
-    use crate::consts::PI;
-
-    #[test]
-    fn test_overflow_1() {
-        let fp = Float256 {
-            signum: -1,
-            exp: f256::MAX_EXP,
-            signif: Float256::ONE.signif,
-        };
-        let f = f256::from(&fp);
-        assert_eq!(f, f256::NEG_INFINITY);
-    }
-
-    #[test]
-    fn test_overflow_2() {
-        let fp = Float256 {
-            signum: 1,
-            exp: EMAX,
-            signif: U256::new(u128::MAX >> 1, u128::MAX - 7),
-        };
-        let f = f256::from(&fp);
-        assert_eq!(f, f256::INFINITY);
-    }
-
-    #[test]
-    fn test_overflow_3() {
-        let sh = Float256::FRACTION_BITS - FRACTION_BITS - 1;
-        let fp = Float256 {
-            signum: 1,
-            exp: 0,
-            signif: U256::new(u128::MAX >> 1, (u128::MAX >> sh) << sh),
-        };
-        let f = f256::from(&fp);
-        assert_eq!(f, f256::TWO);
-    }
-
-    #[test]
-    fn test_underflow() {
-        let fp = Float256 {
-            signum: 1,
-            exp: EMIN - SIGNIFICAND_BITS as i32,
-            signif: U256::new(1_u128 << 127, 0_u128),
-        };
-        let f = f256::from(&fp);
-        assert_eq!(f, f256::ZERO);
-    }
-
-    #[test]
-    fn test_round_to_epsilon() {
-        let fp = Float256 {
-            signum: 1,
-            exp: -237,
-            signif: U256::new(u128::MAX >> 1, u128::MAX),
-        };
-        let f = f256::from(&fp);
-        assert_eq!(f, f256::EPSILON);
-    }
-
-    #[test]
-    fn test_f256_pi() {
-        let f = PI;
-        let fp = Float256::from(&f);
-        let g = f256::from(&fp);
-        assert_eq!(f, g);
-    }
-}
-
-impl Neg for Float256 {
-    type Output = Self;
-
-    #[inline]
-    fn neg(self) -> Self::Output {
-        Self::Output {
-            signum: self.signum * -1,
-            exp: self.exp,
-            signif: self.signif,
-        }
-    }
-}
-
-impl PartialOrd for Float256 {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some((self.signum, self.exp, self.signif).cmp(&(
-            other.signum,
-            other.exp,
-            other.signif,
-        )))
-    }
-}
-
-impl AddAssign<Self> for Float256 {
-    #[inline(always)]
-    fn add_assign(&mut self, rhs: Self) {
-        self.iadd(&rhs);
-    }
-}
-
-impl AddAssign<&Self> for Float256 {
-    #[inline(always)]
-    fn add_assign(&mut self, rhs: &Self) {
-        self.iadd(rhs);
-    }
-}
-
-impl Add<&Self> for Float256 {
-    type Output = Self;
-
-    fn add(self, rhs: &Self) -> Self::Output {
-        let mut res = self;
-        res += rhs;
-        res
-    }
-}
-
-impl SubAssign<Self> for Float256 {
-    #[inline(always)]
-    fn sub_assign(&mut self, rhs: Self) {
-        self.isub(&rhs);
-    }
-}
-
-impl SubAssign<&Self> for Float256 {
-    #[inline(always)]
-    fn sub_assign(&mut self, rhs: &Self) {
-        self.isub(rhs);
-    }
-}
-
-impl Sub<&Self> for Float256 {
-    type Output = Self;
-
-    fn sub(self, rhs: &Self) -> Self::Output {
-        let mut res = self;
-        res -= rhs;
-        res
-    }
-}
-
-impl MulAssign<Self> for Float256 {
-    #[inline(always)]
-    fn mul_assign(&mut self, rhs: Self) {
-        self.imul(&rhs);
-    }
-}
-
-impl MulAssign<&Self> for Float256 {
-    #[inline(always)]
-    fn mul_assign(&mut self, rhs: &Self) {
-        self.imul(rhs);
-    }
-}
-
-impl Mul<&Self> for Float256 {
-    type Output = Self;
-
-    fn mul(self, rhs: &Self) -> Self::Output {
-        let mut res = self;
-        res *= rhs;
-        res
-    }
-}
-
-impl DivAssign<Self> for Float256 {
-    #[inline(always)]
-    fn div_assign(&mut self, rhs: Self) {
-        self.idiv(&rhs);
-    }
-}
-
-impl DivAssign<&Self> for Float256 {
-    #[inline(always)]
-    fn div_assign(&mut self, rhs: &Self) {
-        self.idiv(rhs);
-    }
-}
-
-impl Div<&Self> for Float256 {
-    type Output = Self;
-
-    fn div(self, rhs: &Self) -> Self::Output {
-        let mut res = self;
-        res *= rhs;
-        res
-    }
 }
 
 #[cfg(test)]
@@ -1121,7 +1175,7 @@ mod add_sub_tests {
                 0x00000000000000000000000000000000,
             ),
         };
-        assert_eq!(a - &b, a);
+        assert_eq!(a - b, a);
     }
 }
 
@@ -1259,7 +1313,7 @@ mod div_tests {
         assert_eq!(q, z);
         let mut q = y;
         q.idiv(&x);
-        let d = (q - &z.recip()).abs();
+        let d = (q - z.recip()).abs();
         assert!(d <= Float256::EPSILON);
     }
 }

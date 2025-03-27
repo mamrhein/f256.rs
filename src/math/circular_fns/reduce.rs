@@ -187,7 +187,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
 
     if exp <= M {
         let x = Float256::from(x);
-        let z = x.mul_add(&R, &D) - &D;
+        let z = x.mul_add(&R, &D) - D;
         let u1 = z.neg().mul_add(&C1, &x);
         let needed_bits =
             1 - u1.exp() + Float256::FRACTION_BITS as i32 + x.exp();
@@ -195,13 +195,13 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
             let v1 = z.neg().mul_add(&C2, &u1);
             let (p1, p2) = z.mul_exact(&C2);
             let (t1, t2) = u1.sum_exact(&p1.neg());
-            (v1, ((t1 - &v1) + &t2) - &p2)
+            (v1, ((t1 - v1) + t2) - p2)
         } else {
             let u2 = z.neg().mul_add(&C2, &u1);
             let v1 = z.neg().mul_add(&C3, &u2);
             let (p1, p2) = z.mul_exact(&C3);
             let (t1, t2) = u2.sum_exact(&p1.neg());
-            (v1, ((t1 - &v1) + &t2) - &p2)
+            (v1, ((t1 - v1) + t2) - p2)
         };
         // x <= M => z < 2ᴾ⁻²
         let e = z.exp() - Float256::FRACTION_BITS as i32;
