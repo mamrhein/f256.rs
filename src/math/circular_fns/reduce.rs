@@ -352,10 +352,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             1,
             -492,
-            (
+            &[
                 0x73644a29410f31c6809bbdf2a33679a7,
                 0x48636605614dbe4be286e9fc26adadaa,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
@@ -377,10 +377,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             1,
             -492,
-            (
+            &[
                 0x40f572ce454bf8e0830ab5bd30106044,
                 0x69f0fe1ae684b77b6ca291ecc1646452,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
@@ -402,10 +402,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             1,
             -256,
-            (
+            &[
                 0x409626022841a126f489297b6cf6f156,
                 0x0fcc794939dca5183515d3af8d1ff9c8,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 2);
@@ -427,10 +427,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             1,
             -492,
-            (
+            &[
                 0x4c0d390b2059bc41923ce8f474398c88,
                 0xf76daed66808d34acd2c658eaa8f6acc,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 2);
@@ -452,10 +452,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             0,
             -498,
-            (
+            &[
                 0x563d1ec38077f1810a728c57851aba2b,
                 0x71bc78f95015c84078d6591b6b74a540,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 3);
@@ -475,10 +475,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             1,
             -257,
-            (
+            &[
                 0x6d6426ef8f5dd348fe6e5056a1746784,
                 0x2274a7eb9c97d04b267a41e0d1898945,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
@@ -499,10 +499,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             0,
             -256,
-            (
+            &[
                 0x5fcbc4e6733e79165158c5a8465bd4af,
                 0x02ee033f64e42764159bba795550da8e,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
@@ -524,10 +524,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             0,
             -493,
-            (
+            &[
                 0x5030bf58f636c72767c3068b481c87cc,
                 0xd0cea195ed9945d314dc05006dd04c7e,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
@@ -549,10 +549,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             1,
             -491,
-            (
+            &[
                 0x5603de2d595503eed8ae0f6e6c6caa7e,
                 0x2471192da9945586acc5a97224089d08,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 0);
@@ -574,10 +574,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             0,
             -507,
-            (
+            &[
                 0x76d31fae1a225dd56b205f183b805391,
                 0x5e8fceff6cdab4a1f14fa390a2f80000,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);
@@ -599,10 +599,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             0,
             -255,
-            (
+            &[
                 0x43d7111f19ce98f31d3366fdc96c7efe,
                 0x219f8b5ce7e14d94046bfc6f65b2661a,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 0);
@@ -617,10 +617,10 @@ mod reduce_tests {
         let r = Float256::from_sign_exp_signif(
             1,
             -255,
-            (
+            &[
                 0x57d3651352c593b29168bcc8d9c32c6c,
                 0x5c5a1000debd782e141a40fc3db6c9be,
-            ),
+            ],
         );
         let (q, fx) = reduce(&f);
         assert_eq!(q, 1);

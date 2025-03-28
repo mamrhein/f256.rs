@@ -8,6 +8,7 @@
 // $Revision$
 
 use crate::big_uint::{UInt, U128};
+use crate::math::fp492::FP492;
 use crate::{
     abs_bits, exp, exp_bits, f256, left_adj_signif, norm_bit, signif,
     BigUInt, DivRem, HiLo, EMAX, EMIN, EXP_BIAS, FRACTION_BITS, HI_EXP_MASK,
@@ -139,6 +140,35 @@ where
         signif: Self::SIGNIF_ONE,
         exp: -(Self::FRACTION_BITS as i32),
     };
+
+    /// Construct a `Float` value f from sign s, quantum exponent t and
+    /// integral significand c, so that f = (-1)ˢ × 2ᵗ × c
+    #[must_use]
+    pub(crate) fn from_sign_exp_signif<'a>(
+        s: u32,
+        t: i32,
+        c: &'a [u128],
+    ) -> Self {
+        debug_assert!(s == 0 || s == 1);
+        let mut m = T::from(c);
+        if m.is_zero() {
+            return Self::ZERO;
+        }
+        let (signif, exp) = match m.leading_zeros() {
+            0 => (m >> 1, t + 1),
+            1 => (m, t),
+            lz @ 2.. => {
+                let sh = lz - 1;
+                (m << sh, t - sh as i32)
+            }
+        };
+        debug_assert!(signif.leading_zeros() == 1);
+        Self {
+            signum: [1, -1][s as usize],
+            exp: exp + Self::FRACTION_BITS as i32,
+            signif,
+        }
+    }
 
     // TODO: remove (inline) this fn when trait fns can be constant!
     pub(crate) fn from_f256(f: &f256) -> Self {
@@ -989,39 +1019,6 @@ impl Float256 {
             signum,
             exp,
             signif: U256::new(signif.0, signif.1),
-        }
-    }
-
-    /// Construct a `BigFloat` value f from sign s, quantum exponent t and
-    /// integral significand c, so that f = (-1)ˢ × 2ᵗ × c
-    #[must_use]
-    pub(crate) fn from_sign_exp_signif(
-        s: u32,
-        t: i32,
-        c: (u128, u128),
-    ) -> Self {
-        debug_assert!(s == 0 || s == 1);
-        if c.0 == 0 && c.1 == 0 {
-            return Self::ZERO;
-        }
-        let (signif, exp) = match c.0.leading_zeros() {
-            0 => (U256::new(c.0, c.1) >> 1, t + 1),
-            1 => (U256::new(c.0, c.1), t),
-            lz @ 2..=127 => {
-                let sh = lz - 1;
-                (U256::new(c.0, c.1) << sh, t - sh as i32)
-            }
-            128 => {
-                let sh = 127 + c.1.leading_zeros();
-                (U256::new(c.0, c.1) << sh, t - sh as i32)
-            }
-            _ => unreachable!(),
-        };
-        debug_assert!(signif.hi.0.leading_zeros() == 1);
-        Self {
-            signum: [1, -1][s as usize],
-            exp: exp + Self::FRACTION_BITS as i32,
-            signif,
         }
     }
 }
