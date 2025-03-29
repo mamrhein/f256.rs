@@ -170,29 +170,6 @@ where
         }
     }
 
-    // TODO: remove (inline) this fn when trait fns can be constant!
-    pub(crate) fn from_f256(f: &f256) -> Self {
-        if f.eq_zero() {
-            return Self::ZERO;
-        }
-        let prec_adj: u32 = Self::FRACTION_BITS - FRACTION_BITS;
-        let abs_bits_f = abs_bits(f);
-        debug_assert!(abs_bits_f.hi.0 < HI_EXP_MASK); // f is finite?
-        debug_assert!(!abs_bits_f.is_zero());
-        let mut signif_f = signif(&abs_bits_f);
-        let shl = signif_f.leading_zeros() - 1;
-        signif_f <<= shl;
-        let exp_f = exp(&abs_bits_f) - shl as i32 + prec_adj as i32;
-        let mut t = T::default().as_vec_u128();
-        t[0] = signif_f.hi.0;
-        t[1] = signif_f.lo.0;
-        Self {
-            signum: (-1_i32).pow(f.sign()),
-            exp: exp_f,
-            signif: T::from(&t),
-        }
-    }
-
     #[inline(always)]
     pub(crate) const fn signum(&self) -> i32 {
         self.signum
@@ -510,9 +487,27 @@ impl<T> From<&f256> for Float<T>
 where
     T: BigUInt + HiLo + for<'a> From<&'a [u128]>,
 {
-    #[inline(always)]
     fn from(f: &f256) -> Self {
-        Self::from_f256(f)
+        if f.eq_zero() {
+            return Self::ZERO;
+        }
+        let abs_bits_f = abs_bits(f);
+        debug_assert!(abs_bits_f.hi.0 < HI_EXP_MASK); // f is finite?
+        debug_assert!(!abs_bits_f.is_zero());
+        let mut signif_f = signif(&abs_bits_f);
+        let shl = signif_f.leading_zeros() - 1;
+        signif_f <<= shl;
+        let exp_adj: u32 =
+            shl - ((Self::FRACTION_BITS % 256) - FRACTION_BITS);
+        let exp_f = exp(&abs_bits_f) - exp_adj as i32;
+        let mut t = T::default().as_vec_u128();
+        t[0] = signif_f.hi.0;
+        t[1] = signif_f.lo.0;
+        Self {
+            signum: (-1_i32).pow(f.sign()),
+            exp: exp_f,
+            signif: T::from(&t),
+        }
     }
 }
 
@@ -575,85 +570,125 @@ where
 #[cfg(test)]
 mod from_into_f256_tests {
     use super::*;
+    use crate::big_uint::U1024;
+    use crate::norm_signif_exp;
 
-    fn assert_normal_eq(f: &f256, g: &Float256) {
-        const PREC_DIFF: u32 = Float256::FRACTION_BITS - FRACTION_BITS;
-        debug_assert!(f.is_normal());
+    fn assert_eq<T: BigUInt + HiLo>(f: &f256, g: &Float<T>) {
+        debug_assert!(!f.is_special());
         assert_eq!((-1_i32).pow(f.sign()), g.signum);
-        assert_eq!(f.quantum_exponent() + FRACTION_BITS as i32, g.exp);
-        assert_eq!(&f.integral_significand() << PREC_DIFF, g.signif)
+        let f_abs_bits = abs_bits(f);
+        let (f_signif, f_exp) = norm_signif_exp(&f_abs_bits);
+        assert_eq!(f_exp, g.exp);
+        let shl: u32 = (Float::<T>::FRACTION_BITS % 256) - FRACTION_BITS;
+        let f_adj_signif = f_signif << shl;
+        let g_signif = g.signif.as_vec_u128();
+        let (g_signif_hi, g_signif_lo) = g_signif.split_at(2);
+        assert_eq!(f_adj_signif, U256::from(g_signif_hi));
+        assert!(g_signif_lo.iter().all(|x| *x == 0_u128));
+    }
+
+    fn test_neg_one_<T: BigUInt + HiLo>() {
+        let fp = Float::<T>::from(&f256::NEG_ONE);
+        assert_eq!(fp, Float::<T>::NEG_ONE);
+        let f = f256::from(&fp);
+        assert_eq(&f, &fp);
     }
 
     #[test]
     fn test_neg_one() {
-        let fp = Float256::from(&f256::NEG_ONE);
-        assert_eq!(fp, Float256::NEG_ONE);
+        test_neg_one_::<U256>();
+        test_neg_one_::<U512>();
+        test_neg_one_::<U1024>();
+    }
+
+    fn test_normal_gt_one_<T: BigUInt + HiLo>() {
+        let f = f256::from(1.5);
+        let fp = Float::<T>::from(&f);
+        assert_eq(&f, &fp);
         let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
+        assert_eq(&f, &fp);
     }
 
     #[test]
     fn test_normal_gt_one() {
-        let f = f256::from(1.5);
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
+        test_normal_gt_one_::<U256>();
+        test_normal_gt_one_::<U512>();
+        test_normal_gt_one_::<U1024>();
+    }
+
+    fn test_normal_lt_one_<T: BigUInt + HiLo>() {
+        let f = f256::from(0.625);
+        let fp = Float::<T>::from(&f);
+        assert_eq(&f, &fp);
         let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
+        assert_eq(&f, &fp);
     }
 
     #[test]
     fn test_normal_lt_one() {
-        let f = f256::from(0.625);
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
+        test_normal_lt_one_::<U256>();
+        test_normal_lt_one_::<U512>();
+        test_normal_lt_one_::<U1024>();
+    }
+
+    fn test_normal_lt_minus_one_<T: BigUInt + HiLo>() {
+        let f = f256::from(-7.5);
+        let fp = Float::<T>::from(&f);
+        assert_eq(&f, &fp);
         let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
+        assert_eq(&f, &fp);
     }
 
     #[test]
     fn test_normal_lt_minus_one() {
-        let f = f256::from(-7.5);
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
+        test_normal_lt_minus_one_::<U256>();
+        test_normal_lt_minus_one_::<U512>();
+        test_normal_lt_minus_one_::<U1024>();
+    }
+
+    fn test_min_f256_<T: BigUInt + HiLo>() {
+        let f = f256::MIN;
+        let fp = Float::<T>::from(&f);
+        assert_eq(&f, &fp);
         let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
+        assert_eq(&f, &fp);
     }
 
     #[test]
     fn test_min_f256() {
-        let f = f256::MIN;
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
+        test_min_f256_::<U256>();
+        test_min_f256_::<U512>();
+        test_min_f256_::<U1024>();
+    }
+
+    fn test_epsilon_<T: BigUInt + HiLo>() {
+        let f = f256::EPSILON;
+        let fp = Float::<T>::from(&f);
+        assert_eq(&f, &fp);
         let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
+        assert_eq(&f, &fp);
     }
 
     #[test]
     fn test_epsilon() {
-        let f = f256::EPSILON;
-        let fp = Float256::from(&f);
-        assert_normal_eq(&f, &fp);
+        test_epsilon_::<U256>();
+        test_epsilon_::<U512>();
+        test_epsilon_::<U1024>();
+    }
+
+    fn test_min_gt_zero_<T: BigUInt + HiLo>() {
+        let f = f256::MIN_GT_ZERO;
+        let fp = Float::<T>::from(&f);
+        assert_eq(&f, &fp);
         let f = f256::from(&fp);
-        assert_normal_eq(&f, &fp);
+        assert_eq(&f, &fp);
     }
 
     #[test]
     fn test_min_gt_zero() {
-        let f = f256::MIN_GT_ZERO;
-        let fp = Float256::from(&f);
-        assert_eq!((-1_i32).pow(f.sign()), fp.signum);
-        assert_eq!(f.quantum_exponent(), fp.exp);
-        assert_eq!(
-            &f.integral_significand() << Float256::FRACTION_BITS,
-            fp.signif
-        );
-        let f = f256::from(&fp);
-        assert_eq!((-1_i32).pow(f.sign()), fp.signum);
-        assert_eq!(f.quantum_exponent(), fp.exp);
-        assert_eq!(
-            &f.integral_significand() << Float256::FRACTION_BITS,
-            fp.signif
-        )
+        test_min_gt_zero_::<U256>();
+        test_min_gt_zero_::<U512>();
+        test_min_gt_zero_::<U1024>();
     }
 }
 
@@ -662,79 +697,114 @@ mod into_f256_tests {
     use super::*;
     use crate::consts::PI;
 
-    #[test]
-    fn test_overflow_1() {
-        let fp = Float256 {
+    fn test_overflow_1_<T: BigUInt + HiLo>() {
+        let fp = Float::<T> {
             signum: -1,
             exp: f256::MAX_EXP,
-            signif: Float256::ONE.signif,
+            signif: Float::<T>::ONE.signif,
         };
         let f = f256::from(&fp);
         assert_eq!(f, f256::NEG_INFINITY);
     }
 
     #[test]
-    fn test_overflow_2() {
-        let fp = Float256 {
+    fn test_overflow_1() {
+        test_overflow_1_::<U256>();
+        test_overflow_1_::<U512>();
+    }
+
+    fn test_overflow_2_<T: BigUInt + HiLo>() {
+        let fp = Float::<T> {
             signum: 1,
             exp: EMAX,
-            signif: U256::new(u128::MAX >> 1, u128::MAX - 7),
+            signif: (T::MAX >> 1) - T::from(&131071_u128),
         };
         let f = f256::from(&fp);
         assert_eq!(f, f256::INFINITY);
     }
 
     #[test]
-    fn test_overflow_3() {
-        let sh = Float256::FRACTION_BITS - FRACTION_BITS - 1;
-        let fp = Float256 {
+    fn test_overflow_2() {
+        test_overflow_2_::<U256>();
+        test_overflow_2_::<U512>();
+    }
+
+    fn test_overflow_3_<T: BigUInt + HiLo>() {
+        let sh = Float::<T>::FRACTION_BITS - FRACTION_BITS;
+        let fp = Float::<T> {
             signum: 1,
             exp: 0,
-            signif: U256::new(u128::MAX >> 1, (u128::MAX >> sh) << sh),
+            signif: (T::MAX >> sh) << (sh - 1),
         };
         let f = f256::from(&fp);
         assert_eq!(f, f256::TWO);
     }
 
     #[test]
-    fn test_underflow() {
-        let fp = Float256 {
+    fn test_overflow_3() {
+        test_overflow_3_::<U256>();
+        test_overflow_3_::<U512>();
+    }
+
+    fn test_underflow_<T: BigUInt + HiLo>() {
+        let fp = Float::<T> {
             signum: 1,
             exp: EMIN - SIGNIFICAND_BITS as i32,
-            signif: Float256::SIGNIF_ONE,
+            signif: Float::<T>::SIGNIF_ONE,
         };
         let f = f256::from(&fp);
         assert_eq!(f, f256::ZERO);
     }
 
     #[test]
-    fn test_round_to_min_gt_zero() {
-        let fp = Float256 {
+    fn test_underflow() {
+        test_underflow_::<U256>();
+        test_underflow_::<U512>();
+    }
+
+    fn test_round_to_min_gt_zero_<T: BigUInt + HiLo>() {
+        let fp = Float::<T> {
             signum: 1,
             exp: EMIN - SIGNIFICAND_BITS as i32,
-            signif: Float256::SIGNIF_ONE + U256::ONE,
+            signif: Float::<T>::SIGNIF_ONE + T::ONE,
         };
         let f = f256::from(&fp);
         assert_eq!(f, f256::MIN_GT_ZERO);
     }
 
     #[test]
-    fn test_round_to_epsilon() {
-        let fp = Float256 {
+    fn test_round_to_min_gt_zero() {
+        test_round_to_min_gt_zero_::<U256>();
+        test_round_to_min_gt_zero_::<U512>();
+    }
+
+    fn test_round_to_epsilon_<T: BigUInt + HiLo>() {
+        let fp = Float::<T> {
             signum: 1,
             exp: -237,
-            signif: U256::new(u128::MAX >> 1, u128::MAX),
+            signif: T::MAX >> 1,
         };
         let f = f256::from(&fp);
         assert_eq!(f, f256::EPSILON);
     }
 
     #[test]
-    fn test_f256_pi() {
+    fn test_round_to_epsilon() {
+        test_round_to_epsilon_::<U256>();
+        test_round_to_epsilon_::<U512>();
+    }
+
+    fn test_f256_pi_<T: BigUInt + HiLo>() {
         let f = PI;
-        let fp = Float256::from(&f);
+        let fp = Float::<T>::from(&f);
         let g = f256::from(&fp);
         assert_eq!(f, g);
+    }
+
+    #[test]
+    fn test_f256_pi() {
+        test_f256_pi_::<U256>();
+        test_f256_pi_::<U512>();
     }
 }
 
@@ -1023,41 +1093,77 @@ impl Float256 {
     }
 }
 
+pub(crate) type Float512 = Float<U512>;
+
+impl Float512 {
+    // LN_2 = ◯₅₁₀(logₑ(2))
+    // pub(crate) const LN_2: Self = Self::new(0, -1, ());
+    // LOG2_E = ◯₅₁₀(log₂(e))
+    // pub(crate) const LOG2_E: Self = Self::new(0, 0, ());
+    // LOG10_E = ◯₅₁₀(log₁₀(e))
+    // pub(crate) const LOG10_E: Self = Self::new(0, -1, ());
+
+    /// Raw assembly from signum, exponent and significand.
+    #[inline]
+    pub(crate) const fn new(
+        signum: i32,
+        exp: i32,
+        signif: (u128, u128, u128, u128),
+    ) -> Self {
+        debug_assert!(signif.0.leading_zeros() == 1);
+        Self {
+            signum,
+            exp,
+            signif: U512::new(signif.0, signif.1, signif.2, signif.3),
+        }
+    }
+}
+
 #[cfg(test)]
 mod add_sub_tests {
     use super::*;
 
-    #[test]
-    fn test_add_same_sign() {
-        let mut f = Float256::ONE;
+    fn test_add_same_sign_<T: BigUInt + HiLo>() {
+        let mut f = Float::<T>::ONE;
         f += f;
         assert_eq!(f.signum, 1);
         assert_eq!(f.exp, 1);
-        assert_eq!(f.signif, Float256::ONE.signif);
+        assert_eq!(f.signif, Float::<T>::ONE.signif);
         f.flip_sign();
         f += &f.clone();
         assert_eq!(f.signum, -1);
         assert_eq!(f.exp, 2);
-        assert_eq!(f.signif, Float256::ONE.signif);
+        assert_eq!(f.signif, Float::<T>::ONE.signif);
+    }
+
+    #[test]
+    fn test_add_same_sign() {
+        test_add_same_sign_::<U256>();
+        test_add_same_sign_::<U512>();
+    }
+
+    fn test_add_diff_sign_<T: BigUInt + HiLo + From<u128>>() {
+        let mut f = Float::<T>::ONE;
+        f += &Float::<T>::NEG_ONE;
+        assert_eq!(f, Float::<T>::ZERO);
+        let mut f = Float::<T> {
+            signum: -1,
+            exp: 0,
+            signif: Float::<T>::ONE.signif + <T>::from(1_u128),
+        };
+        f += &Float::<T>::EPSILON;
+        assert_eq!(f, Float::<T>::NEG_ONE);
+        let mut g = Float::<T>::EPSILON;
+        g += &f.clone();
+        assert_eq!(g.signum, -1);
+        assert_eq!(g.exp, -1);
+        assert_eq!(g.signif, (T::MAX >> 1) - T::from(1_u128));
     }
 
     #[test]
     fn test_add_diff_sign() {
-        let mut f = Float256::ONE;
-        f += &Float256::NEG_ONE;
-        assert_eq!(f, Float256::ZERO);
-        let mut f = Float256 {
-            signum: -1,
-            exp: 0,
-            signif: U256::new(Float256::ONE.signif.hi.0, 1),
-        };
-        f += &Float256::EPSILON;
-        assert_eq!(f, Float256::NEG_ONE);
-        let mut g = Float256::EPSILON;
-        g += &f.clone();
-        assert_eq!(g.signum, -1);
-        assert_eq!(g.exp, -1);
-        assert_eq!(g.signif, U256::new(u128::MAX >> 1, u128::MAX - 1));
+        test_add_diff_sign_::<U256>();
+        test_add_diff_sign_::<U512>();
     }
 
     #[test]
@@ -1090,38 +1196,48 @@ mod add_sub_tests {
         assert_eq!(a, d);
     }
 
-    #[test]
-    fn test_sub_diff_sign() {
-        let mut f = Float256::NEG_ONE;
-        f -= &Float256::ONE;
+    fn test_sub_diff_sign_<T: BigUInt + HiLo>() {
+        let mut f = Float::<T>::NEG_ONE;
+        f -= &Float::<T>::ONE;
         assert_eq!(f.signum, -1);
         assert_eq!(f.exp, 1);
-        assert_eq!(f.signif, Float256::ONE.signif);
+        assert_eq!(f.signif, Float::<T>::ONE.signif);
         let mut g = f;
         g.flip_sign();
         f -= &g;
         assert_eq!(f.signum, -1);
         assert_eq!(f.exp, 2);
-        assert_eq!(f.signif, Float256::ONE.signif);
+        assert_eq!(f.signif, Float::<T>::ONE.signif);
+    }
+
+    #[test]
+    fn test_sub_diff_sign() {
+        test_sub_diff_sign_::<U256>();
+        test_sub_diff_sign_::<U512>();
+    }
+
+    fn test_sub_same_sign_<T: BigUInt + HiLo + From<u128>>() {
+        let mut f = Float::<T>::NEG_ONE;
+        f -= f;
+        assert_eq!(f, Float::<T>::ZERO);
+        let mut f = Float::<T> {
+            signum: 1,
+            exp: 0,
+            signif: Float::<T>::ONE.signif + <T>::from(1_u128),
+        };
+        f -= &Float::<T>::EPSILON;
+        assert_eq!(f, Float::<T>::ONE);
+        let mut g = Float::<T>::EPSILON;
+        g -= &f.clone();
+        assert_eq!(g.signum, -1);
+        assert_eq!(g.exp, -1);
+        assert_eq!(g.signif, (T::MAX >> 1) - T::from(1_u128));
     }
 
     #[test]
     fn test_sub_same_sign() {
-        let mut f = Float256::NEG_ONE;
-        f -= f;
-        assert_eq!(f, Float256::ZERO);
-        let mut f = Float256 {
-            signum: 1,
-            exp: 0,
-            signif: U256::new(Float256::ONE.signif.hi.0, 1),
-        };
-        f -= &Float256::EPSILON;
-        assert_eq!(f, Float256::ONE);
-        let mut g = Float256::EPSILON;
-        g -= &f.clone();
-        assert_eq!(g.signum, -1);
-        assert_eq!(g.exp, -1);
-        assert_eq!(g.signif, U256::new(u128::MAX >> 1, u128::MAX - 1));
+        test_sub_same_sign_::<U256>();
+        test_sub_same_sign_::<U512>();
     }
 
     #[test]
@@ -1180,15 +1296,20 @@ mod add_sub_tests {
 mod mul_tests {
     use super::*;
 
-    #[test]
-    fn test_imul_same_sign() {
-        let mut x = Float256::NEG_ONE;
-        x += &Float256::EPSILON;
+    fn test_imul_same_sign_<T: BigUInt + HiLo + From<u128>>() {
+        let mut x = Float::<T>::NEG_ONE;
+        x += &Float::<T>::EPSILON;
         let y = x;
         x *= x;
         assert_eq!(x.signum, 1);
         assert_eq!(x.exp, -1);
-        assert_eq!(x.signif, U256::new(y.signif.hi.0, y.signif.lo.0 - 2));
+        assert_eq!(x.signif, (T::MAX >> 1) - T::from(3_u128));
+    }
+
+    #[test]
+    fn test_imul_same_sign() {
+        test_imul_same_sign_::<U256>();
+        test_imul_same_sign_::<U512>();
     }
 
     #[test]
@@ -1262,14 +1383,19 @@ mod mul_tests {
 mod div_tests {
     use super::*;
 
+    fn test_idiv_by_one_<T: BigUInt + HiLo>() {
+        let mut x = Float::<T>::ONE;
+        x.idiv(&Float::<T>::ONE);
+        assert_eq!(x, Float::<T>::ONE);
+        let mut x = -Float::<T>::ONE_HALF;
+        x.idiv(&Float::<T>::NEG_ONE);
+        assert_eq!(x, Float::<T>::ONE_HALF);
+    }
+
     #[test]
     fn test_idiv_by_one() {
-        let mut x = Float256::ONE;
-        x.idiv(&Float256::ONE);
-        assert_eq!(x, Float256::ONE);
-        let mut x = -Float256::ONE_HALF;
-        x.idiv(&Float256::NEG_ONE);
-        assert_eq!(x, Float256::ONE_HALF);
+        test_idiv_by_one_::<U256>();
+        test_idiv_by_one_::<U512>();
     }
 
     #[test]
@@ -1321,12 +1447,12 @@ mod sqrt_tests {
 
     #[test]
     fn test_zero() {
-        assert_eq!(Float256::ZERO.sqrt(), Float256::ZERO);
+        assert_eq!(Float512::ZERO.sqrt(), Float512::ZERO);
     }
 
     #[test]
     fn test_one() {
-        assert_eq!(Float256::ONE.sqrt(), Float256::ONE);
+        assert_eq!(Float512::ONE.sqrt(), Float512::ONE);
     }
 
     #[test]
