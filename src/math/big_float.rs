@@ -420,6 +420,16 @@ where
         (p, r)
     }
 
+    /// Computes `self` * 2ⁿ
+    #[inline(always)]
+    pub fn mul_pow2(&self, n: i32) -> Self {
+        Self {
+            signum: self.signum,
+            exp: self.exp + n,
+            signif: self.signif,
+        }
+    }
+
     /// Computes `self * self` .
     #[inline(always)]
     #[must_use]
