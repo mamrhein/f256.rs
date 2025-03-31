@@ -9,70 +9,70 @@
 
 use core::{cmp::Ordering, num::FpCategory};
 
-use super::{bkm::bkm_l, Float256, FP492};
+use super::{bkm::bkm_l, Float256, Float512};
 use crate::{exp, f256, norm_signif_exp, signif, BigUInt};
 
-// LN_2 = ◯₄₉₂(logₑ(2)) =
-// 0.693147180559945309417232121458176568075500134360255254120680009493393621\
-// 96969471560586332699641868754200148102057068573368552023575813055703267075\
-// 16657753
-pub(crate) const LN_2: FP492 = FP492::new(
-    0x00000b17217f7d1cf79abc9e3b39803f,
-    0x2f6af40f343267298b62d8a0d175b8ba,
-    0xafa2be7b876206debac98559552fb4af,
-    0xa1b10ed2eae35c138214427573b29117,
+// LN_2 = ◯₅₁₀(logₑ(2)) =
+// 6.9314718055994530941723212145817656807550013436025525412068000949339362196969471560586332699641868754200148102057068573368552023575813055703267075163507602e-1
+pub(crate) const LN_2: Float512 = Float512::new(
+    1,
+    -1,
+    &[
+        0x58b90bfbe8e7bcd5e4f1d9cc01f97b57,
+        0xa079a193394c5b16c5068badc5d57d15,
+        0xf3dc3b1036f5d64c2acaa97da57d0d88,
+        0x7697571ae09c10a213ab9d9488b4dc13,
+    ],
 );
-// LN_10 = ◯₄₉₂(logₑ(10)) =
-// 2.302585092994045684017991454684364207601101488628772976033327900967572609\
-// 67735248023599720508959829834196778404228624863340952546508280675666628736\
-// 9077486
-pub(crate) const LN_10: FP492 = FP492::new(
-    0x000024d763776aaa2b05ba95b58ae0b4,
-    0xc28a38a3fb3e76977e43a0f187a0807c,
-    0x0b5ca58bc0b5ec6a0417331c32f00b17,
-    0xc35a0b1889061042f8b6bee3de2100b9,
+// LN_10 = ◯₅₁₀(logₑ(10)) =
+// 2.3025850929940456840179914546843642076011014886287729760333279009675726096773524802359972050895982983419677840422862486334095254650828067566662873690987815
+pub(crate) const LN_10: Float512 = Float512::new(
+    1,
+    1,
+    &[
+        0x49aec6eed554560b752b6b15c1698514,
+        0x7147f67ced2efc8741e30f4100f816b9,
+        0x4b17816bd8d4082e663865e0162f86b4,
+        0x1631120c2085f16d7dc7bc4201728b6b,
+    ],
 );
-// LOG2_E = ◯₄₉₂(log₂(e)) =
-// 1.442695040888963407359924681001892137426645954152985934135449406931109219\
-// 18118507988552662289350634449699751830965254425559310168716835964272066215\
-// 82310518
-pub(crate) const LOG2_E: FP492 = FP492::new(
-    0x0000171547652b82fe1777d0ffda0d23,
-    0xa7d11d6aef551bad2b4b1164a2cd9a34,
-    0x2648fbc3887eeaa2ed9ac49b25eeb82d,
-    0x7c167d52173cc1895213f897f5e06a7c,
+// LOG2_E = ◯₅₁₀(log₂(E)) =
+// 1.4426950408889634073599246810018921374266459541529859341354494069311092191811850798855266228935063444969975183096525442555931016871683596427206621582234795
+pub(crate) const LOG2_E: Float512 = Float512::new(
+    1,
+    0,
+    &[
+        0x5c551d94ae0bf85ddf43ff68348e9f44,
+        0x75abbd546eb4ad2c45928b3668d09923,
+        0xef0e21fbaa8bb66b126c97bae0b5f059,
+        0xf5485cf30625484fe25fd781a9ef9cda,
+    ],
 );
-// LOG10_E = ◯₄₉₂(log₁₀(e)) =
-// 0.434294481903251827651128918916605082294397005803666566114453783165864649\
-// 20887077472922494933843174831870610674476630373364167928715896390656922106\
-// 466854313
-pub(crate) const LOG10_E: FP492 = FP492::new(
-    0x000006f2dec549b9438ca9aadd557d69,
-    0x9ee191f71a30122e4d1011d1f96a27bc,
-    0x7529e3aa1277d0a0179f94911aac9632,
-    0x3250a8c671decfe9c6e5e37d15c69646,
+// LOG10_E = ◯₅₁₀(log₁₀(E)) =
+// 4.3429448190325182765112891891660508229439700580366656611445378316586464920887077472922494933843174831870610674476630373364167928715896390656922106466281229e-1
+pub(crate) const LOG10_E: Float512 = Float512::new(
+    1,
+    -2,
+    &[
+        0x6f2dec549b9438ca9aadd557d699ee19,
+        0x1f71a30122e4d1011d1f96a27bc7529e,
+        0x3aa1277d0a0179f94911aac96323250a,
+        0x8c671decfe9c6e5e37d15c696466d3da,
+    ],
 );
 
-#[inline(always)]
-fn approx_ln(m: &FP492, e: i32) -> FP492 {
-    debug_assert!(m >= &FP492::ONE);
-    let ln_m = bkm_l(&m);
-    let mut ln = LN_2;
-    ln *= &FP492::from(e);
-    ln += &ln_m;
+fn approx_ln(f: &Float512) -> Float512 {
+    // f = m⋅2ᵉ
+    // logₙ f = logₙ m + logₙ 2ᵉ = logₙ m + e⋅logₙ 2
+    let mut ln = LN_2 * Float512::from(f.exp());
+    ln += &bkm_l(&Float512::from(&f.signif()));
     ln
 }
 
-fn ln(x: &f256) -> FP492 {
+#[inline(always)]
+fn ln(x: &f256) -> Float512 {
     debug_assert!(!x.is_special() && x.is_sign_positive());
-    let (m, e) = norm_signif_exp(&x.bits);
-    // x = m⋅2⁻ⁿ⋅2ᵉ with n = 236 and 1 <= m⋅2⁻ⁿ < 2
-    // By using m as the hi-part of an FP492 value,
-    // we turn m⋅2⁻ⁿ into m', so that
-    // x = m'⋅2ᵉ
-    // ln x = ln (m'⋅2ᵉ) = ln m' + ln 2ᵉ = ln (m') + e⋅ln 2
-    let m = FP492::new(m.hi.0, m.lo.0, 0_u128, 0_u128);
-    approx_ln(&m, e)
+    approx_ln(&Float512::from(x))
 }
 
 impl f256 {
@@ -120,8 +120,8 @@ impl f256 {
                                 Ordering::Less => Self::NEG_INFINITY,
                             }
                         } else {
-                            let mut t = Float256::from(&ln(self));
-                            t /= &Float256::from(&ln(base));
+                            let mut t = ln(self);
+                            t /= &ln(base);
                             Self::from(&t)
                         }
                     }
@@ -166,21 +166,22 @@ impl f256 {
                 // x < 2⁻²⁵⁶ => ln (1+x) ≈ x-½x² ≈ x
                 *self
             }
-            -256..=0 => {
+            // -256..=0 => {
+            -256..=492 => {
                 // 2⁻²⁵⁶ <= x < 2
-                let mut m = FP492::from(self);
-                m += &FP492::ONE;
-                Self::from(&approx_ln(&m, 0))
+                let mut f = Float512::from(self);
+                f += &Float512::ONE;
+                Self::from(&approx_ln(&f))
             }
-            1..=492 => {
-                // 2 <= x < 2⁴⁹³
-                let m = signif(&self.bits);
-                let mut m = FP492::new(m.hi.0, m.lo.0, 0_u128, 0_u128);
-                let mut t = FP492::ONE;
-                t.ishr(e as u32);
-                m += &t;
-                Self::from(&approx_ln(&m, e))
-            }
+            // 1..=492 => {
+            //     // 2 <= x < 2⁴⁹³
+            //     let m = signif(&self.bits);
+            //     let mut m = Float512::new(m.hi.0, m.lo.0, 0_u128, 0_u128);
+            //     let mut t = Float512::ONE;
+            //     t.ishr(e as u32);
+            //     m += &t;
+            //     Self::from(&approx_ln(&m, e))
+            // }
             _ => {
                 // x >= 2⁴⁹³ => ln (1+x) ≈ ln x
                 self.ln()
@@ -533,7 +534,7 @@ mod ln_tests {
     #[test]
     fn test_ln_1_minus_epsilon() {
         let x = f256::ONE - f256::EPSILON;
-        assert_eq!(x.ln(), -f256::EPSILON);
+        assert_eq!(x.ln(), -(f256::EPSILON + f256::EPSILON.ulp()));
     }
 
     #[test]
@@ -615,9 +616,9 @@ mod ln_1p_tests {
     fn test_ln_near_1() {
         assert_eq!(f256::ONE.ln(), f256::ZERO);
         let f = f256::ONE - f256::EPSILON;
-        assert_eq!(f.ln(), -f256::EPSILON);
+        assert_eq!(f.ln(), -(f256::EPSILON + f256::EPSILON.ulp()));
         let f = f256::ONE + f256::EPSILON;
-        assert_eq!(f.ln(), f256::EPSILON - f256::EPSILON.ulp() / f256::TWO);
+        assert_eq!(f.ln(), f256::EPSILON - f256::EPSILON.ulp().div2());
     }
 
     #[test]

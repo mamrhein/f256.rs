@@ -608,7 +608,7 @@ mod from_i32_tests {
             Float512::new(
                 -1,
                 17,
-                ((i.unsigned_abs() as u128) << 109, 0_u128, 0_u128, 0_u128,)
+                &[(i.unsigned_abs() as u128) << 109, 0_u128, 0_u128, 0_u128,]
             )
         );
         assert_eq!(
@@ -1160,16 +1160,13 @@ impl Float512 {
 
     /// Raw assembly from signum, exponent and significand.
     #[inline]
-    pub(crate) const fn new(
-        signum: i32,
-        exp: i32,
-        signif: (u128, u128, u128, u128),
-    ) -> Self {
-        debug_assert!(signif.0.leading_zeros() == 1);
+    pub(crate) const fn new(signum: i32, exp: i32, signif: &[u128]) -> Self {
+        debug_assert!(signif[0].leading_zeros() == 1);
+        debug_assert!(signif.len() == 4);
         Self {
             signum,
             exp,
-            signif: U512::new(signif.0, signif.1, signif.2, signif.3),
+            signif: U512::new(signif[0], signif[1], signif[2], signif[3]),
         }
     }
 }

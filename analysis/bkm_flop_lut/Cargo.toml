@@ -1,0 +1,9 @@
+[package]
+name = "bkm_flop_lut"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rug = "1.27.0"
+
+[workspace]

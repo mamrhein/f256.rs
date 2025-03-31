@@ -32,5 +32,5 @@ std = []
 [workspace]
 members = [".", "pow2_div_pow5_lut", "pow5_div_pow2_lut",
     "pow2_div_pow10_lut", "pow10_div_pow2_lut"]
-exclude = ["analysis/calc_taylor_polynom_coeffs",
+exclude = ["analysis/bkm_flop_lut",
     "analysis/compute_required_bits", "analysis/payne_hanek"]
