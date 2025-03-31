@@ -493,6 +493,20 @@ impl<T: BigUInt> From<&T> for Float<T> {
     }
 }
 
+impl<T> From<i32> for Float<T>
+where
+    T: BigUInt + HiLo + From<u128>,
+{
+    #[inline(always)]
+    fn from(i: i32) -> Self {
+        Self::from_sign_exp_signif(
+            (i < 0) as u32,
+            0,
+            &*T::from(i.unsigned_abs() as u128).as_vec_u128(),
+        )
+    }
+}
+
 impl<T> From<&f256> for Float<T>
 where
     T: BigUInt + HiLo + for<'a> From<&'a [u128]>,
@@ -574,6 +588,37 @@ where
         };
         f256_bits.hi.0 |= ((fp.signum < 0) as u128) << HI_SIGN_SHIFT;
         f256 { bits: f256_bits }
+    }
+}
+
+#[cfg(test)]
+mod from_i32_tests {
+    use super::*;
+    use crate::big_uint::U1024;
+
+    #[test]
+    fn from_i32() {
+        assert_eq!(Float256::from(1_i32), Float256::ONE);
+        assert_eq!(Float256::from(-1_i32), Float256::NEG_ONE);
+        assert_eq!(Float512::from(0_i32), Float512::ZERO);
+        assert_eq!(Float512::from(-2_i32), -Float512::TWO);
+        let i = -262142_i32;
+        assert_eq!(
+            Float512::from(i),
+            Float512::new(
+                -1,
+                17,
+                ((i.unsigned_abs() as u128) << 109, 0_u128, 0_u128, 0_u128,)
+            )
+        );
+        assert_eq!(
+            Float::<U1024>::from(i32::MIN),
+            Float::<U1024> {
+                signum: -1,
+                exp: 31,
+                signif: Float::<U1024>::SIGNIF_ONE,
+            }
+        );
     }
 }
 
