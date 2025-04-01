@@ -10,12 +10,12 @@
 use core::num::FpCategory;
 
 use crate::{
-    abs_bits, exp, f256, math::big_float::Float256, norm_signif_exp, EMAX,
+    abs_bits, exp, f256, math::big_float::Float512, norm_signif_exp, EMAX,
     EMIN, FRACTION_BITS,
 };
 
-pub(crate) fn approx_powi(mut base: Float256, mut n: i32) -> Float256 {
-    let mut result = Float256::ONE;
+pub(crate) fn approx_powi(mut base: Float512, mut n: i32) -> Float512 {
+    let mut result = Float512::ONE;
     if n < 0 {
         n = -n;
         base = base.recip();
@@ -49,7 +49,7 @@ fn powi(x: &f256, mut n: i32) -> f256 {
         return [f256::ZERO, f256::NEG_ZERO][s as usize];
     }
     // Result is most likely finite.
-    let base = Float256::from(x);
+    let base = Float512::from(x);
     let result = approx_powi(base, n);
     f256::from(&result)
 }
@@ -174,6 +174,16 @@ mod powi_tests {
         let n = -7;
         let f = f256::from_sign_exp_signif(1, EMAX / n - 1, (0, 1));
         assert_eq!(f.powi(n), f256::NEG_INFINITY);
+        let n = 1440;
+        let f = f256::from_sign_exp_signif(
+            1,
+            -54,
+            (
+                0x00001be93972f42ce76d0fe4549e8709,
+                0x822fb626bcccea99631b77b8b3c24781,
+            ),
+        );
+        assert_eq!(f.powi(n), f256::INFINITY);
     }
 
     #[test]
