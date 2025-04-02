@@ -12,59 +12,10 @@ use core::{cmp::Ordering, num::FpCategory};
 use super::{bkm::bkm_l, Float256, Float512};
 use crate::{exp, f256, norm_signif_exp, signif, BigUInt};
 
-// LN_2 = ◯₅₁₀(logₑ(2)) =
-// 6.9314718055994530941723212145817656807550013436025525412068000949339362196969471560586332699641868754200148102057068573368552023575813055703267075163507602e-1
-pub(crate) const LN_2: Float512 = Float512::new(
-    1,
-    -1,
-    &[
-        0x58b90bfbe8e7bcd5e4f1d9cc01f97b57,
-        0xa079a193394c5b16c5068badc5d57d15,
-        0xf3dc3b1036f5d64c2acaa97da57d0d88,
-        0x7697571ae09c10a213ab9d9488b4dc13,
-    ],
-);
-// LN_10 = ◯₅₁₀(logₑ(10)) =
-// 2.3025850929940456840179914546843642076011014886287729760333279009675726096773524802359972050895982983419677840422862486334095254650828067566662873690987815
-pub(crate) const LN_10: Float512 = Float512::new(
-    1,
-    1,
-    &[
-        0x49aec6eed554560b752b6b15c1698514,
-        0x7147f67ced2efc8741e30f4100f816b9,
-        0x4b17816bd8d4082e663865e0162f86b4,
-        0x1631120c2085f16d7dc7bc4201728b6b,
-    ],
-);
-// LOG2_E = ◯₅₁₀(log₂(E)) =
-// 1.4426950408889634073599246810018921374266459541529859341354494069311092191811850798855266228935063444969975183096525442555931016871683596427206621582234795
-pub(crate) const LOG2_E: Float512 = Float512::new(
-    1,
-    0,
-    &[
-        0x5c551d94ae0bf85ddf43ff68348e9f44,
-        0x75abbd546eb4ad2c45928b3668d09923,
-        0xef0e21fbaa8bb66b126c97bae0b5f059,
-        0xf5485cf30625484fe25fd781a9ef9cda,
-    ],
-);
-// LOG10_E = ◯₅₁₀(log₁₀(E)) =
-// 4.3429448190325182765112891891660508229439700580366656611445378316586464920887077472922494933843174831870610674476630373364167928715896390656922106466281229e-1
-pub(crate) const LOG10_E: Float512 = Float512::new(
-    1,
-    -2,
-    &[
-        0x6f2dec549b9438ca9aadd557d699ee19,
-        0x1f71a30122e4d1011d1f96a27bc7529e,
-        0x3aa1277d0a0179f94911aac96323250a,
-        0x8c671decfe9c6e5e37d15c696466d3da,
-    ],
-);
-
 fn approx_ln(f: &Float512) -> Float512 {
     // f = m⋅2ᵉ
     // logₙ f = logₙ m + logₙ 2ᵉ = logₙ m + e⋅logₙ 2
-    let mut ln = LN_2 * Float512::from(f.exp());
+    let mut ln = Float512::LN_2 * Float512::from(f.exp());
     ln += &bkm_l(&Float512::from(&f.signif()));
     ln
 }
@@ -203,7 +154,7 @@ impl f256 {
             _ => {
                 // log₂ x = ln x ⋅ log₂ e
                 let mut t = ln(&self);
-                t *= &LOG2_E;
+                t *= &Float512::LOG2_E;
                 Self::from(&t)
             }
         }
@@ -223,13 +174,14 @@ impl f256 {
             _ => {
                 // log₁₀ x = ln x ⋅ log₁₀ e
                 let mut t = ln(&self);
-                t *= &LOG10_E;
+                t *= &Float512::LOG10_E;
                 Self::from(&t)
             }
         }
     }
 }
 
+//noinspection DuplicatedCode
 #[cfg(test)]
 mod log_tests {
     use super::*;
@@ -628,7 +580,7 @@ mod ln_1p_tests {
 
     #[test]
     fn test_ln_1p_1() {
-        assert_eq!(f256::ONE.ln_1p(), f256::from(&LN_2));
+        assert_eq!(f256::ONE.ln_1p(), f256::from(&Float512::LN_2));
     }
 
     #[test]
