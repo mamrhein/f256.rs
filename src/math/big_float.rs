@@ -144,11 +144,7 @@ where
     /// Construct a `Float` value f from sign s, quantum exponent t and
     /// integral significand c, so that f = (-1)ˢ × 2ᵗ × c
     #[must_use]
-    pub(crate) fn from_sign_exp_signif<'a>(
-        s: u32,
-        t: i32,
-        c: &'a [u128],
-    ) -> Self {
+    pub(crate) fn from_sign_exp_signif(s: u32, t: i32, c: &[u128]) -> Self {
         debug_assert!(s == 0 || s == 1);
         let mut m = T::from(c);
         if m.is_zero() {
