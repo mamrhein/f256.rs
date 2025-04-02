@@ -531,6 +531,15 @@ where
     }
 }
 
+#[inline(always)]
+fn extract_signif<T: BigUInt + HiLo>(f256_signif: T) -> U256 {
+    let [hi, lo] = match T::N_CHUNKS {
+        2.. => *f256_signif.as_vec_u128().last_chunk::<2>().unwrap(),
+        _ => [f256_signif.as_vec_u128()[0], 0_u128],
+    };
+    U256::new(hi, lo)
+}
+
 impl<T> From<&Float<T>> for f256
 where
     T: BigUInt + HiLo,
@@ -551,13 +560,7 @@ where
                 let f256_signif = fp.signif.rounding_div_pow2(
                     prec_adj.saturating_add_signed(EMIN - fp.exp),
                 );
-                let [hi, lo] = match T::N_CHUNKS {
-                    2.. => {
-                        *f256_signif.as_vec_u128().last_chunk::<2>().unwrap()
-                    }
-                    _ => [f256_signif.as_vec_u128()[0], 0_u128],
-                };
-                U256::new(hi, lo)
+                extract_signif(f256_signif)
             }
             EMIN..=EMAX => {
                 let (f256_signif, rem) = fp.signif.widening_shr(prec_adj);
@@ -565,13 +568,7 @@ where
                 let exp_bits = (EXP_BIAS.saturating_add_signed(fp.exp - 1)
                     as u128)
                     << HI_FRACTION_BITS;
-                let [hi, lo] = match T::N_CHUNKS {
-                    2.. => {
-                        *f256_signif.as_vec_u128().last_chunk::<2>().unwrap()
-                    }
-                    _ => [f256_signif.as_vec_u128()[0], 0_u128],
-                };
-                let mut bits = U256::new(hi, lo);
+                let mut bits = extract_signif(f256_signif);
                 bits.hi.0 += exp_bits;
                 // Final rounding. Possibly overflowing into the exponent,
                 // but that is ok.
