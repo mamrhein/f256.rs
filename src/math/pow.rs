@@ -14,6 +14,32 @@ use crate::{
     EMIN, FRACTION_BITS,
 };
 
+enum LIM {
+    Ok,
+    Overflow,
+    Underflow,
+}
+
+impl LIM {
+    // Check the range of exponents n where xⁿ is guarantied to be infinite.
+    #[inline(always)]
+    fn powi(x: &f256, n: i32) -> Self {
+        let (m, mut e) = norm_signif_exp(&abs_bits(x));
+        // Now we have |x| = m⋅2ᵉ with 1 <= m < 2 and Eₘᵢₙ-P+1 <= e <= Eₘₐₓ
+        // |x|ⁿ = (m⋅2ᵉ)ⁿ = mⁿ⋅(2ᵉ)ⁿ = mⁿ⋅2ᵉⁿ
+        // n > 1 => 1 <= mⁿ < 2ⁿ => 2ᵉⁿ <= mⁿ⋅2ᵉⁿ < 2ⁿ⁺ᵉⁿ
+        // n < 1 => 2ⁿ < mⁿ <= 1 => 2ⁿ⁺ᵉⁿ < mⁿ⋅2ᵉⁿ <= 2ᵉⁿ
+        const LOWER_LIM: i32 = EMIN - FRACTION_BITS as i32 - 1;
+        const UPPER_LIM: i32 = EMAX + 1;
+        let e_times_n = e.saturating_mul(n);
+        match e_times_n {
+            ..=LOWER_LIM => LIM::Underflow,
+            UPPER_LIM.. => LIM::Overflow,
+            _ => LIM::Ok,
+        }
+    }
+}
+
 pub(crate) fn approx_powi(mut base: Float512, mut n: i32) -> Float512 {
     let mut result = Float512::ONE;
     if n < 0 {
@@ -30,28 +56,23 @@ pub(crate) fn approx_powi(mut base: Float512, mut n: i32) -> Float512 {
     result
 }
 
+// Calculate xⁿ
 #[inline(always)]
 fn powi(x: &f256, mut n: i32) -> f256 {
     debug_assert!(x.is_finite() && !x.eq_zero());
     debug_assert!(n.abs() > 1);
     // x < 0 => x = -1⋅|x| => xⁿ = (-1)ⁿ⋅|x|ⁿ
     let s = x.sign() * ((n.abs() % 2) == 1) as u32;
-    let (m, e) = norm_signif_exp(&abs_bits(x));
-    // Now we have |x| = m⋅2ᵉ with 1 <= m < 2 and Eₘᵢₙ-P+1 <= e <= Eₘₐₓ
-    // |x|ⁿ = (m⋅2ᵉ)ⁿ = mⁿ⋅(2ᵉ)ⁿ = mⁿ⋅2ᵉⁿ
-    // n > 1 => 1 <= mⁿ < 2ⁿ => 2ᵉⁿ <= mⁿ⋅2ᵉⁿ < 2ⁿ⁺ᵉⁿ
-    // n < 1 => 2ⁿ < mⁿ <= 1 => 2ⁿ⁺ᵉⁿ < mⁿ⋅2ᵉⁿ <= 2ᵉⁿ
-    let mut lim = e.saturating_mul(n);
-    if lim > EMAX {
-        return [f256::INFINITY, f256::NEG_INFINITY][s as usize];
+    match LIM::powi(x, n) {
+        LIM::Overflow => [f256::INFINITY, f256::NEG_INFINITY][s as usize],
+        LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][s as usize],
+        _ => {
+            // Result is most likely finite.
+            let base = Float512::from(x);
+            let result = approx_powi(base, n);
+            f256::from(&result)
+        }
     }
-    if lim < EMIN - FRACTION_BITS as i32 {
-        return [f256::ZERO, f256::NEG_ZERO][s as usize];
-    }
-    // Result is most likely finite.
-    let base = Float512::from(x);
-    let result = approx_powi(base, n);
-    f256::from(&result)
 }
 
 impl f256 {
@@ -240,5 +261,13 @@ mod powi_tests {
         let f2 = f.square();
         assert_eq!(f.powi(2), f2);
         assert_eq!(f.powi(9), f2.square().square() * f);
+    }
+
+    #[test]
+    fn test_base_near_minus_1() {
+        let f = f256::NEG_ONE + f256::EPSILON;
+        let f2 = f.square();
+        assert_eq!(f.powi(2), f2);
+        assert_eq!(f.powi(5), f2.square() * f);
     }
 }
