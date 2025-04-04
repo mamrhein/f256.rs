@@ -1144,6 +1144,11 @@ impl Float256 {
 pub(crate) type Float512 = Float<U512>;
 
 impl Float512 {
+    pub(crate) const THREE_HALF: Self = Self {
+        signum: 1,
+        signif: U512::new(3_u128 << 125, 0, 0, 0),
+        exp: 0,
+    };
     // LN_2 = ◯₅₁₀(logₑ(2)) =
     // 6.9314718055994530941723212145817656807550013436025525412068000949339362196969471560586332699641868754200148102057068573368552023575813055703267075163507602e-1
     pub(crate) const LN_2: Float512 = Float512::new(
