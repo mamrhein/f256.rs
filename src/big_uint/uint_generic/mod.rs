@@ -63,6 +63,10 @@ where
         [self.hi.as_vec_u128(), self.lo.as_vec_u128()].concat()
     }
 
+    fn first_chunk(&self) -> u128 {
+        self.hi_t().first_chunk()
+    }
+
     fn last_chunk(&self) -> u128 {
         self.lo_t().last_chunk()
     }

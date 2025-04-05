@@ -38,6 +38,7 @@ where
     fn hi(&self) -> Self;
     fn lo(&self) -> Self;
     fn as_vec_u128(&self) -> Vec<u128>;
+    fn first_chunk(&self) -> u128;
     fn last_chunk(&self) -> u128;
 }
 

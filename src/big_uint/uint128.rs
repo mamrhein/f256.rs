@@ -79,6 +79,10 @@ impl HiLo for U128 {
     fn last_chunk(&self) -> u128 {
         self.0
     }
+
+    fn first_chunk(&self) -> u128 {
+        self.0
+    }
 }
 
 impl BigUInt for U128 {
