@@ -59,7 +59,9 @@
 extern crate alloc;
 extern crate core;
 
-use crate::big_uint::{BigUInt, DivRem, HiLo, U1024, U128, U256, U512};
+use crate::big_uint::{
+    BigUInt, DivRem, HiLo, Parity, U1024, U128, U256, U512,
+};
 use core::{cmp::Ordering, convert::Into, num::FpCategory, ops::Neg};
 
 mod big_uint;
@@ -581,6 +583,24 @@ impl f256 {
     #[inline]
     pub(crate) fn is_integer(self) -> bool {
         is_int(&abs_bits(&self))
+    }
+
+    /// Returns parity of `self` if `self` represents an integer
+    pub(crate) fn parity(&self) -> Option<Parity> {
+        if self.is_special() {
+            return [None, Some(Parity::Even)][self.eq_zero() as usize];
+        }
+        let (_, exp, signif) = split_f256_enc(self);
+        let ntz = signif.trailing_zeros();
+        const LIM: i32 = FRACTION_BITS as i32;
+        match exp + ntz as i32 {
+            // `self` is not an int
+            ..=-1 => None,
+            // self < 2²³⁶ => check last int bit
+            0..=LIM => Some((signif >> exp.unsigned_abs()).parity()),
+            // `self` >= 2²³⁶ => allways even
+            _ => Some(Parity::Even),
+        }
     }
 
     /// Returns the unit in the last place of `self`.
@@ -1255,6 +1275,15 @@ impl Neg for f256 {
     }
 }
 
+impl Neg for &f256 {
+    type Output = <f256 as Neg>::Output;
+
+    #[inline(always)]
+    fn neg(self) -> Self::Output {
+        self.negated()
+    }
+}
+
 impl TryFrom<&f256> for i32 {
     type Error = ();
 
@@ -1270,15 +1299,6 @@ impl TryFrom<&f256> for i32 {
             256 => Ok(0),
             _ => Err(()),
         }
-    }
-}
-
-impl Neg for &f256 {
-    type Output = <f256 as Neg>::Output;
-
-    #[inline(always)]
-    fn neg(self) -> Self::Output {
-        self.negated()
     }
 }
 
@@ -1786,6 +1806,30 @@ mod to_i32_tests {
             i32::MAX as i64 + 1
         ))
         .is_err());
+    }
+}
+
+#[cfg(test)]
+mod parity_tests {
+    use super::*;
+
+    #[test]
+    fn test_parity() {
+        assert_eq!(f256::ZERO.parity(), Some(Parity::Even));
+        assert_eq!(f256::NEG_ZERO.parity(), Some(Parity::Even));
+        assert_eq!(f256::TEN.parity(), Some(Parity::Even));
+        assert_eq!(f256::NEG_ONE.parity(), Some(Parity::Odd));
+        assert_eq!(f256::MAX.parity(), Some(Parity::Even));
+        assert_eq!(f256::MIN.parity(), Some(Parity::Even));
+        let f = f256::TWO.mul_pow2(FRACTION_BITS) - f256::ONE;
+        assert_eq!(f.parity(), Some(Parity::Odd));
+        assert!(f256::MIN_GT_ZERO.parity().is_none());
+        assert!(f256::MIN_POSITIVE.parity().is_none());
+        assert!(f256::NAN.parity().is_none());
+        assert!(f256::NEG_INFINITY.parity().is_none());
+        assert!(f256::INFINITY.parity().is_none());
+        assert!(ONE_HALF.parity().is_none());
+        assert!(EPSILON.parity().is_none());
     }
 }
 
