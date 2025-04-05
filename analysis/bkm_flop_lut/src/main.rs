@@ -58,7 +58,7 @@ fn log_consts() {
 }
 
 fn main() {
-    bkm_lut(2 * 237 + 1);
+    bkm_lut(512 + 1);
     println!();
     log_consts();
 }
