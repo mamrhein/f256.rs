@@ -48,6 +48,12 @@ pub(crate) trait DivRem<RHS = Self> {
     fn div_rem(self, rhs: RHS) -> Self::Output;
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Parity {
+    Even,
+    Odd,
+}
+
 pub(crate) trait BigUInt
 where
     Self: Copy
@@ -107,6 +113,11 @@ where
 
     /// Return true, if `self` is odd.
     fn is_odd(&self) -> bool;
+
+    /// Return the parity of `self`.
+    fn parity(&self) -> Parity {
+        [Parity::Even, Parity::Odd][self.is_odd() as usize]
+    }
 
     /// Returns the number of leading zeros in the binary representation of
     /// `self`.
