@@ -215,11 +215,25 @@ where
     }
 
     pub(crate) fn trunc(&self) -> Self {
-        let sh = max(Self::FRACTION_BITS as i32 - self.exp, 0) as u32;
-        Self {
-            signum: self.signum,
-            exp: self.exp,
-            signif: (self.signif >> sh) << sh,
+        match self.exp {
+            // `self`>= 2 => set fractional bits to 0
+            1.. => {
+                let sh =
+                    Self::FRACTION_BITS.saturating_sub(self.exp() as u32);
+                Self {
+                    signum: self.signum,
+                    exp: self.exp,
+                    signif: (self.signif >> sh) << sh,
+                }
+            }
+            // 1 <= `self` < 2
+            0 if !self.is_zero() => Self {
+                signum: self.signum,
+                exp: 0,
+                signif: Self::SIGNIF_ONE,
+            },
+            // `self` < 1
+            _ => Self::ZERO,
         }
     }
 
