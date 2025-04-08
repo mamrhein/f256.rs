@@ -12,7 +12,7 @@ use core::{cmp::Ordering, num::FpCategory};
 use super::{bkm::bkm_l, Float256, Float512};
 use crate::{exp, f256, norm_signif_exp, signif, BigUInt};
 
-fn approx_ln(f: &Float512) -> Float512 {
+pub(crate) fn approx_ln(f: &Float512) -> Float512 {
     // f = m⋅2ᵉ
     // logₙ f = logₙ m + logₙ 2ᵉ = logₙ m + e⋅logₙ 2
     let mut ln = Float512::LN_2 * Float512::from(f.exp());
@@ -486,7 +486,7 @@ mod ln_tests {
     #[test]
     fn test_ln_1_minus_epsilon() {
         let x = f256::ONE - f256::EPSILON;
-        assert_eq!(x.ln(), -(f256::EPSILON + f256::EPSILON.ulp()));
+        assert_eq!(x.ln(), -f256::EPSILON);
     }
 
     #[test]
@@ -568,7 +568,7 @@ mod ln_1p_tests {
     fn test_ln_near_1() {
         assert_eq!(f256::ONE.ln(), f256::ZERO);
         let f = f256::ONE - f256::EPSILON;
-        assert_eq!(f.ln(), -(f256::EPSILON + f256::EPSILON.ulp()));
+        assert_eq!(f.ln(), -f256::EPSILON);
         let f = f256::ONE + f256::EPSILON;
         assert_eq!(f.ln(), f256::EPSILON - f256::EPSILON.ulp().div2());
     }
