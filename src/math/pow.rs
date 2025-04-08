@@ -192,8 +192,8 @@ fn powf(x: &f256, y: &f256) -> f256 {
         };
     }
     // y ∉ ℤ
-    if x_sign == 1 && y.sign() == 1 {
-        // xʸ = NaN for x < 0 and non-integer y < 0
+    if x_sign == 1 {
+        // xʸ = NaN for x < 0 and non-integer y
         return f256::NAN;
     };
     match LIM::powf(x, y) {
@@ -539,8 +539,8 @@ mod powf_tests {
             assert!(f256::NAN.powf(&b).is_nan());
         }
         for x in [f256::MIN, -g, f256::NEG_ONE, -f256::MIN_POSITIVE] {
-            // xʸ = NaN for x < 0 and non-integer y < 0
-            assert!(x.powf(&-g).is_nan());
+            // xʸ = NaN for x < 0 and non-integer y
+            assert!(x.powf(&g).is_nan());
         }
     }
 
@@ -626,14 +626,14 @@ mod powf_tests {
         assert_eq!(x.powf(&y), f256::INFINITY);
         let y = f256::from(1439.907);
         let x = f256::from_sign_exp_signif(
-            1,
+            0,
             -54,
             (
                 0x00001be93972f42ce76d0fe4549e8709,
                 0x822fb626bcccea99631b77b8b3c24781,
             ),
         );
-        assert_eq!(x.powf(&y), f256::NEG_INFINITY);
+        assert_eq!(x.powf(&y), f256::INFINITY);
     }
 
     #[test]
@@ -646,11 +646,11 @@ mod powf_tests {
         let mut y = f256::from(n);
         y += y.ulp();
         let x = f256::from_sign_exp_signif(
-            1,
+            0,
             (EMIN - FRACTION_BITS as i32) / n - 1,
             (0, 1),
         );
-        assert_eq!(x.powf(&y), f256::NEG_ZERO);
+        assert_eq!(x.powf(&y), f256::ZERO);
         let x = f256::MIN_GT_ZERO.sqrt().div2();
         let mut y = f256::TWO;
         y -= y.ulp();
