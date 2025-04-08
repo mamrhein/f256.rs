@@ -598,6 +598,40 @@ where
     }
 }
 
+impl<T> TryFrom<&Float<T>> for i32
+where
+    T: BigUInt + HiLo,
+{
+    type Error = ();
+
+    fn try_from(value: &Float<T>) -> Result<i32, Self::Error> {
+        const LIM: i32 = i32::BITS as i32 - 2;
+        match value.exp {
+            0 if value.signum == 0 => Ok(0),
+            0..=LIM => {
+                if value.exp as u32
+                    >= Float::<T>::FRACTION_BITS
+                        .saturating_sub(value.signif.trailing_zeros())
+                {
+                    let mut t = value.signif.first_chunk() as i128;
+                    t >>= 126 - value.exp as u32;
+                    if value.signum == -1 {
+                        t = -t;
+                    }
+                    Ok(t as i32)
+                } else {
+                    // `value` is not an int
+                    Err(())
+                }
+            }
+            _ => {
+                // `value` is not an int or too large
+                Err(())
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod from_i32_tests {
     use super::*;
