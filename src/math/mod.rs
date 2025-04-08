@@ -18,4 +18,4 @@ mod sqrt;
 use big_float::{Float, Float256, Float512};
 use fp492::FP492;
 
-use super::{BigUInt, HiLo, U256, U512};
+use super::{BigUInt, HiLo, Parity, U256, U512};

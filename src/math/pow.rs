@@ -9,9 +9,11 @@
 
 use core::num::FpCategory;
 
+use super::{BigUInt, Float512, HiLo, Parity, U256, U512};
+use crate::math::bkm::{bkm_e, bkm_l};
+use crate::math::log::approx_ln;
 use crate::{
-    abs_bits, exp, f256, math::big_float::Float512, norm_signif_exp, EMAX,
-    EMIN, FRACTION_BITS,
+    abs_bits, exp, f256, norm_signif_exp, EMAX, EMIN, FRACTION_BITS,
 };
 
 enum LIM {
@@ -29,7 +31,7 @@ impl LIM {
         // |x|ⁿ = (m⋅2ᵉ)ⁿ = mⁿ⋅(2ᵉ)ⁿ = mⁿ⋅2ᵉⁿ
         // n > 1 => 1 <= mⁿ < 2ⁿ => 2ᵉⁿ <= mⁿ⋅2ᵉⁿ < 2ⁿ⁺ᵉⁿ
         // n < 1 => 2ⁿ < mⁿ <= 1 => 2ⁿ⁺ᵉⁿ < mⁿ⋅2ᵉⁿ <= 2ᵉⁿ
-        const LOWER_LIM: i32 = EMIN - FRACTION_BITS as i32 - 1;
+        const LOWER_LIM: i32 = -EMAX - 1 - FRACTION_BITS as i32;
         const UPPER_LIM: i32 = EMAX + 1;
         let e_times_n = e.saturating_mul(n);
         match e_times_n {
@@ -38,22 +40,31 @@ impl LIM {
             _ => LIM::Ok,
         }
     }
+
+    // Check the range of exponents n where xʸ is guarantied to be infinite.
+    #[inline(always)]
+    fn powf(x: &f256, y: &f256) -> Self {
+        match i32::try_from(&y.trunc()) {
+            Ok(n) => Self::powi(x, n),
+            Err(_) => Self::powi(x, [i32::MAX, i32::MIN][y.sign() as usize]),
+        }
+    }
 }
 
-pub(crate) fn approx_powi(mut base: Float512, mut n: i32) -> Float512 {
-    let mut result = Float512::ONE;
+pub(crate) fn approx_powi(mut x: Float512, mut n: i32) -> Float512 {
+    let mut p = Float512::ONE;
     if n < 0 {
         n = -n;
-        base = base.recip();
+        x = x.recip();
     }
     while n > 0 {
         if n % 2 != 0 {
-            result *= base;
+            p *= x;
         }
-        base *= base;
+        x *= x;
         n /= 2;
     }
-    result
+    p
 }
 
 // Calculate xⁿ
@@ -68,9 +79,131 @@ fn powi(x: &f256, mut n: i32) -> f256 {
         LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][s as usize],
         _ => {
             // Result is most likely finite.
-            let base = Float512::from(x);
-            let result = approx_powi(base, n);
-            f256::from(&result)
+            f256::from(&approx_powi(Float512::from(x), n))
+        }
+    }
+}
+
+fn approx_exp(x: &Float512) -> Float512 {
+    // 0 < |x| <= LN_MAX
+    let mut m = x.abs();
+    let mut e = 0_i32;
+    // exp(|x|) = exp(m⋅2ᵉ)
+    // |x| <= LN_MAX => |e| <= 18
+    // Assure that m < 1.5 as pre-condition for using fn bkm_e.
+    if m > Float512::THREE_HALF {
+        let ms = m.signif();
+        if ms < Float512::THREE_HALF.signif() {
+            e = m.exp();
+            m = Float512::from(&ms);
+        } else {
+            e = m.exp() + 1;
+            m = Float512::from(&ms).mul_pow2(-1);
+        }
+    }
+    // println!(" x: {:e}", f256::from(x));
+    // println!(" m: {:e}", f256::from(&m));
+    // println!(" e: {e}");
+    let mut res = match e {
+        0 => bkm_e(&m),
+        1.. => {
+            // e >= 1 => exp(|x|) = exp(m)ⁿ with n =⋅2ᵉ
+            let n = 1_i32 << e as u32;
+            approx_powi(bkm_e(&m), n)
+        }
+        -1 => {
+            // e = -1 => exp(|x|) = exp(m)ʸ with y = ½ = √(exp(m))
+            bkm_e(&m).sqrt()
+        }
+        _ => {
+            // e < -1
+            let mut a = Float512::TWO.mul_pow2(e);
+            let mut t = bkm_e(&m);
+            let w = a * approx_ln(&t);
+            // println!(" a: {:e}", f256::from(&a));
+            // println!(" t: {:e}", f256::from(&t));
+            // println!(" w: {:e}", f256::from(&w));
+            t * approx_exp(&w)
+        }
+    };
+    if x.signum() == -1 {
+        res = res.recip();
+    }
+    res
+}
+
+pub(crate) fn approx_powf(mut x: Float512, mut y: Float512) -> Float512 {
+    debug_assert!(&y.abs() < &Float512::from(i32::MAX));
+    if y.signum() == -1 {
+        x = x.recip();
+        y.flip_sign();
+    }
+    // 0 < y < 2³¹
+    // y = a + b where a ∈ ℤ and 0 <= b < 1
+    // xʸ = xᵅ⁺ᵇ = xᵅ⋅xᵇ = xᵅ⋅eʷ where w = b⋅logₑ x
+    // println!("x = {:e}", f256::from(&x));
+    // println!("y = {:e}", f256::from(&y));
+    let a = y.trunc();
+    // println!("a = {:e}", f256::from(&a));
+    let b = y - a;
+    // println!("b = {:e}", f256::from(&b));
+    let a = i32::try_from(&a).unwrap();
+    // println!("a = {a}");
+    let lnx = approx_ln(&x);
+    // println!("l = {lnx:?}");
+    let w = b * lnx;
+    // println!("w = {w:?}");
+    let ew = approx_exp(&w);
+    // println!("ew = {:?}", ew);
+    approx_powi(x, a) * ew
+}
+
+// Compute xʸ
+#[inline(always)]
+fn powf(x: &f256, y: &f256) -> f256 {
+    debug_assert!(x.is_finite() && !x.eq_zero());
+    debug_assert!(y.is_finite() && !y.eq_zero());
+    let x_sign = x.sign();
+    if let Ok(n) = i32::try_from(y) {
+        let s: usize = match (x_sign, (n % 2) == 1) {
+            (0, _) => 0,
+            (1, true) => 1,
+            (1, false) => 0,
+            _ => unreachable!(),
+        };
+        return match LIM::powi(x, n) {
+            LIM::Overflow => [f256::INFINITY, f256::NEG_INFINITY][s],
+            LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][s],
+            _ => powi(x, n),
+        };
+    };
+    if let Some(p) = y.parity() {
+        // y ∈ ℤ and |y| >= 2³¹
+        let s = match (x_sign, p) {
+            (0, _) => 0,
+            (1, Parity::Odd) => 1,
+            (1, Parity::Even) => 0,
+            _ => unreachable!(),
+        };
+        return match LIM::powi(x, [i32::MAX, i32::MIN][y.sign() as usize]) {
+            LIM::Overflow => [f256::INFINITY, f256::NEG_INFINITY][s],
+            LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][s],
+            _ => unreachable!(),
+        };
+    }
+    // y ∉ ℤ
+    if x_sign == 1 && y.sign() == 1 {
+        // xʸ = NaN for x < 0 and non-integer y < 0
+        return f256::NAN;
+    };
+    match LIM::powf(x, y) {
+        LIM::Overflow => {
+            [f256::INFINITY, f256::NEG_INFINITY][x_sign as usize]
+        }
+        LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][x_sign as usize],
+        _ => {
+            // Result is most likely finite.
+            f256::from(&approx_powf(Float512::from(x), Float512::from(y)))
         }
     }
 }
@@ -127,6 +260,60 @@ impl f256 {
         }
         // self is finite and != 0, n ∉ [-1…1]
         powi(self, n)
+    }
+
+    /// Raises a number to a floating point power.
+    pub fn powf(&self, exp: &Self) -> Self {
+        // a⁰ = 1 for any a, incl. NaN
+        // 1ᵇ = 1 for any b, incl. NaN
+        if exp.eq_zero() || *self == Self::ONE {
+            return Self::ONE;
+        }
+        // a¹ = a for any a, incl. NaN
+        if *exp == f256::ONE {
+            return *self;
+        }
+        // a⁻¹ = 1/a for any a, incl. NaN (note: 1/NaN = NaN)
+        if *exp == f256::NEG_ONE {
+            return self.recip();
+        }
+        // This test for special values is redundant, but it reduces the
+        // number of tests for normal cases.
+        if self.is_special() || exp.is_special() {
+            // aᴺᵃᴺ = NaN for a != 1
+            // NaNᵇ = NaN for |b| != 0
+            if self.is_nan() || exp.is_nan() {
+                return Self::NAN;
+            }
+            // 0ᵇ = 0 for b > 0
+            // 0ᵇ = ∞ for b < 0
+            if self.eq_zero() {
+                return [Self::ZERO, Self::INFINITY][exp.sign() as usize];
+            }
+            // ∞ᵇ = ∞ for b > 0
+            // ∞ᵇ = 0 for b < 0
+            // (-∞)ᵇ = ∞ for b > 0 and (b ∉ ℕ or b ∈ ℕ and b is even)
+            // (-∞)ᵇ = -∞ for b > 0 and b ∈ ℕ and b is odd
+            // (-∞)ᵇ = 0 for b < 0 and (|b| ∉ ℕ or |b| ∈ ℕ and |b| is even)
+            // (-∞)ᵇ = -0 for b < 0 and |b| ∈ ℕ and |b| is odd
+            if self.is_infinite() {
+                return match (self.sign(), exp.sign()) {
+                    (0, 0) => Self::INFINITY,
+                    (0, 1) => Self::ZERO,
+                    (1, 0) => match exp.parity() {
+                        Some(Parity::Odd) => Self::NEG_INFINITY,
+                        _ => Self::INFINITY,
+                    },
+                    (1, 1) => match exp.parity() {
+                        Some(Parity::Odd) => Self::NEG_ZERO,
+                        _ => Self::ZERO,
+                    },
+                    _ => unreachable!(),
+                };
+            }
+        }
+        // self is finite and != 0, exp is finite and ∉ [-1, 0, 1]
+        powf(self, exp)
     }
 }
 
@@ -220,8 +407,7 @@ mod powi_tests {
             (0, 1),
         );
         assert_eq!(f.powi(n), f256::NEG_ZERO);
-        let mut f = f256::MIN_GT_ZERO.sqrt();
-        f -= f.ulp();
+        let mut f = f256::MIN_GT_ZERO.sqrt().div2();
         assert_eq!(f.powi(2), f256::ZERO);
     }
 
@@ -269,5 +455,262 @@ mod powi_tests {
         let f2 = f.square();
         assert_eq!(f.powi(2), f2);
         assert_eq!(f.powi(5), f2.square() * f);
+    }
+}
+
+#[cfg(test)]
+mod powf_tests {
+    use super::*;
+    use crate::{EMAX, FIVE, FRACTION_BITS, ONE_HALF};
+
+    #[test]
+    fn test_specials() {
+        let g = f256::from(123.45_f64);
+        let h = f256::TWO.powi(236) - f256::ONE;
+        for b in [f256::MIN_GT_ZERO, f256::ONE, g, f256::MAX] {
+            // ∞ᵇ = ∞ for b > 0
+            assert_eq!(f256::INFINITY.powf(&b), f256::INFINITY);
+            // 0ᵇ = 0 for b > 0
+            assert_eq!(f256::ZERO.powf(&b), f256::ZERO);
+            // NaNᵇ = NaN for b != 0
+            assert!(f256::NAN.powf(&b).is_nan());
+        }
+        for b in [f256::MIN, -g, f256::NEG_ONE, -f256::MIN_POSITIVE] {
+            // ∞ᵇ = 0 for b < 0
+            assert_eq!(f256::INFINITY.powf(&b), f256::ZERO);
+            // 0ᵇ = ∞ for b < 0
+            assert_eq!(f256::ZERO.powf(&b), f256::INFINITY);
+            // NaNᵇ = NaN for b != 0
+            assert!(f256::NAN.powf(&b).is_nan());
+        }
+        for b in [f256::ONE, FIVE, h] {
+            // (-∞)ᵇ = -∞ for b > 0 and b ∈ ℕ and b is odd
+            assert_eq!(f256::NEG_INFINITY.powf(&b), f256::NEG_INFINITY);
+        }
+        for b in [f256::TWO, g, f256::MAX] {
+            // (-∞)ᵇ = ∞ for b > 0 and (b ∉ ℕ or b ∈ ℕ and b is even)
+            assert_eq!(f256::NEG_INFINITY.powf(&b), f256::INFINITY);
+        }
+        for b in [f256::MIN, -g, -f256::TEN] {
+            // (-∞)ᵇ = 0 for b < 0 and (|b| ∉ ℕ or |b| ∈ ℕ and |b| is even)
+            let z = f256::NEG_INFINITY.powf(&b);
+            assert!(z.eq_zero());
+            assert!(z.is_sign_positive());
+        }
+        for b in [-h, -FIVE] {
+            // (-∞)ᵇ = -0 for b < 0 and |b| ∈ ℕ and |b| is odd
+            let z = f256::NEG_INFINITY.powf(&b);
+            assert!(z.eq_zero());
+            assert!(z.is_sign_negative());
+        }
+        for a in [
+            f256::NAN,
+            f256::NEG_INFINITY,
+            f256::MIN,
+            -f256::TEN,
+            f256::NEG_ONE,
+            f256::NEG_ZERO,
+            f256::ZERO,
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::TWO,
+            f256::MAX,
+            f256::INFINITY,
+        ] {
+            // aᴺᵃᴺ = NaN for a != 1
+            assert!(a.powf(&f256::NAN).is_nan());
+        }
+        for b in [
+            f256::NAN,
+            f256::NEG_INFINITY,
+            f256::MIN,
+            -f256::TEN,
+            f256::NEG_ONE,
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::ONE,
+            f256::TWO,
+            f256::MAX,
+            f256::INFINITY,
+        ] {
+            // NaNᵇ = NaN for |b| != 0
+            assert!(f256::NAN.powf(&b).is_nan());
+        }
+        for x in [f256::MIN, -g, f256::NEG_ONE, -f256::MIN_POSITIVE] {
+            // xʸ = NaN for x < 0 and non-integer y < 0
+            assert!(x.powf(&-g).is_nan());
+        }
+    }
+
+    #[test]
+    fn test_a_pow_0() {
+        for a in [
+            f256::NAN,
+            f256::NEG_INFINITY,
+            f256::MIN,
+            -f256::TEN,
+            f256::NEG_ONE,
+            f256::NEG_ZERO,
+            f256::ZERO,
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::ONE,
+            f256::TWO,
+            f256::MAX,
+            f256::INFINITY,
+        ] {
+            // a⁰ = 1 for any a, incl. NaN
+            assert_eq!(a.powf(&f256::ZERO), f256::ONE);
+            assert_eq!(a.powf(&f256::NEG_ZERO), f256::ONE);
+        }
+    }
+
+    #[test]
+    fn test_a_pow_1() {
+        // a¹ = a for any a, incl. NaN
+        for a in [
+            f256::NEG_INFINITY,
+            f256::MIN,
+            -f256::TEN,
+            f256::NEG_ONE,
+            f256::NEG_ZERO,
+            f256::ZERO,
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::ONE,
+            f256::TWO,
+            f256::MAX,
+            f256::INFINITY,
+        ] {
+            assert_eq!(a.powf(&f256::ONE), a);
+        }
+        assert!(f256::NAN.powf(&f256::ONE).is_nan());
+    }
+
+    #[test]
+    fn test_1_pow_b() {
+        for b in [
+            f256::NAN,
+            f256::NEG_INFINITY,
+            f256::MIN,
+            -f256::TEN,
+            f256::NEG_ONE,
+            f256::NEG_ZERO,
+            f256::ZERO,
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::EPSILON,
+            f256::ONE,
+            f256::TWO,
+            f256::MAX,
+            f256::INFINITY,
+        ] {
+            // 1ᵇ = 1 for any b, incl. NaN
+            assert_eq!(f256::ONE.powf(&b), f256::ONE);
+        }
+    }
+
+    #[test]
+    fn test_overflow() {
+        let mut x = f256::MAX.sqrt();
+        x += x.ulp();
+        assert_eq!(x.powf(&f256::TWO), f256::INFINITY);
+        let n = -7;
+        let mut y = f256::from(n);
+        y -= y.ulp();
+        let x = f256::from_sign_exp_signif(0, EMAX / n - 1, (0, 1));
+        assert_eq!(x.powf(&y), f256::INFINITY);
+        let y = f256::from(1439.907);
+        let x = f256::from_sign_exp_signif(
+            1,
+            -54,
+            (
+                0x00001be93972f42ce76d0fe4549e8709,
+                0x822fb626bcccea99631b77b8b3c24781,
+            ),
+        );
+        assert_eq!(x.powf(&y), f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_underflow() {
+        let mut x =
+            f256::MAX.sqrt() * f256::from(2_u128.pow(FRACTION_BITS / 2));
+        x += x.ulp();
+        assert_eq!(x.powf(&-f256::TWO), f256::ZERO);
+        let n = 7;
+        let mut y = f256::from(n);
+        y += y.ulp();
+        let x = f256::from_sign_exp_signif(
+            1,
+            (EMIN - FRACTION_BITS as i32) / n - 1,
+            (0, 1),
+        );
+        assert_eq!(x.powf(&y), f256::NEG_ZERO);
+        let x = f256::MIN_GT_ZERO.sqrt().div2();
+        let mut y = f256::TWO;
+        y -= y.ulp();
+        assert_eq!(x.powf(&y), f256::ZERO);
+    }
+
+    #[test]
+    fn test_subnormal_result() {
+        let x = f256::MIN_GT_ZERO.sqrt();
+        let mut y = f256::TWO;
+        y -= y.ulp();
+        assert_eq!(x.powf(&y), f256::MIN_GT_ZERO);
+        let x = f256::EPSILON;
+        let y = f256::from(1111.1);
+        let z = x.powf(&y);
+        assert_eq!(
+            z,
+            f256::from_sign_exp_signif(
+                0,
+                -262377,
+                (
+                    0x0000000000000000000000002a3968a7,
+                    0x75598fceb5d84852b84918221a2a837f,
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn test_base_near_1() {
+        let x = f256::ONE + f256::EPSILON;
+        let z = x.square();
+        let mut y = f256::TWO;
+        y -= z.ulp();
+        assert_eq!(x.powf(&y), z);
+        assert_eq!(x.powf(&f256::from(9)), z.square().square() * x);
+    }
+
+    #[test]
+    fn test_base_near_minus_1() {
+        let x = f256::NEG_ONE + f256::EPSILON;
+        let z = x.square();
+        let mut y = f256::TWO;
+        y -= z.ulp();
+        assert_eq!(x.powf(&y), z);
+        assert_eq!(x.powf(&f256::from(5)), z.square() * x);
+    }
+
+    #[test]
+    fn test_int_base_non_int_exp() {
+        let x = FIVE;
+        assert_eq!(x.powf(&f256::from(2.5_f64)), FIVE.square() * FIVE.sqrt());
+    }
+
+    #[test]
+    fn test_non_int_base_non_int_exp() {
+        let x = FIVE - f256::EPSILON.mul_pow2(7);
+        assert_eq!(
+            x.powf(&f256::from(3.25_f64)),
+            x.powi(3) * x.sqrt().sqrt()
+        );
     }
 }
