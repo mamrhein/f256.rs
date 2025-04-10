@@ -10,6 +10,7 @@
 use core::num::FpCategory;
 
 use super::bkm::{bkm_e, bkm_l};
+use super::exp::approx_exp;
 use super::log::approx_ln;
 use super::{BigUInt, Float512, HiLo, Parity};
 use crate::{
@@ -66,54 +67,6 @@ fn powi(x: &f256, mut n: i32) -> f256 {
             f256::from(&Float512::from(x).powi(n))
         }
     }
-}
-
-fn approx_exp(x: &Float512) -> Float512 {
-    // 0 < |x| <= LN_MAX
-    let mut m = x.abs();
-    let mut e = 0_i32;
-    // exp(|x|) = exp(m⋅2ᵉ)
-    // |x| <= LN_MAX => |e| <= 18
-    // Assure that m < 1.5 as pre-condition for using fn bkm_e.
-    if m > Float512::THREE_HALF {
-        let ms = m.signif();
-        if ms < Float512::THREE_HALF.signif() {
-            e = m.exp();
-            m = Float512::from(&ms);
-        } else {
-            e = m.exp() + 1;
-            m = Float512::from(&ms).mul_pow2(-1);
-        }
-    }
-    // println!(" x: {:e}", f256::from(x));
-    // println!(" m: {:e}", f256::from(&m));
-    // println!(" e: {e}");
-    let mut res = match e {
-        0 => bkm_e(&m),
-        1.. => {
-            // e >= 1 => exp(|x|) = exp(m)ⁿ with n =⋅2ᵉ
-            let mut n = 1_i32 << e as u32;
-            bkm_e(&m).powi(n)
-        }
-        -1 => {
-            // e = -1 => exp(|x|) = exp(m)ʸ with y = ½ = √(exp(m))
-            bkm_e(&m).sqrt()
-        }
-        _ => {
-            // e < -1
-            let mut a = Float512::TWO.mul_pow2(e);
-            let mut t = bkm_e(&m);
-            let w = a * approx_ln(&t);
-            // println!(" a: {:e}", f256::from(&a));
-            // println!(" t: {:e}", f256::from(&t));
-            // println!(" w: {:e}", f256::from(&w));
-            t * approx_exp(&w)
-        }
-    };
-    if x.signum() == -1 {
-        res = res.recip();
-    }
-    res
 }
 
 pub(crate) fn approx_powf(mut x: Float512, mut y: Float512) -> Float512 {
