@@ -51,22 +51,6 @@ impl LIM {
     }
 }
 
-pub(crate) fn approx_powi(mut x: Float512, mut n: i32) -> Float512 {
-    let mut p = Float512::ONE;
-    if n < 0 {
-        n = -n;
-        x = x.recip();
-    }
-    while n > 0 {
-        if n % 2 != 0 {
-            p *= x;
-        }
-        x *= x;
-        n /= 2;
-    }
-    p
-}
-
 // Calculate xⁿ
 #[inline(always)]
 fn powi(x: &f256, mut n: i32) -> f256 {
@@ -79,7 +63,7 @@ fn powi(x: &f256, mut n: i32) -> f256 {
         LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][s as usize],
         _ => {
             // Result is most likely finite.
-            f256::from(&approx_powi(Float512::from(x), n))
+            f256::from(&Float512::from(x).powi(n))
         }
     }
 }
@@ -108,8 +92,8 @@ fn approx_exp(x: &Float512) -> Float512 {
         0 => bkm_e(&m),
         1.. => {
             // e >= 1 => exp(|x|) = exp(m)ⁿ with n =⋅2ᵉ
-            let n = 1_i32 << e as u32;
-            approx_powi(bkm_e(&m), n)
+            let mut n = 1_i32 << e as u32;
+            bkm_e(&m).powi(n)
         }
         -1 => {
             // e = -1 => exp(|x|) = exp(m)ʸ with y = ½ = √(exp(m))
@@ -147,7 +131,7 @@ pub(crate) fn approx_powf(mut x: Float512, mut y: Float512) -> Float512 {
     // println!("a = {:e}", f256::from(&a));
     let b = y - a;
     // println!("b = {:e}", f256::from(&b));
-    let a = i32::try_from(&a).unwrap();
+    let mut a = i32::try_from(&a).unwrap();
     // println!("a = {a}");
     let lnx = approx_ln(&x);
     // println!("l = {lnx:?}");
@@ -155,7 +139,7 @@ pub(crate) fn approx_powf(mut x: Float512, mut y: Float512) -> Float512 {
     // println!("w = {w:?}");
     let ew = approx_exp(&w);
     // println!("ew = {:?}", ew);
-    approx_powi(x, a) * ew
+    x.powi(a) * ew
 }
 
 // Compute xʸ
