@@ -487,6 +487,22 @@ where
             signif: q,
         }
     }
+
+    pub fn powi(mut self, mut n: i32) -> Self {
+        let mut p = Self::ONE;
+        if n < 0 {
+            n = -n;
+            self = self.recip();
+        }
+        while n > 0 {
+            if n % 2 != 0 {
+                p *= self;
+            }
+            self *= self;
+            n /= 2;
+        }
+        p
+    }
 }
 
 impl<T: BigUInt> From<&T> for Float<T> {
