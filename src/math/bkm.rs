@@ -4145,8 +4145,9 @@ pub fn bkm_l(x: &Float512) -> Float512 {
 
 // Returns an approximation of expₑ x.
 pub fn bkm_e(x: &Float512) -> Float512 {
-    // 0 < x <= 1.5
+    // 2⁻²³⁶ <= x <= 1.5
     debug_assert!(x.signum() == 1);
+    debug_assert!(x >= &Float512::from(&f256::EPSILON));
     debug_assert!(x <= &Float512::THREE_HALF);
     let shr = 0_i32.saturating_sub(x.exp());
     let xs = x.signif() >> shr as u32;
