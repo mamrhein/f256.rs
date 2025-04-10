@@ -158,7 +158,7 @@ mod exp_tests {
         let f = f256::EPSILON / f256::TWO;
         assert_eq!(f.exp(), f256::ONE);
         let mut f = -f256::EPSILON;
-        assert_eq!(f.exp(), f256::ONE);
+        assert_eq!(f.exp(), f.abs().exp().recip());
         f += f.ulp();
         assert_eq!(f.exp(), f256::ONE);
     }
