@@ -54,21 +54,11 @@ mod random_math_fn_tests {
                         (rec.z.2, rec.z.3),
                     );
                     let res = op(&x);
-                    if err == 0 {
-                        assert_eq!(
-                            z, res,
-                            "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}\nx: \
+                    assert!(
+                        res.diff_within_n_bits(&z, err),
+                        "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}\nx: \
                              {x:e}\nz: {z:e}\nr: {res:e}"
-                        );
-                    } else {
-                        let d = (z - res).abs();
-                        let m = f256::from(err) * z.ulp();
-                        assert!(
-                            d <= m,
-                            "\nFailed:\nx: {x:?}\nz: {z:?}\nr: {res:?}\nd: \
-                             {d:?}\nm: {m:?}"
-                        );
-                    }
+                    );
                 }
                 Err(e) => panic!("{}", e),
             }

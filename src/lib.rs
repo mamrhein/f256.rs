@@ -632,6 +632,15 @@ impl f256 {
         (self - other).abs() <= self.ulp()
     }
 
+    /// Returns true, if |self - other| <= self.ulp() * 2ⁿ
+    /// Only public for testing!!!
+    #[doc(hidden)]
+    #[must_use]
+    #[inline]
+    pub fn diff_within_n_bits(&self, other: &Self, n: u32) -> bool {
+        (self - other).abs() <= self.ulp().mul_pow2(n)
+    }
+
     /// Returns the reciprocal (multiplicative inverse) of `self`.
     ///
     /// # Examples
