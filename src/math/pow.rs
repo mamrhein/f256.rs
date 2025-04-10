@@ -9,9 +9,9 @@
 
 use core::num::FpCategory;
 
-use super::{BigUInt, Float512, HiLo, Parity, U256, U512};
-use crate::math::bkm::{bkm_e, bkm_l};
-use crate::math::log::approx_ln;
+use super::bkm::{bkm_e, bkm_l};
+use super::log::approx_ln;
+use super::{BigUInt, Float512, HiLo, Parity};
 use crate::{
     abs_bits, exp, f256, norm_signif_exp, EMAX, EMIN, FRACTION_BITS,
 };
@@ -304,7 +304,7 @@ impl f256 {
 #[cfg(test)]
 mod powi_tests {
     use super::*;
-    use crate::{EMAX, FRACTION_BITS};
+    use crate::{EMAX, FRACTION_BITS, SIGNIFICAND_BITS};
 
     #[test]
     fn test_specials() {
@@ -439,6 +439,22 @@ mod powi_tests {
         let f2 = f.square();
         assert_eq!(f.powi(2), f2);
         assert_eq!(f.powi(5), f2.square() * f);
+    }
+
+    #[test]
+    fn test_max() {
+        let f = f256::TWO;
+        let p =
+            (f.powi(EMAX) - f.powi(EMAX - SIGNIFICAND_BITS as i32)).mul2();
+        assert_eq!(p, f256::MAX);
+    }
+
+    #[test]
+    fn test_near_max() {
+        let mut f = f256::TWO;
+        f -= f.ulp();
+        let p = f.powi(f256::MAX_EXP);
+        assert!(p.diff_within_n_bits(&f256::MAX, 19));
     }
 }
 
