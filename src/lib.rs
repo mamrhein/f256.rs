@@ -130,6 +130,8 @@ pub(crate) const MIN_NO_FRACT_HI: u128 =
 /// Minimum possible subnormal power of 10 exponent =
 /// ⌊(Eₘᵢₙ + 1 - p) × log₁₀(2)⌋.
 pub(crate) const MIN_GT_ZERO_10_EXP: i32 = -78984;
+/// Constant 5, used in tests.
+pub(crate) const FIVE: f256 = f256::from_u64(5);
 
 /// A 256-bit floating point type (specifically, the “binary256” type defined
 /// in IEEE 754-2008).
@@ -174,7 +176,6 @@ const NEG_ONE: f256 = ONE.negated();
 const TWO: f256 = f256 {
     bits: U256::new((((1 + EXP_BIAS) as u128) << HI_FRACTION_BITS), 0),
 };
-pub(crate) const FIVE: f256 = f256::from_u64(5);
 const TEN: f256 = f256::from_u64(10);
 
 #[allow(clippy::multiple_inherent_impl)]
