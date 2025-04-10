@@ -294,14 +294,14 @@ mod acos_tests {
     #[test]
     fn test_acos_one_half_times_sqrt_2() {
         let x = ONE_HALF * SQRT_2;
-        assert!(x.acos().almost_eq::<1>(&FRAC_PI_4));
+        assert!(x.acos().almost_eq(&FRAC_PI_4));
         assert_eq!((-x).acos(), PI - FRAC_PI_4);
     }
 
     #[test]
     fn test_acos_one_half_times_sqrt_3() {
         let x = ONE_HALF * f256::from(3).sqrt();
-        assert!(x.acos().almost_eq::<1>(&FRAC_PI_6));
-        assert!((-x).acos().almost_eq::<1>(&(PI - FRAC_PI_6)));
+        assert!(x.acos().almost_eq(&FRAC_PI_6));
+        assert!((-x).acos().almost_eq(&(PI - FRAC_PI_6)));
     }
 }
