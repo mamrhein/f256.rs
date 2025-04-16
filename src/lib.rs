@@ -344,6 +344,29 @@ impl f256 {
         Self::new(s, t, c)
     }
 
+    // Returns
+    // 2ⁿ for EMIN - FRACTION_BITS <= n <= EMAX
+    //  0 for n < EMIN - FRACTION_BITS
+    //  ∞ for n > EMAX
+    pub(crate) const fn power_of_two(n: i32) -> Self {
+        const LOW_LIM: i32 = EMIN - FRACTION_BITS as i32;
+        match n {
+            // normal range
+            EMIN..=EMAX => Self {
+                bits: U256::new(
+                    ((n + EXP_BIAS as i32) as u128) << HI_FRACTION_BITS,
+                    0_u128,
+                ),
+            },
+            // sub-normal range
+            LOW_LIM..EMIN => Self {
+                bits: U256::power_of_two((n - LOW_LIM) as u32),
+            },
+            ..LOW_LIM => Self::ZERO,
+            _ => Self::INFINITY,
+        }
+    }
+
     /// Only public for testing!!!
     #[doc(hidden)]
     #[must_use]
