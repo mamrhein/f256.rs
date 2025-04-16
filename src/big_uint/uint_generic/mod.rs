@@ -434,6 +434,18 @@ impl U256 {
         }
     }
 
+    /// Returns 2ⁿ.
+    /// Panics if n > 255.
+    pub(crate) const fn power_of_two(n: u32) -> Self {
+        debug_assert!(n < Self::BITS);
+        let (hi, lo) = match n {
+            0..=127 => (0_u128, 1_u128 << n),
+            128..=255 => (1_u128 << n - 128, 0_u128),
+            _ => unreachable!(),
+        };
+        Self::new(hi, lo)
+    }
+
     /// Return true, if `self` == 0.
     #[inline(always)]
     pub(crate) const fn is_zero(&self) -> bool {
