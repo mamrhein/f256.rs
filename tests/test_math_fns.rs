@@ -178,4 +178,19 @@ mod random_math_fn_tests {
     fn test_ln_1p() {
         run_tests(f256::ln_1p, 0, "test_ln_1p.txt");
     }
+
+    #[test]
+    fn test_exp() {
+        run_tests(f256::exp, 0, "test_exp.txt");
+    }
+
+    #[test]
+    fn test_exp_m1() {
+        run_tests(f256::exp_m1, 0, "test_exp_m1.txt");
+    }
+
+    #[test]
+    fn test_exp2() {
+        run_tests(f256::exp2, 0, "test_exp2.txt");
+    }
 }

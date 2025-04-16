@@ -30,6 +30,15 @@ const LN_MAX: f256 = f256 {
     ),
 };
 
+// f256::MAX.log2() - 2⁻²³⁶
+// 262143.999999999999999999999999999999999999999999999999999999999999999999
+const LOG2_MAX: f256 = f256 {
+    bits: U256::new(
+        0x40010fffffffffffffffffffffffffff,
+        0xffffffffffffffffffffffffffffffff,
+    ),
+};
+
 pub(crate) fn approx_exp(x: &Float512) -> Float512 {
     // 2⁻²³⁶ <= |x| <= LN_MAX
     let mut m = x.abs();
@@ -93,8 +102,12 @@ impl f256 {
                     return consts::E;
                 }
                 let self_abs = self.abs();
-                if &self_abs < &Self::EPSILON {
-                    return Self::ONE;
+                if &self_abs <= &Self::EPSILON {
+                    // for very small x, eˣ ≅ 1+x+½x²
+                    let x = Float512::from(self);
+                    return Self::from(
+                        &(Float512::ONE + x + x.square().mul_pow2(-1)),
+                    );
                 }
                 if &self_abs > &LN_MAX {
                     return [Self::INFINITY, Self::ZERO]
@@ -107,13 +120,72 @@ impl f256 {
 
     /// Returns e^(self) - 1 in a way that is accurate even if the number is
     /// close to zero.
-    pub fn exp_m1(self) -> Self {
-        unimplemented!()
+    pub fn exp_m1(&self) -> Self {
+        // x = 0  or x is subnornal => eˣ-1 = 0
+        // x = ∞ => eˣ-1 = ∞
+        // x = -∞ => eˣ-1 = -1
+        // x is nan => eˣ-1 is nan
+        match self.classify() {
+            FpCategory::Zero | FpCategory::Subnormal => Self::ZERO,
+            FpCategory::Infinite => {
+                [Self::INFINITY, Self::NEG_ONE][self.sign() as usize]
+            }
+            FpCategory::Nan => Self::NAN,
+            _ => {
+                // self is finite and != 0
+                if self == &Self::ONE {
+                    // x = 1 => eˣ-1 = e-1
+                    return consts::E - Self::ONE;
+                }
+                let self_abs = self.abs();
+                if &self_abs <= &Self::EPSILON {
+                    // for very small x, eˣ-1 ≅ x+½x²
+                    let x = Float512::from(self);
+                    return Self::from(&(x + x.square().mul_pow2(-1)));
+                }
+                if &self_abs > &LN_MAX {
+                    return [Self::INFINITY, Self::NEG_ONE]
+                        [self.sign() as usize];
+                }
+                Self::from(
+                    &(approx_exp(&Float512::from(self)) - Float512::ONE),
+                )
+            }
+        }
     }
 
     /// Returns 2^(self).
-    pub fn exp2(self) -> Self {
-        unimplemented!()
+    pub fn exp2(&self) -> Self {
+        const LOG2_MIN: f256 = f256::power_of_two(-510);
+        // x = 0  or x is subnornal => 2ˣ = 1
+        // x = ∞ => 2ˣ = ∞
+        // x = -∞ => 2ˣ = 0
+        // x is nan => 2ˣ is nan
+        match self.classify() {
+            FpCategory::Zero | FpCategory::Subnormal => Self::ONE,
+            FpCategory::Infinite => {
+                [Self::INFINITY, Self::ZERO][self.sign() as usize]
+            }
+            FpCategory::Nan => Self::NAN,
+            _ => {
+                // self is finite and != 0
+                if let Ok(e) = i32::try_from(self) {
+                    return Self::power_of_two(e);
+                }
+                let self_abs = self.abs();
+                if self_abs < LOG2_MIN {
+                    return f256::ONE;
+                }
+                if &self.abs() > &LOG2_MAX {
+                    return [Self::INFINITY, Self::ZERO]
+                        [self.sign() as usize];
+                }
+                // 2ˣ = eʷ with w = x⋅logₑ 2
+                Self::from(&approx_exp(
+                    &(Float512::from(self) * Float512::LN_2),
+                ))
+            }
+        }
     }
 }
 
@@ -128,6 +200,7 @@ mod exp_tests {
     fn calc_ln_max() {
         let ln_max = f256::MAX.ln();
         assert_eq!(ln_max, LN_MAX);
+        assert!(ln_max.exp().diff_within_n_bits(&f256::MAX, 17));
     }
 
     #[test]
@@ -151,14 +224,8 @@ mod exp_tests {
     #[test]
     fn test_near_zero() {
         assert_eq!(f256::MIN_POSITIVE.exp(), f256::ONE);
-        let mut f = f256::EPSILON;
-        assert_eq!(f.exp(), f256::ONE + f256::EPSILON);
-        f -= f256::EPSILON.ulp();
+        let mut f = f256::EPSILON.div_pow2(2);
         assert_eq!(f.exp(), f256::ONE);
-        let f = f256::EPSILON / f256::TWO;
-        assert_eq!(f.exp(), f256::ONE);
-        let mut f = -f256::EPSILON;
-        assert_eq!(f.exp(), f.abs().exp().recip());
         f += f.ulp();
         assert_eq!(f.exp(), f256::ONE);
     }
@@ -173,10 +240,13 @@ mod exp_tests {
     }
 
     #[test]
-    fn test_max() {
-        let f = LN_MAX;
-        let e = f.exp();
-        assert!(e.diff_within_n_bits(&f256::MAX, 17));
+    fn test_near_epsilon() {
+        let f = f256::EPSILON;
+        assert_eq!(f.exp(), f256::ONE + f);
+        let g = f - f.ulp().div2();
+        assert_eq!(g.exp(), f256::ONE + f);
+        let h = f.div2() - f.ulp().div2();
+        assert_eq!(h.exp(), f256::ONE);
     }
 
     #[test]
@@ -184,5 +254,140 @@ mod exp_tests {
         let f = LN_MAX + LN_MAX.ulp();
         assert_eq!(f.exp(), f256::INFINITY);
         assert_eq!(f.neg().exp(), f256::ZERO);
+    }
+}
+
+#[cfg(test)]
+mod exp_m1_tests {
+    use super::*;
+    // use crate::big_uint::HiLo;
+    use crate::consts::E;
+    use core::ops::Neg;
+
+    #[test]
+    fn test_specials() {
+        assert!(f256::NAN.exp_m1().is_nan());
+        assert_eq!(f256::INFINITY.exp_m1(), f256::INFINITY);
+        assert_eq!(f256::NEG_INFINITY.exp_m1(), f256::NEG_ONE);
+        assert_eq!(f256::ZERO.exp_m1(), f256::ZERO);
+        assert_eq!(f256::NEG_ZERO.exp_m1(), f256::ZERO);
+    }
+
+    #[test]
+    fn test_subnormal() {
+        assert_eq!(f256::MIN_GT_ZERO.exp_m1(), f256::ZERO);
+        let mut f = f256::MIN_POSITIVE;
+        f = f - f.ulp();
+        assert!(f.is_subnormal());
+        assert_eq!(f.exp_m1(), f256::ZERO);
+    }
+
+    #[test]
+    fn test_near_zero() {
+        assert_eq!(f256::MIN_POSITIVE.exp_m1(), f256::MIN_POSITIVE);
+        let mut f = f256::EPSILON.div_pow2(2);
+        assert_eq!(f.exp_m1(), f);
+        f += f.ulp();
+        assert_eq!(f.exp_m1(), f);
+    }
+
+    #[test]
+    fn test_near_one() {
+        assert_eq!(f256::ONE.exp_m1(), E - f256::ONE);
+        let mut f = f256::ONE + f256::EPSILON;
+        assert_eq!(f.exp_m1(), E + E.ulp() - f256::ONE);
+        let mut f = f256::ONE - f256::EPSILON.div2();
+        assert_eq!(f.exp_m1(), E - E.ulp() - f256::ONE);
+    }
+
+    #[test]
+    fn test_near_epsilon() {
+        let f = f256::EPSILON;
+        assert_eq!(f.exp_m1(), f);
+        let g = f - f.ulp().div2();
+        assert_eq!(g.exp_m1(), f);
+        let h = f.div2() - f.ulp().div2();
+        assert_eq!(h.exp_m1(), h);
+    }
+
+    #[test]
+    fn test_overflow() {
+        let f = LN_MAX + LN_MAX.ulp();
+        assert_eq!(f.exp_m1(), f256::INFINITY);
+        assert_eq!(f.neg().exp_m1(), f256::NEG_ONE);
+    }
+}
+
+#[cfg(test)]
+mod exp2_tests {
+    use super::*;
+    use crate::big_uint::HiLo;
+    use crate::consts::E;
+    use core::ops::Neg;
+
+    #[test]
+    fn calc_log2_max() {
+        let mut log2_max = f256::MAX.log2();
+        log2_max -= log2_max.ulp().div2();
+        assert_eq!(log2_max, LOG2_MAX);
+        assert!(log2_max.exp2().diff_within_n_bits(&f256::MAX, 18));
+    }
+
+    #[test]
+    fn test_specials() {
+        assert!(f256::NAN.exp2().is_nan());
+        assert_eq!(f256::INFINITY.exp2(), f256::INFINITY);
+        assert_eq!(f256::NEG_INFINITY.exp2(), f256::ZERO);
+        assert_eq!(f256::ZERO.exp2(), f256::ONE);
+        assert_eq!(f256::NEG_ZERO.exp2(), f256::ONE);
+    }
+
+    #[test]
+    fn test_subnormal() {
+        assert_eq!(f256::MIN_GT_ZERO.exp2(), f256::ONE);
+        let mut f = f256::MIN_POSITIVE;
+        f = f - f.ulp();
+        assert!(f.is_subnormal());
+        assert_eq!(f.exp2(), f256::ONE);
+    }
+
+    #[test]
+    fn test_near_zero() {
+        assert_eq!(f256::MIN_POSITIVE.exp2(), f256::ONE);
+        let mut f = f256::EPSILON.div_pow2(2);
+        assert_eq!(f.exp2(), f256::ONE);
+        f += f.ulp();
+        assert_eq!(f.exp2(), f256::ONE);
+    }
+
+    #[test]
+    fn test_near_one() {
+        assert_eq!(f256::ONE.exp2(), f256::TWO);
+        let mut f = f256::ONE + f256::EPSILON;
+        assert_eq!(f.exp2(), f256::TWO + f256::TWO.ulp());
+        let mut f = f256::ONE - f256::EPSILON.div2();
+        assert_eq!(f.exp2(), f256::TWO - f256::TWO.ulp().div2());
+    }
+
+    #[test]
+    fn test_near_epsilon() {
+        let f = f256::EPSILON;
+        assert_eq!(f.exp2(), f256::ONE + f);
+        let g = f - f.ulp().div2();
+        assert_eq!(g.exp2(), f256::ONE + f);
+        let h = f.div2() - f.ulp().div2();
+        assert_eq!(h.exp2(), f256::ONE);
+    }
+
+    #[test]
+    fn test_min() {
+        let f = -(LOG2_MAX + LOG2_MAX.ulp());
+        assert_eq!(f.exp2(), f256::MIN_POSITIVE.div_pow2(2));
+    }
+
+    #[test]
+    fn test_overflow() {
+        let f = LOG2_MAX + LOG2_MAX.ulp();
+        assert_eq!(f.exp2(), f256::INFINITY);
     }
 }
