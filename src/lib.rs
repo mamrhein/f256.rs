@@ -1249,7 +1249,7 @@ impl f256 {
         }
         // self is finite and non-zero.
         let exp_bits = exp_bits(&abs_bits);
-        if exp_bits < n {
+        if exp_bits <= n {
             // result is subnornal or underflows to zero
             const EXP: i32 = 1 - (EXP_BIAS as i32 + FRACTION_BITS as i32);
             let shr = n - exp_bits + norm_bit(&abs_bits);
@@ -1912,6 +1912,8 @@ mod div_pow2_tests {
         assert_eq!(g.div_pow2(5), g / f256::from(32));
         let h = f256::MIN_POSITIVE.negated();
         assert_eq!(h.div_pow2(65), h / f256::from(36893488147419103232_u128));
+        let f = f256::MIN_POSITIVE.div2();
+        assert_eq!(f, f256::MIN_POSITIVE / f256::TWO);
         let f = f256::MIN_POSITIVE.div_pow2(236);
         assert_eq!(f, f256::MIN_GT_ZERO);
     }
