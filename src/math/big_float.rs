@@ -286,7 +286,6 @@ where
             let (mut prod_signif, exp_adj) =
                 mul_signifs(&self.signif, &other.signif);
             // round significand of product to 255 bits
-            // TODO: do rounding in fn mul_signifs
             let rnd = prod_signif.lo > T::TIE
                 || (prod_signif.lo == T::TIE && prod_signif.hi.is_odd());
             prod_signif.hi.incr_if(rnd);
