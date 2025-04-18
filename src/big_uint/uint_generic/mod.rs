@@ -465,9 +465,7 @@ impl U256 {
                 Self::new(hi, lo)
             }
             TIE => Self::new(self.lo.0, 0_u128),
-            ..=MAX_SHIFT => {
-                Self::new(self.lo.0 << (shift - TIE), 0_u128)
-            }
+            ..=MAX_SHIFT => Self::new(self.lo.0 << (shift - TIE), 0_u128),
             _ => unreachable!(),
         }
     }
