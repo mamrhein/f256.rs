@@ -27,7 +27,7 @@ use f256_pow2_div_pow10_lut::{
 };
 
 use super::{
-    common::{floor_log10, floor_log10_pow2, floor_log10f},
+    common::{floor_log10_pow2, floor_log10f},
     dec_repr::DecNumRepr,
     formatted::{Formatted, Part},
     powers_of_five::{get_power_of_five, is_multiple_of_pow5},
@@ -366,7 +366,7 @@ fn bin_large_int_2_scientific(
     }
     let mut chunk_size = CHUNK_SIZE;
     // First chunk:
-    let mut n_digits = floor_log10(chunk);
+    let mut n_digits = chunk.ilog10();
     let exp10 = n_digits + (n_chunks - 1) * CHUNK_SIZE;
     if n_digits > n_rem_digits {
         // First chunk is last chunk.
@@ -473,7 +473,7 @@ fn bin_fract_2_scientific(
     }
     let mut chunk_size = CHUNK_SIZE;
     // First chunk:
-    let mut n_digits = floor_log10(chunk);
+    let mut n_digits = chunk.ilog10();
     exp10 -= (chunk_size - n_digits) as i32;
     if n_digits > n_rem_digits {
         // First chunk is last chunk.
@@ -588,12 +588,9 @@ pub(crate) fn bin_2_dec_scientific(
     debug_assert!(f.is_finite());
     debug_assert!(f.is_sign_positive());
     const SUBNORMAL_EXP_LOWER_BOUND: i32 = EMIN - FRACTION_BITS as i32;
-    const SUBNORMAL_EXP_UPPER_BOUND: i32 = EMIN - 1;
     const NORMAL_EXP_LOWER_BOUND: i32 = EMIN;
     const FAST_LOWER_BOUND: i32 = -(FRACTION_BITS as i32);
-    const FAST_LOWER_BOUND_MINUS_1: i32 = FAST_LOWER_BOUND - 1;
-    const FAST_UPPER_BOUND: i32 = (U512::BITS - SIGNIFICAND_BITS) as i32;
-    const FAST_UPPER_BOUND_PLUS_1: i32 = FAST_UPPER_BOUND + 1;
+    const SLOW_LOWER_BOUND: i32 = (U512::BITS - SIGNIFICAND_BITS + 1) as i32;
     const EXP_UPPER_BOUND: i32 = EMAX - FRACTION_BITS as i32;
     let mut exp2 = f.quantum_exponent();
     let mut signif2 = f.integral_significand();
@@ -601,24 +598,22 @@ pub(crate) fn bin_2_dec_scientific(
     let mut round = Round::Down;
     let mut exp10 = 0_i32;
     match exp2 {
-        // TODO: change the following ranges to exclusive upper bounds when
-        //  feature(exclusive_range_pattern) got stable.
         FAST_LOWER_BOUND..=-1 => {
             // 1 <= |f| < 2²³⁶
             (round, exp10) =
                 bin_small_float_2_scientific(signif2, exp2, prec, &mut res);
         }
-        0..=FAST_UPPER_BOUND => {
+        0..SLOW_LOWER_BOUND => {
             // 2²³⁶ <= |f| < 2⁵¹²
             (round, exp10) =
                 bin_small_int_2_scientific(signif2, exp2, prec, &mut res);
         }
-        NORMAL_EXP_LOWER_BOUND..=FAST_LOWER_BOUND_MINUS_1 => {
+        NORMAL_EXP_LOWER_BOUND..FAST_LOWER_BOUND => {
             // f256::MIN_POSITIVE <= |f| < 1
             (round, exp10) =
                 bin_fract_2_scientific(signif2, exp2, prec, &mut res);
         }
-        FAST_UPPER_BOUND_PLUS_1..=EXP_UPPER_BOUND => {
+        SLOW_LOWER_BOUND..=EXP_UPPER_BOUND => {
             // 2⁵¹² <= |f| <= f256::MAX
             (round, exp10) =
                 bin_large_int_2_scientific(signif2, exp2, prec, &mut res);
@@ -627,7 +622,7 @@ pub(crate) fn bin_2_dec_scientific(
                 "0".repeat(prec - min(prec, exp10 as usize)).as_str(),
             );
         }
-        SUBNORMAL_EXP_LOWER_BOUND..=SUBNORMAL_EXP_UPPER_BOUND => {
+        SUBNORMAL_EXP_LOWER_BOUND..NORMAL_EXP_LOWER_BOUND => {
             // f256::MIN_GT_ZERO <= |f| < MIN_POSITIVE
             // f is subnormal, adjust significand and exponent.
             let adj = SIGNIFICAND_BITS - signif2.msb();
@@ -870,9 +865,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 73);
-        assert_eq!(s,
-                   "1.104279415486490205989560937964452094099678404234621628410\
-                   7225517843852100e71".to_owned());
+        assert_eq!(
+            s,
+            "1.104279415486490205989560937964452094099678404234621628410\
+                   7225517843852100e71"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -900,9 +898,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 71);
-        assert_eq!(s,
-                   "1.104279415486490205989560937964481749676984270347197623992\
-                   92717863585167e71".to_owned());
+        assert_eq!(
+            s,
+            "1.104279415486490205989560937964481749676984270347197623992\
+                   92717863585167e71"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -944,9 +945,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 61);
-        assert_eq!(s,
-                   "1.969005496764332863783443912931624800937847641827908017905\
-                   9660e154".to_owned());
+        assert_eq!(
+            s,
+            "1.969005496764332863783443912931624800937847641827908017905\
+                   9660e154"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -992,8 +996,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 64);
-        assert_eq!(s, "9.677969339371647374674789631478211843426763786935989435\
-            5285173687e-10918".to_owned());
+        assert_eq!(
+            s,
+            "9.677969339371647374674789631478211843426763786935989435\
+            5285173687e-10918"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -1018,8 +1026,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 71);
-        assert_eq!(s, "2.471570072197153940829180483920657748943792994870723271\
-            92157954211602055e-35402".to_owned());
+        assert_eq!(
+            s,
+            "2.471570072197153940829180483920657748943792994870723271\
+            92157954211602055e-35402"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -1033,8 +1045,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 70);
-        assert_eq!(s, "2.471570072197153940829180483920657748943792994870723271\
-            9215795421160206e-35402".to_owned());
+        assert_eq!(
+            s,
+            "2.471570072197153940829180483920657748943792994870723271\
+            9215795421160206e-35402"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -1048,8 +1064,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 73);
-        assert_eq!(s, "8.447646086055224609046497651648431840143361281963366366\
-            6796603174614594313e16807".to_owned());
+        assert_eq!(
+            s,
+            "8.447646086055224609046497651648431840143361281963366366\
+            6796603174614594313e16807"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -1063,8 +1083,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 67);
-        assert_eq!(s, "8.447646086055224609046497651648431840143361281963366366\
-            6796603174615e16807".to_owned());
+        assert_eq!(
+            s,
+            "8.447646086055224609046497651648431840143361281963366366\
+            6796603174615e16807"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -1078,8 +1102,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 72);
-        assert_eq!(s, "2.372882823780069989738354638128785919529692752357933380\
-            060881450776866269e-47352".to_owned());
+        assert_eq!(
+            s,
+            "2.372882823780069989738354638128785919529692752357933380\
+            060881450776866269e-47352"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -1093,8 +1121,12 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 61);
-        assert_eq!(s, "2.751944825690125768618234983557273839998107604792147797\
-            6588487e-55309".to_owned());
+        assert_eq!(
+            s,
+            "2.751944825690125768618234983557273839998107604792147797\
+            6588487e-55309"
+                .to_owned()
+        );
     }
 
     #[test]
@@ -1108,7 +1140,11 @@ mod to_scientific_tests {
             ),
         );
         let s = bin_2_dec_scientific(f, 'e', 67);
-        assert_eq!(s, "1.319942082877611614846938029746780763801526923656755728\
-            9282641062734e-28481".to_owned());
+        assert_eq!(
+            s,
+            "1.319942082877611614846938029746780763801526923656755728\
+            9282641062734e-28481"
+                .to_owned()
+        );
     }
 }
