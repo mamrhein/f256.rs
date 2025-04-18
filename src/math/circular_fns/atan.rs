@@ -12,7 +12,7 @@ use core::cmp::max;
 use super::{approx_atan::approx_atan, Float256, FP492};
 use crate::{
     abs_bits, abs_bits_sticky,
-    consts::{FRAC_PI_2, FRAC_PI_4, PI},
+    consts::{FRAC_3_PI_2, FRAC_PI_2, FRAC_PI_4, PI},
     f256, sign_bits_hi, BinEncAnySpecial, EXP_BIAS, HI_EXP_MASK,
     HI_FRACTION_BITS, SIGNIFICAND_BITS, U256,
 };
@@ -111,8 +111,7 @@ impl f256 {
             // Both operands are infinite.
             return match (self.sign(), other.sign()) {
                 (0, 0) => FRAC_PI_4,
-                // TODO: replace by constant FRAC_3_PI_2
-                (0, 1) => &PI - &FRAC_PI_4,
+                (0, 1) => FRAC_3_PI_2,
                 (1, 0) => -FRAC_PI_4,
                 _ => &FRAC_PI_4 - &PI,
             };
