@@ -7,8 +7,6 @@
 // $Source$
 // $Revision$
 
-use core::ops::Neg;
-
 use crate::{f256, U256};
 
 // TODO: use core::cmp::min when it got stable in const context
