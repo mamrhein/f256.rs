@@ -2041,6 +2041,7 @@ const ATANS: [FP492; 256] = [
     ),
 ];
 
+#[allow(clippy::cast_sign_loss)]
 pub(crate) fn approx_atan(x: &FP492) -> FP492 {
     let mut x_abs = *x;
     x_abs.iabs();
@@ -2059,7 +2060,7 @@ pub(crate) fn approx_atan(x: &FP492) -> FP492 {
     let mut atan = COEFFS[0];
     for coeff in &COEFFS[1..N] {
         atan.imul_round(&y2);
-        atan += &coeff;
+        atan += coeff;
     }
     atan.imul_round(&y);
     // Finally add tabulated atan(c)

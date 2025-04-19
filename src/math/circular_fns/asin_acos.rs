@@ -13,6 +13,7 @@ use crate::{
     consts::{FRAC_PI_2, PI},
     f256, HI_EXP_MASK, U256,
 };
+use core::cmp::Ordering;
 
 const FP492_FRAC_PI_2: FP492 = FP492::new(
     0x00001921fb54442d18469898cc51701b,
@@ -43,16 +44,18 @@ const FP492_NEG_FRAC_PI_4: FP492 = FP492::new(
 fn atan(x: &Float256) -> FP492 {
     let x_abs = x.abs();
     let sign = (x.signum() < 0) as usize;
-    if x_abs < Float256::ONE {
-        approx_atan(&FP492::from(x))
-    } else if x_abs > Float256::ONE {
-        // atan(±x) = ±½π - atan(1/x) for |x| > 1
-        let xr = x.recip();
-        &[FP492_FRAC_PI_2, FP492_NEG_FRAC_PI_2][sign]
-            - &approx_atan(&FP492::from(&xr))
-    } else {
-        // atan(±1) = ±¼π
-        [FP492_FRAC_PI_4, FP492_NEG_FRAC_PI_4][sign]
+    match x_abs.cmp(&Float256::ONE) {
+        Ordering::Less => approx_atan(&FP492::from(x)),
+        Ordering::Greater => {
+            // atan(±x) = ±½π - atan(1/x) for |x| > 1
+            let xr = x.recip();
+            &[FP492_FRAC_PI_2, FP492_NEG_FRAC_PI_2][sign]
+                - &approx_atan(&FP492::from(&xr))
+        }
+        _ => {
+            // atan(±1) = ±¼π
+            [FP492_FRAC_PI_4, FP492_NEG_FRAC_PI_4][sign]
+        }
     }
 }
 
@@ -77,14 +80,15 @@ impl f256 {
     ///
     /// Return value is in radians in the range [-½π, ½π], or NaN if the
     /// number is outside the range [-1, 1].
+    #[must_use]
     pub fn asin(&self) -> Self {
         let abs_bits_self = abs_bits(self);
         // if self is NAN or |self| > 1, asin self is NAN
-        if abs_bits_self > f256::ONE.bits {
-            return f256::NAN;
+        if abs_bits_self > Self::ONE.bits {
+            return Self::NAN;
         }
         // asin(±1) = ±½π
-        if abs_bits_self == f256::ONE.bits {
+        if abs_bits_self == Self::ONE.bits {
             return [FRAC_PI_2, -FRAC_PI_2][self.sign() as usize];
         }
         // If |self| is very small, asin self = self.
@@ -102,14 +106,15 @@ impl f256 {
     ///
     /// Return value is in radians in the range [0, π], or NaN if the number
     /// is outside the range [-1, 1].
+    #[must_use]
     pub fn acos(&self) -> Self {
         let abs_bits_self = abs_bits(self);
         // if self is NAN or |self| > 1, acos self is NAN
-        if abs_bits_self > f256::ONE.bits {
-            return f256::NAN;
+        if abs_bits_self > Self::ONE.bits {
+            return Self::NAN;
         }
         // acos(1) = 0, acos(-1) = π
-        if abs_bits_self == f256::ONE.bits {
+        if abs_bits_self == Self::ONE.bits {
             return [Self::ZERO, PI][self.sign() as usize];
         }
         // If |self| is very small, acos self = ½π.

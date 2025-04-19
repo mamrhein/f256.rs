@@ -244,7 +244,7 @@ pub(crate) fn approx_sin(x: &FP492) -> FP492 {
     let mut x_abs = *x;
     x_abs.iabs();
     // If x is zero or very small, sine x == x.
-    if &x_abs <= &SMALL_CUT_OFF {
+    if x_abs <= SMALL_CUT_OFF {
         return *x;
     };
     let mut x2 = x_abs;
@@ -252,7 +252,7 @@ pub(crate) fn approx_sin(x: &FP492) -> FP492 {
     let mut sin = COEFFS[0];
     for coeff in &COEFFS[1..N] {
         sin.imul_round(&x2);
-        sin += &coeff;
+        sin += coeff;
     }
     sin.imul_round(x);
     sin

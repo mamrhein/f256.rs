@@ -16,6 +16,7 @@ use crate::{f256, HI_ABS_MASK};
 impl f256 {
     /// Computes the cosine of a number (in radians).
     #[inline(always)]
+    #[must_use]
     pub fn cos(&self) -> Self {
         if self.is_special() {
             // x is NAN or infinite => cosine x is NAN

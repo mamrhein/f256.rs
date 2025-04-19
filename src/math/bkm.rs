@@ -4112,6 +4112,8 @@ pub(crate) const LUT: [U512; N] = [
 // x where 1 < x < 2 can be represented as a product of distinct factors of
 // the form 1+2⁻ⁿ. Given these factors fₙ so that x = ∏fₙ we have logₑ(x) =
 // ∑logₑ(fₙ).
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_possible_truncation)]
 pub fn bkm_l(x: &Float512) -> Float512 {
     // 1 < x < 2
     debug_assert!(x.exp() == 0);
@@ -4122,7 +4124,7 @@ pub fn bkm_l(x: &Float512) -> Float512 {
     let xs = x.signif();
     let mut ln = U512::ZERO;
     let mut p = Float512::ONE.signif();
-    debug_assert!(&p < &xs);
+    debug_assert!(p < xs);
     for (n, l) in LUT.iter().enumerate() {
         // t = p⋅(1+2⁻ⁿ) = p + p⋅2⁻ⁿ
         let t = p + (p >> n as u32);
@@ -4144,6 +4146,9 @@ pub fn bkm_l(x: &Float512) -> Float512 {
 }
 
 // Returns an approximation of expₑ x.
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 pub fn bkm_e(x: &Float512) -> Float512 {
     // 2⁻⁵¹⁰ <= x <= 1.5
     debug_assert!(x.signum() == 1);

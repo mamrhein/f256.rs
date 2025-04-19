@@ -71,10 +71,10 @@ pub(crate) fn rem(x: f256, y: f256) -> f256 {
     let sh = n_bits % U256::BITS;
     let mut t = U512::from_hi_lo(U256::ZERO, signif_x);
     t <<= sh;
-    let mut abs_bits_z = &t % &signif_y;
+    let mut abs_bits_z = t % signif_y;
     for _ in 0..n_bits >> 8 {
         t = U512::from_hi_lo(abs_bits_z, U256::ZERO);
-        abs_bits_z = &t % &signif_y;
+        abs_bits_z = t % signif_y;
         if abs_bits_z.is_zero() {
             break;
         }

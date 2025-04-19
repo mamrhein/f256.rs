@@ -32,6 +32,7 @@ impl f256 {
     /// The result might not be correctly rounded owing to implementation
     /// details; self.log2() can produce more accurate results for base 2, and
     /// self.log10() can produce more accurate results for base 10.
+    #[must_use]
     pub fn log(&self, base: &Self) -> Self {
         // logₐ(b) = ln(b) / ln(a)
         match (self.sign(), self.classify()) {
@@ -51,8 +52,7 @@ impl f256 {
                         [(base >= &Self::ONE) as usize]
                 }
             }
-            (_, FpCategory::Nan) => Self::NAN,
-            (1, _) => Self::NAN,
+            (_, FpCategory::Nan) | (1, _) => Self::NAN,
             _ => {
                 // self is finite and > 0
                 match (base.sign(), base.classify()) {
@@ -60,8 +60,7 @@ impl f256 {
                         [(self >= &Self::ONE) as usize],
                     (0, FpCategory::Infinite) => [Self::NEG_ZERO, Self::ZERO]
                         [(self >= &Self::ONE) as usize],
-                    (_, FpCategory::Nan) => Self::NAN,
-                    (1, _) => Self::NAN,
+                    (_, FpCategory::Nan) | (1, _) => Self::NAN,
                     _ => {
                         // base is finite and > 0
                         if base == &Self::ONE {
@@ -82,21 +81,22 @@ impl f256 {
     }
 
     /// Returns the natural logarithm of the number.
+    #[must_use]
     pub fn ln(&self) -> Self {
         // x < 0 or x is nan => ln x is nan
         // x = 0 => ln x = -∞
         // x = ∞ => ln x = ∞
         match (self.sign(), self.classify()) {
             (_, FpCategory::Zero) => Self::NEG_INFINITY,
-            (_, FpCategory::Nan) => Self::NAN,
+            (_, FpCategory::Nan) | (1, _) => Self::NAN,
             (0, FpCategory::Infinite) => Self::INFINITY,
-            (1, _) => Self::NAN,
             _ => Self::from(&ln(self)),
         }
     }
 
     /// Returns ln(1+n) (natural logarithm) more accurately than if the
     /// operations were performed separately.
+    #[must_use]
     pub fn ln_1p(&self) -> Self {
         // |x| = 0 or x = ∞ => ln (1+x) = x
         if self.eq_zero() || self == &Self::INFINITY {
@@ -142,18 +142,18 @@ impl f256 {
 
     //noinspection DuplicatedCode
     /// Returns the base 2 logarithm of the number.
+    #[must_use]
     pub fn log2(&self) -> Self {
         // x < 0 or x is nan => ln x is nan
         // x = 0 => ln x = -∞
         // x = ∞ => ln x = ∞
         match (self.sign(), self.classify()) {
             (_, FpCategory::Zero) => Self::NEG_INFINITY,
-            (_, FpCategory::Nan) => Self::NAN,
+            (_, FpCategory::Nan) | (1, _) => Self::NAN,
             (0, FpCategory::Infinite) => Self::INFINITY,
-            (1, _) => Self::NAN,
             _ => {
                 // log₂ x = ln x ⋅ log₂ e
-                let mut t = ln(&self);
+                let mut t = ln(self);
                 t *= &Float512::LOG2_E;
                 Self::from(&t)
             }
@@ -162,18 +162,18 @@ impl f256 {
 
     //noinspection DuplicatedCode
     /// Returns the base 10 logarithm of the number.
+    #[must_use]
     pub fn log10(&self) -> Self {
         // x < 0 or x is nan => ln x is nan
         // x = 0 => ln x = -∞
         // x = ∞ => ln x = ∞
         match (self.sign(), self.classify()) {
             (_, FpCategory::Zero) => Self::NEG_INFINITY,
-            (_, FpCategory::Nan) => Self::NAN,
+            (_, FpCategory::Nan) | (1, _) => Self::NAN,
             (0, FpCategory::Infinite) => Self::INFINITY,
-            (1, _) => Self::NAN,
             _ => {
                 // log₁₀ x = ln x ⋅ log₁₀ e
-                let mut t = ln(&self);
+                let mut t = ln(self);
                 t *= &Float512::LOG10_E;
                 Self::from(&t)
             }

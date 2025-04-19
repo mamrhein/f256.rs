@@ -257,6 +257,8 @@ impl f256 {
     pub const TEN: Self = TEN;
 
     /// Raw assembly from sign, exponent and significand.
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_sign_loss)]
     #[inline]
     pub(crate) const fn new(
         sign: u32,
@@ -348,6 +350,8 @@ impl f256 {
     // 2ⁿ for EMIN - FRACTION_BITS <= n <= EMAX
     //  0 for n < EMIN - FRACTION_BITS
     //  ∞ for n > EMAX
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_sign_loss)]
     pub(crate) const fn power_of_two(n: i32) -> Self {
         const LOW_LIM: i32 = EMIN - FRACTION_BITS as i32;
         match n {
@@ -558,6 +562,7 @@ impl f256 {
     /// specific predicate instead.
     #[inline]
     #[must_use]
+    #[allow(clippy::match_overlapping_arm)]
     pub const fn classify(&self) -> FpCategory {
         let abs_bits_sticky = abs_bits_sticky(&abs_bits(self));
         match abs_bits_sticky {
@@ -610,6 +615,7 @@ impl f256 {
     }
 
     /// Returns parity of `self` if `self` represents an integer
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) fn parity(&self) -> Option<Parity> {
         if self.is_special() {
             return [None, Some(Parity::Even)][self.eq_zero() as usize];
@@ -642,7 +648,7 @@ impl f256 {
             exp_bits = exp_bits.saturating_sub(FRACTION_BITS + 1);
             bits >>= sh;
             bits.hi.0 += (exp_bits as u128) << HI_FRACTION_BITS;
-            f256 { bits }
+            Self { bits }
         } else {
             // `self` is infinite or nan.
             NAN
@@ -953,7 +959,7 @@ impl f256 {
     // * value returned by lt1, if 0 < self < 1,
     // * return value of gt1 otherwise.
     #[must_use]
-    fn to_integer(
+    fn as_integer(
         &self,
         lt1: fn(u32, U256) -> Self,
         gt1: fn(u32, U256) -> Self,
@@ -990,13 +996,12 @@ impl f256 {
     //// ```
     #[must_use]
     pub fn trunc(&self) -> Self {
-        self.to_integer(
+        self.as_integer(
             |sign, abs_bits| Self::ZERO,
             |sign, abs_bits| {
                 let n_fract_bits =
                     FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
-                let mut int_bits =
-                    &(&abs_bits >> n_fract_bits) << n_fract_bits;
+                let mut int_bits = (abs_bits >> n_fract_bits) << n_fract_bits;
                 int_bits.hi.0 |= (sign as u128) << HI_SIGN_SHIFT;
                 Self { bits: int_bits }
             },
@@ -1047,12 +1052,12 @@ impl f256 {
     //// ```
     #[must_use]
     pub fn ceil(&self) -> Self {
-        self.to_integer(
+        self.as_integer(
             |sign, abs_bits| [Self::ONE, Self::ZERO][sign as usize],
             |sign, abs_bits| {
                 let n_fract_bits =
                     FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
-                let mut int_bits = &abs_bits >> n_fract_bits;
+                let mut int_bits = abs_bits >> n_fract_bits;
                 int_bits += &U256::new(0, (sign == 0) as u128);
                 int_bits <<= n_fract_bits;
                 int_bits.hi.0 |= (sign as u128) << HI_SIGN_SHIFT;
@@ -1077,12 +1082,12 @@ impl f256 {
     //// ```
     #[must_use]
     pub fn floor(&self) -> Self {
-        self.to_integer(
+        self.as_integer(
             |sign, abs_bits| [Self::ZERO, Self::NEG_ONE][sign as usize],
             |sign, abs_bits| {
                 let n_fract_bits =
                     FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
-                let mut int_bits = &abs_bits >> n_fract_bits;
+                let mut int_bits = abs_bits >> n_fract_bits;
                 int_bits += &U256::new(0, sign as u128);
                 int_bits <<= n_fract_bits;
                 int_bits.hi.0 |= (sign as u128) << HI_SIGN_SHIFT;
@@ -1107,7 +1112,7 @@ impl f256 {
     //// ```
     #[must_use]
     pub fn round(&self) -> Self {
-        self.to_integer(
+        self.as_integer(
             |sign, abs_bits| {
                 if abs_bits.hi.0 < ONE_HALF.bits.hi.0 {
                     // 0 < |self| < ½
@@ -1120,9 +1125,9 @@ impl f256 {
             |sign, abs_bits| {
                 let n_fract_bits =
                     FRACTION_BITS - (exp_bits(&abs_bits) - EXP_BIAS);
-                let tie = &U256::ONE << (n_fract_bits - 1);
+                let tie = U256::ONE << (n_fract_bits - 1);
                 let rem = abs_bits.rem_pow2(n_fract_bits);
-                let mut int_bits = &abs_bits >> n_fract_bits;
+                let mut int_bits = abs_bits >> n_fract_bits;
                 if rem >= tie {
                     int_bits.incr();
                 }
@@ -1150,7 +1155,7 @@ impl f256 {
     //// ```
     #[must_use]
     pub fn round_tie_even(&self) -> Self {
-        self.to_integer(
+        self.as_integer(
             |sign, abs_bits| {
                 if abs_bits.hi.0 <= ONE_HALF.bits.hi.0 {
                     // 0 < |self| <= ½
@@ -1182,11 +1187,14 @@ impl f256 {
 
     /// Returns 2 * `self`
     #[inline(always)]
+    #[must_use]
     pub fn mul2(&self) -> Self {
         self.mul_pow2(1)
     }
 
     /// Returns `self` * 2ⁿ
+    #[must_use]
+    #[allow(clippy::cast_possible_wrap)]
     pub fn mul_pow2(&self, n: u32) -> Self {
         let abs_bits = abs_bits(self);
         if abs_bits.is_special() {
@@ -1225,7 +1233,7 @@ impl f256 {
     /// more accurate result than a non-fused multiply-add.
     #[inline(always)]
     #[must_use]
-    pub fn mul_add(self, f: f256, a: f256) -> Self {
+    pub fn mul_add(self, f: Self, a: Self) -> Self {
         fused_ops::fma::fma(&self, &f, &a)
     }
 
@@ -1236,7 +1244,7 @@ impl f256 {
     /// squares.
     #[inline(always)]
     #[must_use]
-    pub fn sum_of_squares(self, other: f256) -> Self {
+    pub fn sum_of_squares(self, other: Self) -> Self {
         fused_ops::sos::sos(&self, &other)
     }
 
@@ -1253,17 +1261,20 @@ impl f256 {
     /// more accurate result than a non-fused square-add.
     #[inline(always)]
     #[must_use]
-    pub fn square_add(self, a: f256) -> Self {
+    pub fn square_add(self, a: Self) -> Self {
         fused_ops::fma::fma(&self, &self, &a)
     }
 
     /// Returns `self` / 2 (rounded tie to even)
     #[inline(always)]
+    #[must_use]
     pub fn div2(&self) -> Self {
         self.div_pow2(1)
     }
 
     /// Returns `self` / 2ⁿ (rounded tie to even)
+    #[must_use]
+    #[allow(clippy::cast_possible_wrap)]
     pub fn div_pow2(&self, n: u32) -> Self {
         let abs_bits = abs_bits(self);
         if abs_bits.is_special() {
@@ -1320,15 +1331,17 @@ impl Neg for &f256 {
 impl TryFrom<&f256> for i32 {
     type Error = ();
 
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_possible_truncation)]
     fn try_from(value: &f256) -> Result<Self, Self::Error> {
         let (sign, exp, signif) = split_f256_enc(value);
         let ntz = signif.trailing_zeros();
-        match exp + ntz as i32 {
+        match exp + ntz as Self {
             n @ 0..=30 => {
-                let t = (signif >> exp.unsigned_abs()).lo_t().0 as i32;
+                let t = (signif >> exp.unsigned_abs()).lo_t().0 as Self;
                 Ok([t, -t][sign as usize])
             }
-            31 => [Err(()), Ok(i32::MIN)][sign as usize],
+            31 => [Err(()), Ok(Self::MIN)][sign as usize],
             256 => Ok(0),
             _ => Err(()),
         }
@@ -1358,12 +1371,13 @@ pub(crate) const fn abs_bits_sticky(abs_bits: &U256) -> u128 {
 }
 
 /// Returns true if `abs_bits` represent an integer
+#[allow(clippy::cast_possible_wrap)]
 pub(crate) fn is_int(abs_bits: &U256) -> bool {
     *abs_bits == U256::ZERO ||
         // |self| >= 2²³⁶
         abs_bits.hi.0 >= MIN_NO_FRACT_HI ||
             // all fractional bits = 0
-            exp(&abs_bits) >=
+            exp(abs_bits) >=
                 FRACTION_BITS.saturating_sub(abs_bits.trailing_zeros()) as i32
 }
 
@@ -1449,6 +1463,7 @@ pub(crate) const fn exp_bits(abs_bits: &U256) -> u32 {
 
 /// Returns the unbiased exponent from `abs_bits`.
 #[inline(always)]
+#[allow(clippy::cast_possible_wrap)]
 pub(crate) const fn exp(abs_bits: &U256) -> i32 {
     debug_assert!(!abs_bits.is_zero());
     let mut exp = (abs_bits.hi.0 >> HI_FRACTION_BITS) as i32;
@@ -1484,6 +1499,7 @@ pub(crate) fn norm_signif(abs_bits: &U256) -> (U256, u32) {
 /// Returns the normalized integral significand and the corresponding exponent
 /// from `abs_bits`.
 #[inline(always)]
+#[allow(clippy::cast_possible_wrap)]
 pub(crate) fn norm_signif_exp(abs_bits: &U256) -> (U256, i32) {
     let (signif, shift) = norm_signif(abs_bits);
     let exp = exp(abs_bits) - shift as i32;

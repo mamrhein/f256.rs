@@ -11,8 +11,10 @@ use crate::{BigUInt, EMAX, FRACTION_BITS, SIGNIFICAND_BITS, U256, U512};
 
 const LZ_MAX: u32 = 253;
 const N: u32 = EMAX as u32 + LZ_MAX + 2 * FRACTION_BITS + 4;
+#[allow(clippy::integer_division)]
 const L: usize = N as usize / 8;
 
+#[allow(clippy::integer_division)]
 pub(super) fn get_256_bits(offset: u32) -> U256 {
     const N_BYTES: usize = (u128::BITS / u8::BITS) as usize;
     debug_assert!(offset <= N - U256::BITS + 1);

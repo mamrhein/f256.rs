@@ -16,6 +16,7 @@ use crate::{f256, HI_ABS_MASK};
 impl f256 {
     /// Computes the sine of a number (in radians).
     #[inline(always)]
+    #[must_use]
     pub fn sin(&self) -> Self {
         if self.is_special() {
             // x is NAN or infinite => sine x is NAN
@@ -29,14 +30,10 @@ impl f256 {
         let (quadrant, fx) = reduce(&self.abs());
         // Map result according to quadrant and sign
         match (quadrant, self.sign()) {
-            (0, 0) => Self::from(&approx_sin(&fx)),
-            (0, 1) => -Self::from(&approx_sin(&fx)),
-            (1, 0) => Self::from(&approx_cos(&fx)),
-            (1, 1) => -Self::from(&approx_cos(&fx)),
-            (2, 0) => -Self::from(&approx_sin(&fx)),
-            (2, 1) => Self::from(&approx_sin(&fx)),
-            (3, 0) => -Self::from(&approx_cos(&fx)),
-            (3, 1) => Self::from(&approx_cos(&fx)),
+            (0, 0) | (2, 1) => Self::from(&approx_sin(&fx)),
+            (0, 1) | (2, 0) => -Self::from(&approx_sin(&fx)),
+            (1, 0) | (3, 1) => Self::from(&approx_cos(&fx)),
+            (1, 1) | (3, 0) => -Self::from(&approx_cos(&fx)),
             _ => unreachable!(),
         }
     }

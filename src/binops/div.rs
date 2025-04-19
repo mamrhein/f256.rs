@@ -124,8 +124,8 @@ pub(crate) fn div(x: f256, y: f256) -> f256 {
                 }
                 _ => {
                     let rem = signif_z.rem_pow2(shift);
-                    rnd_bits = (&rem >> (shift - 2)).lo.0 as u32
-                        | (rem > (&U256::ONE << (shift - 1))) as u32
+                    rnd_bits = (rem >> (shift - 2)).lo.0 as u32
+                        | (rem > (U256::ONE << (shift - 1))) as u32
                         | (rnd_bits != 0) as u32;
                 }
             }

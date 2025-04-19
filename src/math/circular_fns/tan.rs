@@ -12,14 +12,15 @@ use crate::{f256, HI_ABS_MASK};
 impl f256 {
     /// Computes the tangent of a number (in radians).
     #[inline(always)]
+    #[must_use]
     pub fn tan(&self) -> Self {
         if self.is_special() {
             // x is NAN or infinite => tangent x is NAN
-            if (self.bits.hi.0 & HI_ABS_MASK) > f256::MAX.bits.hi.0 {
-                return f256::NAN;
+            if (self.bits.hi.0 & HI_ABS_MASK) > Self::MAX.bits.hi.0 {
+                return Self::NAN;
             }
             // x = 0 => tangent x = 0
-            return f256::ZERO;
+            return Self::ZERO;
         }
         // Calculate tangent x = sine x / cosine x.
         let (sin, cos) = self.sin_cos();

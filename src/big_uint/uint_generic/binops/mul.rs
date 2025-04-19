@@ -16,7 +16,7 @@ impl<SubUInt: BigUInt + HiLo> Mul<u128> for UInt<SubUInt> {
 
     #[inline(always)]
     fn mul(self, rhs: u128) -> Self::Output {
-        &self * &Self::from(&rhs)
+        self * Self::from(&rhs)
     }
 }
 
@@ -25,7 +25,7 @@ impl<SubUInt: BigUInt + HiLo> Mul<SubUInt> for UInt<SubUInt> {
 
     #[inline(always)]
     fn mul(self, rhs: SubUInt) -> Self::Output {
-        &self * &Self::from(&rhs)
+        self * Self::from(&rhs)
     }
 }
 

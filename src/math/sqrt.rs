@@ -53,10 +53,10 @@ impl f256 {
         let exp_is_odd = exp & 1;
         exp = (exp - exp_is_odd) / 2;
         // Calculate the significand, gain extra bit for final rounding
-        let mut signif = &fraction(&bin_enc) << norm_shift;
+        let mut signif = fraction(&bin_enc) << norm_shift;
         signif.hi.0 |= (hidden_bit as u128) << HI_FRACTION_BITS;
         let mut q = U256::new(HI_FRACTION_BIAS << 1, 0);
-        let mut r = (&signif << (1 + exp_is_odd as u32)) - q;
+        let mut r = (signif << (1 + exp_is_odd as u32)) - q;
         let mut s = q;
         for i in 1..=SIGNIFICAND_BITS {
             if r.is_zero() {

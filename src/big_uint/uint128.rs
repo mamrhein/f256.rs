@@ -50,11 +50,13 @@ impl HiLo for U128 {
         Self(u128::from(hi) << 64 | u128::from(lo))
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     #[inline(always)]
     fn hi_t(&self) -> Self::T {
         u128_hi(self.0) as u64
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     #[inline(always)]
     fn lo_t(&self) -> Self::T {
         u128_lo(self.0) as u64
@@ -76,11 +78,12 @@ impl HiLo for U128 {
     }
 
     #[inline(always)]
-    fn last_chunk(&self) -> u128 {
+    fn first_chunk(&self) -> u128 {
         self.0
     }
 
-    fn first_chunk(&self) -> u128 {
+    #[inline(always)]
+    fn last_chunk(&self) -> u128 {
         self.0
     }
 }
@@ -319,7 +322,7 @@ impl DivRem<u128> for U128 {
     #[inline(always)]
     #[allow(clippy::integer_division)]
     fn div_rem(self, rhs: u128) -> Self::Output {
-        (U128::new(self.0 / rhs), self.0 % rhs)
+        (Self::new(self.0 / rhs), self.0 % rhs)
     }
 }
 
@@ -340,8 +343,8 @@ impl DivRem for U128 {
     #[allow(clippy::integer_division)]
     fn div_rem(self, rhs: Self) -> Self::Output {
         (
-            U128::new(self.0 / u128::from(rhs)),
-            U128::new(self.0 % u128::from(rhs)),
+            Self::new(self.0 / u128::from(rhs)),
+            Self::new(self.0 % u128::from(rhs)),
         )
     }
 }
@@ -400,7 +403,7 @@ impl<'a> From<&'a [u128]> for U128 {
         match value.len() {
             1 => Self::new(value[0]),
             0 => Self::ZERO,
-            _ => panic!("Can't create a U128 from more than 1 u128!"),
+            _ => unreachable!(),
         }
     }
 }

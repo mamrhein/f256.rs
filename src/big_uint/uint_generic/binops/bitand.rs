@@ -17,7 +17,10 @@ impl<SubUInt: BigUInt + HiLo> BitAnd for UInt<SubUInt> {
 
     #[inline(always)]
     fn bitand(self, rhs: Self) -> Self::Output {
-        &self & &rhs
+        Self {
+            hi: self.hi & rhs.hi,
+            lo: self.lo & rhs.lo,
+        }
     }
 }
 
@@ -26,10 +29,7 @@ impl<SubUInt: BigUInt + HiLo> BitAnd for &UInt<SubUInt> {
 
     #[inline(always)]
     fn bitand(self, rhs: Self) -> Self::Output {
-        UInt::<SubUInt> {
-            hi: self.hi & rhs.hi,
-            lo: self.lo & rhs.lo,
-        }
+        *self & *rhs
     }
 }
 

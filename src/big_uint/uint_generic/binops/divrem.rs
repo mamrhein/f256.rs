@@ -132,7 +132,7 @@ where
             // trim the estimate
             let mut t = *rhs;
             t *= &quot;
-            match (&t).cmp(&self) {
+            match t.cmp(self) {
                 Ordering::Greater => {
                     let mut d = &t - self;
                     let (mut n, _) = d.div_rem(*rhs);
@@ -144,7 +144,7 @@ where
                     t -= &d;
                 }
                 Ordering::Less => {
-                    let (_, ovl) = t.overflowing_add(&rhs);
+                    let (_, ovl) = t.overflowing_add(rhs);
                     if ovl {
                         let mut d = self - &t;
                         let (n, _) = d.div_rem(*rhs);

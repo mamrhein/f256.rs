@@ -91,7 +91,7 @@ where
         rhs: &SubUInt,
     ) -> (Self, SubUInt) {
         debug_assert!(self.hi < *rhs);
-        let n = SubUInt::BITS / 2;
+        let n = SubUInt::BITS >> 1;
         let two_pow_n = SubUInt::ONE << n;
         // Normalize dividend and divisor, so that the divisor has its highest
         // bit set, and get their n-bit parts.
@@ -356,6 +356,7 @@ impl<'a, SubUInt> From<&'a [u128]> for UInt<SubUInt>
 where
     SubUInt: BigUInt + HiLo,
 {
+    #[allow(clippy::integer_division)]
     fn from(value: &'a [u128]) -> Self {
         debug_assert!(value.len() <= (Self::BITS / 128) as usize);
         let idx = value.len().saturating_sub(SubUInt::N_CHUNKS);
@@ -368,6 +369,7 @@ impl<'a, SubUInt> From<&'a Vec<u128>> for UInt<SubUInt>
 where
     SubUInt: BigUInt + HiLo,
 {
+    #[allow(clippy::integer_division)]
     #[inline(always)]
     fn from(value: &'a Vec<u128>) -> Self {
         debug_assert!(value.len() == (Self::BITS / 128) as usize);
@@ -398,6 +400,7 @@ where
 {
     fn fmt(&self, form: &mut fmt::Formatter<'_>) -> fmt::Result {
         const SEGMENT_SIZE: usize = 38;
+        #[allow(clippy::cast_possible_truncation)]
         const SEGMENT_BASE: u128 = 10_u128.pow(SEGMENT_SIZE as u32);
         if self.hi.is_zero() {
             return fmt::Display::fmt(&self.lo, form);
@@ -440,7 +443,7 @@ impl U256 {
         debug_assert!(n < Self::BITS);
         let (hi, lo) = match n {
             0..=127 => (0_u128, 1_u128 << n),
-            128..=255 => (1_u128 << n - 128, 0_u128),
+            128..=255 => (1_u128 << (n - 128), 0_u128),
             _ => unreachable!(),
         };
         Self::new(hi, lo)
@@ -456,6 +459,7 @@ impl U256 {
         debug_assert!(shift < Self::BITS, "Shift with overflow");
         const MAX_SHIFT: u32 = U256::BITS - 1;
         const TIE: u32 = U256::BITS >> 1;
+        #[allow(clippy::match_overlapping_arm)]
         match shift {
             0 => *self,
             1..TIE => {
@@ -488,6 +492,7 @@ impl<'a> DivRem<u64> for &'a U256 {
         let mut t = U256::new(rem, self.lo.0);
         let (t, rem) = t.div_rem(rhs as u128);
         debug_assert!(t.hi.is_zero());
+        #[allow(clippy::cast_possible_truncation)]
         (U256::from_hi_lo(quot_hi, t.lo), rem as u64)
     }
 }

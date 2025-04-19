@@ -16,7 +16,10 @@ impl<SubUInt: BigUInt + HiLo> BitOr for UInt<SubUInt> {
 
     #[inline(always)]
     fn bitor(self, rhs: Self) -> Self::Output {
-        &self | &rhs
+        Self {
+            hi: self.hi | rhs.hi,
+            lo: self.lo | rhs.lo,
+        }
     }
 }
 
@@ -25,10 +28,7 @@ impl<'a, SubUInt: BigUInt + HiLo> BitOr for &'a UInt<SubUInt> {
 
     #[inline(always)]
     fn bitor(self, rhs: Self) -> Self::Output {
-        UInt::<SubUInt> {
-            hi: self.hi | rhs.hi,
-            lo: self.lo | rhs.lo,
-        }
+        *self | *rhs
     }
 }
 

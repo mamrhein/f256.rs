@@ -38,7 +38,7 @@ impl u768 {
         lo: U256::ONE,
     };
 
-    fn new(hi: &U256, mi: &U256, lo: &U256) -> Self {
+    const fn new(hi: &U256, mi: &U256, lo: &U256) -> Self {
         Self {
             hi: *hi,
             mi: *mi,
@@ -49,7 +49,7 @@ impl u768 {
     fn from_u256_shifted(u: &U256, mut shr: u32) -> Self {
         debug_assert!(shr < Self::BITS);
         match shr {
-            0 => Self::new(&u, &U256::ZERO, &U256::ZERO),
+            0 => Self::new(u, &U256::ZERO, &U256::ZERO),
             1..=255 => {
                 Self::new(&(u >> shr), &(u << (256 - shr)), &U256::ZERO)
             }
@@ -147,7 +147,7 @@ impl ShlAssign<u32> for u768 {
                 self.lo = U256::ZERO;
             }
             513..=767 => {
-                self.hi = &self.lo << (rhs - 512);
+                self.hi = self.lo << (rhs - 512);
                 self.mi = U256::ZERO;
                 self.lo = U256::ZERO;
             }
@@ -161,21 +161,22 @@ impl ShlAssign<u32> for u768 {
 #[allow(clippy::cast_possible_truncation)]
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cognitive_complexity)]
 #[inline]
 pub(crate) fn fma(x: &f256, y: &f256, a: &f256) -> f256 {
     // The products sign is the XOR of the signs of the operands.
     let sign_bits_hi_p = (x.bits.hi.0 ^ y.bits.hi.0) & HI_SIGN_MASK;
-    let sign_bits_hi_a = sign_bits_hi(&a);
+    let sign_bits_hi_a = sign_bits_hi(a);
 
     // Check whether one or more operands are NaN, infinite or zero.
     // We mask off the sign bit and mark subnormals having a significand less
     // than 2¹²⁸ in least bit of the representations high u128. This allows to
     // use only that part for the handling of special cases.
-    let mut abs_bits_x = abs_bits(&x);
+    let mut abs_bits_x = abs_bits(x);
     let abs_bits_sticky_x = abs_bits_sticky(&abs_bits_x);
-    let mut abs_bits_y = abs_bits(&y);
+    let mut abs_bits_y = abs_bits(y);
     let abs_bits_sticky_y = abs_bits_sticky(&abs_bits_y);
-    let mut abs_bits_a = abs_bits(&a);
+    let mut abs_bits_a = abs_bits(a);
     let abs_bits_sticky_a = abs_bits_sticky(&abs_bits_a);
     if (abs_bits_sticky_x, abs_bits_sticky_y, abs_bits_sticky_a).any_special()
     {

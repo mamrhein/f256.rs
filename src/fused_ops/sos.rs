@@ -19,11 +19,13 @@ use crate::{
     HI_EXP_MASK, HI_FRACTION_BITS, HI_FRACTION_MASK, INF_HI, U256, U512,
 };
 
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
     // Squares are always positive, so there's no need to care about the signs
     // of the operands.
-    let mut abs_bits_x = abs_bits(&x);
-    let mut abs_bits_y = abs_bits(&y);
+    let mut abs_bits_x = abs_bits(x);
+    let mut abs_bits_y = abs_bits(y);
     // Check whether one or both operands are NaN, infinite or zero.
     // We mask off the sign bit and mark subnormals having a significand less
     // than 2¹²⁸ in least bit of the representations high u128. This allows to
@@ -78,9 +80,9 @@ pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
     // difference of the squares exponents, setting a sticky bit in case of a
     // right shift.
     signif_x <<= 10;
-    let t = signif_x.widening_mul(&(&signif_x));
+    let t = signif_x.widening_mul(&signif_x);
     let mut signif_z = U512 { hi: t.1, lo: t.0 };
-    let t = signif_y.widening_mul(&(&signif_y));
+    let t = signif_y.widening_mul(&signif_y);
     let mut signif_y2 = U512 { hi: t.1, lo: t.0 };
     // |x| >= |y| => exp(x) >= exp(y), so the following can not overflow.
     let d = (2 * (exp_bits_x - norm_bit_x) - 2 * (exp_bits_y - norm_bit_y))

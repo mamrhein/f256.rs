@@ -36,6 +36,9 @@ fn mul_signifs(x: &U256, y: &U256) -> (U256, u32, u32) {
     (hi, carry, rnd_bits)
 }
 
+#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn mul_abs_finite(
     abs_bits_x: &U256,
     abs_bits_y: &U256,
@@ -91,8 +94,8 @@ pub(crate) fn mul_abs_finite(
                 }
                 _ => {
                     let rem = signif_z.rem_pow2(shift);
-                    rnd_bits = (&rem >> (shift - 2)).lo.0 as u32
-                        | (rem > (&U256::ONE << (shift - 1))) as u32
+                    rnd_bits = (rem >> (shift - 2)).lo.0 as u32
+                        | (rem > (U256::ONE << (shift - 1))) as u32
                         | (rnd_bits != 0) as u32;
                 }
             }

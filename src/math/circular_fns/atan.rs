@@ -7,8 +7,6 @@
 // $Source$
 // $Revision$
 
-use core::cmp::max;
-
 use super::{approx_atan::approx_atan, Float256, FP492};
 use crate::{
     abs_bits, abs_bits_sticky,
@@ -16,6 +14,7 @@ use crate::{
     f256, sign_bits_hi, BinEncAnySpecial, EXP_BIAS, HI_EXP_MASK,
     HI_FRACTION_BITS, SIGNIFICAND_BITS, U256,
 };
+use core::cmp::{max, Ordering};
 
 // Cut-off for large values (2²³⁷)
 const LARGE_CUT_OFF: U256 = U256::new(
@@ -36,13 +35,14 @@ impl f256 {
     /// Computes the arctangent of a number (in radians).
     ///
     /// Return value is in radians in the range [-½π, ½π].
+    #[must_use]
     pub fn atan(&self) -> Self {
         let abs_bits_self = abs_bits(self);
         // If self is NAN, atan self is NAN.
         if (abs_bits_self.hi.0 | (abs_bits_self.lo.0 != 0) as u128)
             > HI_EXP_MASK
         {
-            return f256::NAN;
+            return Self::NAN;
         }
         // If |self| >= 2²³⁷, atan self = ±½π.
         if abs_bits_self.hi >= LARGE_CUT_OFF.hi {
@@ -55,18 +55,20 @@ impl f256 {
             return *self;
         }
         // Now we have ε < |self| < 2²³⁷.
-        if abs_bits_self < Self::ONE.bits {
-            Self::from(&approx_atan(&FP492::from(self)))
-        } else if abs_bits_self > Self::ONE.bits {
-            // atan(±x) = ±½π - atan(1/x) for |x| > 1
-            let xr = Float256::from(self).recip();
-            let atan = [Float256::FRAC_PI_2, -Float256::FRAC_PI_2]
-                [self.sign() as usize]
-                - Float256::from(&approx_atan(&FP492::from(&xr)));
-            Self::from(&atan)
-        } else {
-            // atan(±1) = ±¼π
-            [FRAC_PI_4, -FRAC_PI_4][self.sign() as usize]
+        match abs_bits_self.cmp(&Self::ONE.bits) {
+            Ordering::Less => Self::from(&approx_atan(&FP492::from(self))),
+            Ordering::Greater => {
+                // atan(±x) = ±½π - atan(1/x) for |x| > 1
+                let xr = Float256::from(self).recip();
+                let atan = [Float256::FRAC_PI_2, -Float256::FRAC_PI_2]
+                    [self.sign() as usize]
+                    - Float256::from(&approx_atan(&FP492::from(&xr)));
+                Self::from(&atan)
+            }
+            _ => {
+                // atan(±1) = ±¼π
+                [FRAC_PI_4, -FRAC_PI_4][self.sign() as usize]
+            }
         }
     }
 
@@ -77,9 +79,10 @@ impl f256 {
     /// * `x >= 0`: `arctan(y/x)` -> `[-½π, ½π]`
     /// * `y >= 0`: `arctan(y/x) + π` -> `(½π, π]`
     /// * `y < 0`: `arctan(y/x) - π` -> `(-π, -½π)`
+    #[must_use]
     pub fn atan2(&self, other: &Self) -> Self {
-        let mut abs_bits_x = abs_bits(&other);
-        let mut abs_bits_y = abs_bits(&self);
+        let mut abs_bits_x = abs_bits(other);
+        let mut abs_bits_y = abs_bits(self);
         // Check whether one or both operands are NaN, infinite or zero.
         // We mask off the sign bit and mark subnormals having a significand
         // less than 2¹²⁸ in least bit of the representations high
@@ -90,47 +93,49 @@ impl f256 {
         if (abs_bits_sticky_x, abs_bits_sticky_y).any_special() {
             if max(abs_bits_sticky_x, abs_bits_sticky_y) > HI_EXP_MASK {
                 // Atleast one operand is NAN.
-                return f256::NAN;
+                return Self::NAN;
             }
             if abs_bits_sticky_x == 0_u128 {
                 return if abs_bits_sticky_y == 0 {
                     // Both operands are zero.
-                    f256::ZERO
+                    Self::ZERO
                 } else {
                     // other = 0, self != 0 => ±½π
                     let mut res = FRAC_PI_2;
-                    res.bits.hi.0 |= sign_bits_hi(&self);
+                    res.bits.hi.0 |= sign_bits_hi(self);
                     res
                 };
             }
             if abs_bits_sticky_y == 0_u128 {
                 // self = 0, other > 0 => 0
                 // self = 0, other < 0 => π
-                return [f256::ZERO, PI][other.sign() as usize];
+                return [Self::ZERO, PI][other.sign() as usize];
             }
             // Both operands are infinite.
             return match (self.sign(), other.sign()) {
                 (0, 0) => FRAC_PI_4,
                 (0, 1) => FRAC_3_PI_2,
                 (1, 0) => -FRAC_PI_4,
-                _ => &FRAC_PI_4 - &PI,
+                _ => FRAC_PI_4 - PI,
             };
         }
 
         // Both operands are finite and non-zero.
 
         let sign_q = (self.sign() + other.sign()) % 2;
-        let mut atan = if abs_bits_y < abs_bits_x {
-            let mut q = Float256::from(self);
-            q /= &Float256::from(other);
-            Float256::from(&approx_atan(&FP492::from(&q)))
-        } else if abs_bits_y > abs_bits_x {
-            let mut q = Float256::from(other);
-            q /= &Float256::from(self);
-            [Float256::FRAC_PI_2, -Float256::FRAC_PI_2][sign_q as usize]
-                - Float256::from(&approx_atan(&FP492::from(&q)))
-        } else {
-            [Float256::FRAC_PI_2, -Float256::FRAC_PI_2][sign_q as usize]
+        let mut atan = match abs_bits_y.cmp(&abs_bits_x) {
+            Ordering::Less => {
+                let mut q = Float256::from(self);
+                q /= &Float256::from(other);
+                Float256::from(&approx_atan(&FP492::from(&q)))
+            }
+            Ordering::Greater => {
+                let mut q = Float256::from(other);
+                q /= &Float256::from(self);
+                [Float256::FRAC_PI_2, -Float256::FRAC_PI_2][sign_q as usize]
+                    - Float256::from(&approx_atan(&FP492::from(&q)))
+            }
+            _ => [Float256::FRAC_PI_2, -Float256::FRAC_PI_2][sign_q as usize],
         };
         match (self.sign(), other.sign()) {
             (0, 1) => {

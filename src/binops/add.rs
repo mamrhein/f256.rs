@@ -196,7 +196,7 @@ fn add_or_sub_rounded<'a>(
     } else if adj >= SIGNIFICAND_BITS + 3 {
         1_u128
     } else {
-        !(&*signif_y << (U256::BITS - adj)).is_zero() as u128
+        !(*signif_y << (U256::BITS - adj)).is_zero() as u128
     };
     *signif_y >>= adj;
     signif_y.lo.0 |= sticky_bit;

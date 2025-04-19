@@ -39,6 +39,7 @@ const LOG2_MAX: f256 = f256 {
     ),
 };
 
+#[allow(clippy::cast_sign_loss)]
 pub(crate) fn approx_exp(x: &Float512) -> Float512 {
     // 2⁻²³⁶ <= |x| <= LN_MAX
     let mut m = x.abs();
@@ -84,6 +85,7 @@ pub(crate) fn approx_exp(x: &Float512) -> Float512 {
 
 impl f256 {
     /// Returns e^(self), (the exponential function).
+    #[must_use]
     pub fn exp(&self) -> Self {
         // x = 0  or x is subnornal => eˣ = 1
         // x = ∞ => eˣ = ∞
@@ -102,14 +104,14 @@ impl f256 {
                     return consts::E;
                 }
                 let self_abs = self.abs();
-                if &self_abs <= &Self::EPSILON {
+                if self_abs <= Self::EPSILON {
                     // for very small x, eˣ ≅ 1+x+½x²
                     let x = Float512::from(self);
                     return Self::from(
                         &(Float512::ONE + x + x.square().mul_pow2(-1)),
                     );
                 }
-                if &self_abs > &LN_MAX {
+                if self_abs > LN_MAX {
                     return [Self::INFINITY, Self::ZERO]
                         [self.sign() as usize];
                 }
@@ -120,6 +122,7 @@ impl f256 {
 
     /// Returns e^(self) - 1 in a way that is accurate even if the number is
     /// close to zero.
+    #[must_use]
     pub fn exp_m1(&self) -> Self {
         // x = 0  or x is subnornal => eˣ-1 = 0
         // x = ∞ => eˣ-1 = ∞
@@ -138,12 +141,12 @@ impl f256 {
                     return consts::E - Self::ONE;
                 }
                 let self_abs = self.abs();
-                if &self_abs <= &Self::EPSILON {
+                if self_abs <= Self::EPSILON {
                     // for very small x, eˣ-1 ≅ x+½x²
                     let x = Float512::from(self);
                     return Self::from(&(x + x.square().mul_pow2(-1)));
                 }
-                if &self_abs > &LN_MAX {
+                if self_abs > LN_MAX {
                     return [Self::INFINITY, Self::NEG_ONE]
                         [self.sign() as usize];
                 }
@@ -155,6 +158,7 @@ impl f256 {
     }
 
     /// Returns 2^(self).
+    #[must_use]
     pub fn exp2(&self) -> Self {
         const LOG2_MIN: f256 = f256::power_of_two(-510);
         // x = 0  or x is subnornal => 2ˣ = 1
@@ -174,9 +178,9 @@ impl f256 {
                 }
                 let self_abs = self.abs();
                 if self_abs < LOG2_MIN {
-                    return f256::ONE;
+                    return Self::ONE;
                 }
-                if &self.abs() > &LOG2_MAX {
+                if self.abs() > LOG2_MAX {
                     return [Self::INFINITY, Self::ZERO]
                         [self.sign() as usize];
                 }

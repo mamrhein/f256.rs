@@ -16,7 +16,7 @@ impl<SubUInt: BigUInt + HiLo> Add<u128> for UInt<SubUInt> {
 
     #[inline(always)]
     fn add(self, rhs: u128) -> Self::Output {
-        &self + &Self::from(&rhs)
+        self + Self::from(&rhs)
     }
 }
 
@@ -25,7 +25,7 @@ impl<SubUInt: BigUInt + HiLo> Add<SubUInt> for UInt<SubUInt> {
 
     #[inline(always)]
     fn add(self, rhs: SubUInt) -> Self::Output {
-        &self + &Self::from(&rhs)
+        self + Self::from(&rhs)
     }
 }
 
@@ -34,7 +34,9 @@ impl<SubUInt: BigUInt + HiLo> Add for UInt<SubUInt> {
 
     #[inline(always)]
     fn add(self, rhs: Self) -> Self::Output {
-        &self + &rhs
+        let (sum, carry) = self.overflowing_add(&rhs);
+        assert!(!carry, "Attempt to add with overflow");
+        sum
     }
 }
 
@@ -42,9 +44,7 @@ impl<'a, SubUInt: BigUInt + HiLo> Add for &'a UInt<SubUInt> {
     type Output = <UInt<SubUInt> as Add>::Output;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let (sum, carry) = self.overflowing_add(rhs);
-        assert!(!carry, "Attempt to add with overflow");
-        sum
+        *self + *rhs
     }
 }
 

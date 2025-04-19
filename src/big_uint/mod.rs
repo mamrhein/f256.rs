@@ -54,6 +54,7 @@ pub(crate) enum Parity {
     Odd,
 }
 
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) trait BigUInt
 where
     Self: Copy

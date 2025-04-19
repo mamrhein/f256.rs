@@ -16,7 +16,7 @@ impl<SubUInt: BigUInt + HiLo> Sub<u128> for UInt<SubUInt> {
 
     #[inline(always)]
     fn sub(self, rhs: u128) -> Self::Output {
-        &self - &Self::from(&rhs)
+        self - Self::from(&rhs)
     }
 }
 
@@ -25,7 +25,7 @@ impl<SubUInt: BigUInt + HiLo> Sub<SubUInt> for UInt<SubUInt> {
 
     #[inline(always)]
     fn sub(self, rhs: SubUInt) -> Self::Output {
-        &self - &Self::from(&rhs)
+        self - Self::from(&rhs)
     }
 }
 
@@ -37,7 +37,9 @@ where
 
     #[inline(always)]
     fn sub(self, rhs: Self) -> Self::Output {
-        &self - &rhs
+        let (diff, borrow) = self.overflowing_sub(&rhs);
+        assert!(!borrow, "Attempt to subtract with overflow");
+        diff
     }
 }
 
@@ -48,9 +50,7 @@ where
     type Output = <UInt<SubUInt> as Sub>::Output;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let (diff, borrow) = self.overflowing_sub(rhs);
-        assert!(!borrow, "Attempt to subtract with overflow");
-        diff
+        *self - *rhs
     }
 }
 

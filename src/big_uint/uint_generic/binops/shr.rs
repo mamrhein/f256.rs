@@ -46,7 +46,7 @@ impl<SubUInt: BigUInt + HiLo> Shr<u32> for &UInt<SubUInt> {
 
 impl<SubUInt: BigUInt + HiLo> ShrAssign<u32> for UInt<SubUInt> {
     fn shr_assign(&mut self, rhs: u32) {
-        *self = &(*self) >> rhs;
+        *self = (*self) >> rhs;
     }
 }
 

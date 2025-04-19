@@ -17,15 +17,16 @@ use crate::{
     abs_bits, exp, f256, norm_signif_exp, EMAX, EMIN, FRACTION_BITS,
 };
 
-enum LIM {
+enum Lim {
     Ok,
     Overflow,
     Underflow,
 }
 
-impl LIM {
+impl Lim {
     // Check the range of exponents n where xⁿ is guarantied to be infinite.
     #[inline(always)]
+    #[allow(clippy::cast_possible_wrap)]
     fn powi(x: &f256, n: i32) -> Self {
         let (m, mut e) = norm_signif_exp(&abs_bits(x));
         // Now we have |x| = m⋅2ᵉ with 1 <= m < 2 and Eₘᵢₙ-P+1 <= e <= Eₘₐₓ
@@ -36,9 +37,9 @@ impl LIM {
         const UPPER_LIM: i32 = EMAX + 1;
         let e_times_n = e.saturating_mul(n);
         match e_times_n {
-            ..=LOWER_LIM => LIM::Underflow,
-            UPPER_LIM.. => LIM::Overflow,
-            _ => LIM::Ok,
+            ..=LOWER_LIM => Self::Underflow,
+            UPPER_LIM.. => Self::Overflow,
+            _ => Self::Ok,
         }
     }
 
@@ -59,9 +60,9 @@ fn powi(x: &f256, mut n: i32) -> f256 {
     debug_assert!(n.abs() > 1);
     // x < 0 => x = -1⋅|x| => xⁿ = (-1)ⁿ⋅|x|ⁿ
     let s = x.sign() * ((n.abs() % 2) == 1) as u32;
-    match LIM::powi(x, n) {
-        LIM::Overflow => [f256::INFINITY, f256::NEG_INFINITY][s as usize],
-        LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][s as usize],
+    match Lim::powi(x, n) {
+        Lim::Overflow => [f256::INFINITY, f256::NEG_INFINITY][s as usize],
+        Lim::Underflow => [f256::ZERO, f256::NEG_ZERO][s as usize],
         _ => {
             // Result is most likely finite.
             f256::from(&Float512::from(x).powi(n))
@@ -70,7 +71,7 @@ fn powi(x: &f256, mut n: i32) -> f256 {
 }
 
 pub(crate) fn approx_powf(mut x: Float512, mut y: Float512) -> Float512 {
-    debug_assert!(&y.abs() < &Float512::from(i32::MAX));
+    debug_assert!(y.abs() < Float512::from(i32::MAX));
     if y.signum() == -1 {
         x = x.recip();
         y.flip_sign();
@@ -103,28 +104,26 @@ fn powf(x: &f256, y: &f256) -> f256 {
     let x_sign = x.sign();
     if let Ok(n) = i32::try_from(y) {
         let s: usize = match (x_sign, (n % 2) == 1) {
-            (0, _) => 0,
+            (0, _) | (1, false) => 0,
             (1, true) => 1,
-            (1, false) => 0,
             _ => unreachable!(),
         };
-        return match LIM::powi(x, n) {
-            LIM::Overflow => [f256::INFINITY, f256::NEG_INFINITY][s],
-            LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][s],
+        return match Lim::powi(x, n) {
+            Lim::Overflow => [f256::INFINITY, f256::NEG_INFINITY][s],
+            Lim::Underflow => [f256::ZERO, f256::NEG_ZERO][s],
             _ => powi(x, n),
         };
     };
     if let Some(p) = y.parity() {
         // y ∈ ℤ and |y| >= 2³¹
         let s = match (x_sign, p) {
-            (0, _) => 0,
+            (0, _) | (1, Parity::Even) => 0,
             (1, Parity::Odd) => 1,
-            (1, Parity::Even) => 0,
             _ => unreachable!(),
         };
-        return match LIM::powi(x, [i32::MAX, i32::MIN][y.sign() as usize]) {
-            LIM::Overflow => [f256::INFINITY, f256::NEG_INFINITY][s],
-            LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][s],
+        return match Lim::powi(x, [i32::MAX, i32::MIN][y.sign() as usize]) {
+            Lim::Overflow => [f256::INFINITY, f256::NEG_INFINITY][s],
+            Lim::Underflow => [f256::ZERO, f256::NEG_ZERO][s],
             _ => unreachable!(),
         };
     }
@@ -133,11 +132,11 @@ fn powf(x: &f256, y: &f256) -> f256 {
         // xʸ = NaN for x < 0 and non-integer y
         return f256::NAN;
     };
-    match LIM::powf(x, y) {
-        LIM::Overflow => {
+    match Lim::powf(x, y) {
+        Lim::Overflow => {
             [f256::INFINITY, f256::NEG_INFINITY][x_sign as usize]
         }
-        LIM::Underflow => [f256::ZERO, f256::NEG_ZERO][x_sign as usize],
+        Lim::Underflow => [f256::ZERO, f256::NEG_ZERO][x_sign as usize],
         _ => {
             // Result is most likely finite.
             f256::from(&approx_powf(Float512::from(x), Float512::from(y)))
@@ -147,6 +146,7 @@ fn powf(x: &f256, y: &f256) -> f256 {
 
 impl f256 {
     /// Raises a number to an integer power.
+    #[must_use]
     pub fn powi(&self, n: i32) -> Self {
         // x⁰ = 1 for any x, incl. NaN
         // 1ⁿ = 1 for any n
@@ -200,6 +200,7 @@ impl f256 {
     }
 
     /// Raises a number to a floating point power.
+    #[must_use]
     pub fn powf(&self, exp: &Self) -> Self {
         // a⁰ = 1 for any a, incl. NaN
         // 1ᵇ = 1 for any b, incl. NaN
@@ -207,11 +208,11 @@ impl f256 {
             return Self::ONE;
         }
         // a¹ = a for any a, incl. NaN
-        if *exp == f256::ONE {
+        if *exp == Self::ONE {
             return *self;
         }
         // a⁻¹ = 1/a for any a, incl. NaN (note: 1/NaN = NaN)
-        if *exp == f256::NEG_ONE {
+        if *exp == Self::NEG_ONE {
             return self.recip();
         }
         // This test for special values is redundant, but it reduces the
