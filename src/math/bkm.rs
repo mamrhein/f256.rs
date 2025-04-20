@@ -15,7 +15,7 @@ use core::{cmp::Ordering, ops::AddAssign};
 const N: usize = Float512::FRACTION_BITS as usize + 1;
 
 // Table holding values l⋅2⁵¹⁰, where l = log(1+2⁻ⁿ)
-pub(crate) const LUT: [U512; N] = [
+pub(crate) static LUT: [U512; N] = [
     // n = 0
     // l = 0.69314718055994530941723212145817656807550013436025525412068000949339362196969471560586332699641868754200148102057068573368552023575813055703267075163507587
     U512::new(
