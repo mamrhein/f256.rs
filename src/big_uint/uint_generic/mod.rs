@@ -236,7 +236,7 @@ where
     /// arithmetic overflow occurred.
     fn overflowing_sub(&self, rhs: &Self) -> (Self, bool) {
         let (lo, borrow) = self.lo.overflowing_sub(&rhs.lo);
-        let (hi, borrow) = self.hi.borrowing_sub(rhs.hi, borrow);
+        let (hi, borrow) = self.hi.borrowing_sub(&rhs.hi, borrow);
         (Self { hi, lo }, borrow)
     }
 

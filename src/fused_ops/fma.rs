@@ -90,8 +90,8 @@ impl u768 {
     fn isub(&mut self, rhs: &Self) {
         let mut borrow = false;
         (self.lo, borrow) = self.lo.overflowing_sub(&rhs.lo);
-        (self.mi, borrow) = self.mi.borrowing_sub(rhs.mi, borrow);
-        (self.hi, borrow) = self.hi.borrowing_sub(rhs.hi, borrow);
+        (self.mi, borrow) = self.mi.borrowing_sub(&rhs.mi, borrow);
+        (self.hi, borrow) = self.hi.borrowing_sub(&rhs.hi, borrow);
     }
 
     fn leading_zeros(&self) -> u32 {
