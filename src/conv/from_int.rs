@@ -16,6 +16,7 @@ impl f256 {
     /// Construct a finite `f256` from a signed 64-bit integer.
     #[must_use]
     #[inline]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) const fn from_i64(i: i64) -> Self {
         if i == 0 {
             return Self::ZERO;
@@ -34,6 +35,7 @@ impl f256 {
     #[allow(clippy::cast_sign_loss)]
     #[must_use]
     #[inline]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) const fn from_i128(i: i128) -> Self {
         if i == 0 {
             return Self::ZERO;
@@ -53,6 +55,7 @@ impl f256 {
     /// Construct a finite `f256` from an unsigned 64-bit integer.
     #[must_use]
     #[inline]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) const fn from_u64(i: u64) -> Self {
         if i == 0 {
             return Self::ZERO;
@@ -68,6 +71,7 @@ impl f256 {
     /// Construct a finite `f256` from an unsigned 128-bit integer.
     #[must_use]
     #[inline]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) const fn from_u128(i: u128) -> Self {
         if i == 0 {
             return Self::ZERO;
@@ -83,6 +87,7 @@ impl f256 {
     /// Construct a finite `f256` from an unsigned 256-bit integer.
     #[must_use]
     #[inline]
+    #[allow(clippy::cast_possible_wrap)]
     pub(crate) fn from_u256(i: &U256) -> Self {
         debug_assert!(i.hi.0.leading_zeros() >= EXP_BITS);
         if i.is_zero() {

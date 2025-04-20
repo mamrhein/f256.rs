@@ -142,9 +142,8 @@ impl DecNumRepr {
         // Step 2: Compute the halfway points to the next smaller and larger
         // floating point values.
         let is_non_integer = exp2 < -(signif2.trailing_zeros() as i32);
-        let lower_signif2 =
-            &signif2 - &U256::from(1 + is_non_integer as u128);
-        let upper_signif2 = &signif2 + &U256::TWO;
+        let lower_signif2 = signif2 - U256::from(1 + is_non_integer as u128);
+        let upper_signif2 = signif2 + U256::TWO;
 
         // Step 3: Convert the interval to a decimal power base.
         let mut exp10: i32;
@@ -165,10 +164,10 @@ impl DecNumRepr {
             let sh = (exp2 - g - h + 510) as u32;
             let luv = lookup_pow2_div_pow5(g as usize);
             lower_signif10 =
-                u256_truncating_mul_u512(&(&lower_signif2 << sh), &luv);
-            signif10 = u256_truncating_mul_u512(&(&signif2 << sh), &luv);
+                u256_truncating_mul_u512(&(lower_signif2 << sh), &luv);
+            signif10 = u256_truncating_mul_u512(&(signif2 << sh), &luv);
             upper_signif10 =
-                u256_truncating_mul_u512(&(&upper_signif2 << sh), &luv);
+                u256_truncating_mul_u512(&(upper_signif2 << sh), &luv);
             // exp2 >= 0 => rem_zero = signif10 % 10ᵍ == 0 = signif2 % 5ᵍ == 0
             // Analog for the lower and upper bound.
             // exp2 >= 0 => g >= 0
@@ -178,7 +177,7 @@ impl DecNumRepr {
             if g <= 102 {
                 // Only one of lower_signif10, signif10, upper_signif10 can be
                 // a multiple of 5ᵍ, if any.
-                if (&signif2 % &U128::from(5_u128)).is_zero() {
+                if (signif2 % U128::from(5_u128)).is_zero() {
                     rem_zero = is_multiple_of_pow5(&signif2, g as u32);
                 } else if accept_bounds {
                     lower_rem_zero =
@@ -202,10 +201,10 @@ impl DecNumRepr {
             let sh = (510 - g + h) as u32;
             let luv = lookup_pow5_div_pow2(i as usize);
             lower_signif10 =
-                u256_truncating_mul_u512(&(&lower_signif2 << sh), &luv);
-            signif10 = u256_truncating_mul_u512(&(&signif2 << sh), &luv);
+                u256_truncating_mul_u512(&(lower_signif2 << sh), &luv);
+            signif10 = u256_truncating_mul_u512(&(signif2 << sh), &luv);
             upper_signif10 =
-                u256_truncating_mul_u512(&(&upper_signif2 << sh), &luv);
+                u256_truncating_mul_u512(&(upper_signif2 << sh), &luv);
             // exp2 < 0 => rem_zero = signif10 % 10ᵍ == 0 = signif2 % 2ᵍ == 0
             // Analog for the lower and upper bound.
             if g <= 1 {

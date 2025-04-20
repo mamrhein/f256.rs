@@ -46,6 +46,7 @@ enum Round {
 
 /// Calculate ⌊x × y / 2ᵏ⌋ % B, where B = 10 ^ CHUNK_SIZE.
 #[inline(always)]
+#[allow(clippy::cast_possible_truncation)]
 fn mul_shift_mod(x: &U256, y: &U512, k: u32) -> u64 {
     debug_assert!(k > 256);
     let mut t = x.widening_mul(&y.hi);
@@ -276,7 +277,7 @@ fn bin_small_float_2_scientific(
         // quotient must be greater than or equal to the divisor.
         // As signif2 < 2²³⁷ the same must hold for the divisor. Thus the
         // following shift can't overflow.
-        let d = &get_power_of_five(-k as u32) << (n - k) as u32;
+        let d = get_power_of_five(-k as u32) << (n - k) as u32;
         let mut t = signif2.rounding_div(&d);
         U512::from_hi_lo(U256::ZERO, t)
     };
@@ -321,7 +322,7 @@ fn bin_small_int_2_scientific(
         rounding_div_pow10(&t, k as u32)
     } else {
         // signif10 = ⌊signif2 × 2ⁿ × 10⁻ᵏ⌋ = ⌊signif2 × (5⁻ᵏ × 2ⁿ⁻ᵏ)⌋
-        let t = &get_power_of_five(-k as u32) << (exp2 - k) as u32;
+        let t = get_power_of_five(-k as u32) << (exp2 - k) as u32;
         let (lo, hi) = signif2.widening_mul(&t);
         U512::from_hi_lo(hi, lo)
     };

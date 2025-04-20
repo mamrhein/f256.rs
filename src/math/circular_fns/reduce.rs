@@ -127,6 +127,8 @@ fn fp_reduce(exp: i32, x: &f256) -> (u32, FP492) {
 // Formally verified argument reduction with a fused multiply-add
 // IEEE Trans. Comput. 58(8), 1139–1145 (2009)
 // For the input value x, calculate ⌈x/½π⌋ % 4 and x % ½π
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_possible_truncation)]
 fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
     // R = ◯₂₅₅(1/½π) =
     // 0.6366197723675813430755350534900574481378385829618257949906693762355871905369
@@ -205,7 +207,7 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
         };
         // x <= M => z < 2ᴾ⁻²
         let e = z.exp() - Float256::FRACTION_BITS as i32;
-        let q = (&z.signif() >> e.unsigned_abs()).lo.0 as u32 & 0x3;
+        let q = (z.signif() >> e.unsigned_abs()).lo.0 as u32 & 0x3;
         // Convert (v1 + v2) into a fixed-point number with 509-bit-fraction
         // |v1| <= ½π => v1.exp <= 0
         let mut fx = FP492::from(&v1);
@@ -221,8 +223,10 @@ fn fma_reduce(exp: i32, x: &f256) -> (u32, FP492) {
 // Radian reduction for trigonometric functions
 // SIGNUM Newsletter 18, p. 19–24
 // For the input value x, calculate ⌈x/½π⌋ % 4 and x % ½π
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 fn large_val_reduce(e: i32, x: &f256) -> (u32, FP492) {
-    debug_assert!(e >= SIGNIFICAND_BITS as i32 + 1);
+    debug_assert!(e > SIGNIFICAND_BITS as i32);
 
     let m = x.integral_significand();
     // Now we have |x| = m⋅2ᵉ⁻ᴾ⁺¹,
@@ -254,7 +258,7 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP492) {
     // value with 492 fractional bits.
     let n = 750_u32;
     let idx = e as u32 - SIGNIFICAND_BITS - 1;
-    let mut r1_hi = &get_256_bits(idx) >> (768 - n);
+    let mut r1_hi = get_256_bits(idx) >> (768 - n);
     let mut r1_mi = get_256_bits(idx + n - 512);
     let mut r1_lo = get_256_bits(idx + n - 256);
     let (_, tl1) = m.widening_mul(&r1_lo);
@@ -265,7 +269,7 @@ fn large_val_reduce(e: i32, x: &f256) -> (u32, FP492) {
     let (mut th, _) = th1.overflowing_add(&th2);
     let mut f = U512::from_hi_lo(th, tl);
     // The integral part has 512 - 492 = 20 bits.
-    let mut k = (th.hi.0 >> u128::BITS - 20) as u32;
+    let mut k = (th.hi.0 >> (u128::BITS - 20)) as u32;
     th.hi.0 &= (1 << (u128::BITS - 20)) - 1;
     let mut y = FP492::from(U512::from_hi_lo(th, tl));
     if y > FP492::ONE_HALF || (y == FP492::ONE_HALF && (k & 1) == 1) {
@@ -285,7 +289,7 @@ pub(super) fn reduce(x: &f256) -> (u32, FP492) {
         // |x| < ½ => no need for reduction
         return (0, FP492::from(x));
     }
-    fp_reduce(x_exp, &x)
+    fp_reduce(x_exp, x)
 }
 
 #[cfg(test)]

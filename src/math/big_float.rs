@@ -41,6 +41,7 @@ where
     (sum, exp_adj)
 }
 
+#[allow(clippy::cast_possible_wrap)]
 fn sub_signifs<T>(x: &T, y: &T) -> (T, i32)
 where
     T: BigUInt + HiLo,
@@ -54,7 +55,7 @@ where
     (diff, -(shl as i32))
 }
 
-fn mul_signifs<T: BigUInt + HiLo>(x: &T, y: &T) -> (UInt<T>, i32)
+fn mul_signifs<T>(x: &T, y: &T) -> (UInt<T>, i32)
 where
     T: BigUInt + HiLo,
 {
@@ -62,11 +63,11 @@ where
     debug_assert!(y.leading_zeros() == 1);
     let (lo, hi) = x.widening_mul(y);
     let nlz = hi.leading_zeros();
-    let res = &UInt::<T>::from_hi_lo(hi, lo) << (nlz - 1);
+    let res = UInt::<T>::from_hi_lo(hi, lo) << (nlz - 1);
     (res, (nlz == 2) as i32)
 }
 
-fn div_signifs<T: BigUInt + HiLo>(x: &T, y: &T, sh: u32) -> (T, i32)
+fn div_signifs<T>(x: &T, y: &T, sh: u32) -> (T, i32)
 where
     T: BigUInt + HiLo,
 {
@@ -100,6 +101,8 @@ pub(crate) struct Float<T> {
     signif: T,
 }
 
+#[allow(clippy::integer_division)]
+#[allow(clippy::cast_possible_wrap)]
 impl<T> Float<T>
 where
     T: BigUInt + HiLo + for<'a> From<&'a [u128]>,
@@ -214,6 +217,7 @@ where
         }
     }
 
+    #[allow(clippy::cast_sign_loss)]
     pub(crate) fn trunc(&self) -> Self {
         match self.exp {
             // `self`>= 2 => set fractional bits to 0
@@ -237,6 +241,7 @@ where
         }
     }
 
+    #[allow(clippy::cast_sign_loss)]
     fn iadd(&mut self, other: &Self) {
         let exp = max(self.exp, other.exp);
         if self.is_zero() || (exp - self.exp) > Self::FRACTION_BITS as i32 {
@@ -248,11 +253,11 @@ where
         }
         let (mut signif_self, rem_self) = match (exp - self.exp) as u32 {
             0 => (self.signif, T::ZERO),
-            sh @ _ => self.signif.widening_shr(sh),
+            sh => self.signif.widening_shr(sh),
         };
         let (mut signif_other, rem_other) = match (exp - other.exp) as u32 {
             0 => (other.signif, T::ZERO),
-            sh @ _ => other.signif.widening_shr(sh),
+            sh => other.signif.widening_shr(sh),
         };
         let op = [add_signifs, sub_signifs]
             [(self.signum != other.signum) as usize];
@@ -266,7 +271,7 @@ where
             self.signum = 0;
             self.exp = 0;
         } else {
-            self.exp = (exp + exp_adj)
+            self.exp = (exp + exp_adj);
         };
     }
 
@@ -313,6 +318,7 @@ where
         recip
     }
 
+    #[allow(clippy::cast_sign_loss)]
     fn imul_add(&mut self, f: &Self, a: &Self) {
         if self.is_zero() || f.is_zero() {
             *self = *a;
@@ -394,7 +400,7 @@ where
                 } else {
                     // less than T::BITS - 1 bits left
                     // => shift left, no rounding
-                    self.signif = x_signif.lo_t() << shl - T::BITS;
+                    self.signif = x_signif.lo_t() << (shl - T::BITS);
                 }
             };
         } else {
@@ -431,7 +437,7 @@ where
 
     /// Computes `self` * 2ⁿ
     #[inline(always)]
-    pub fn mul_pow2(&self, n: i32) -> Self {
+    pub const fn mul_pow2(&self, n: i32) -> Self {
         Self {
             signum: self.signum,
             exp: self.exp + n,
@@ -448,6 +454,7 @@ where
 
     /// Returns the square root of `self`.
     #[must_use]
+    #[allow(clippy::cast_sign_loss)]
     pub fn sqrt(&self) -> Self {
         debug_assert!(self.signum >= 0);
         if self.signum == 0 {
@@ -527,7 +534,7 @@ where
         Self::from_sign_exp_signif(
             (i < 0) as u32,
             0,
-            &*T::from(i.unsigned_abs() as u128).as_vec_u128(),
+            &T::from(i.unsigned_abs() as u128).as_vec_u128(),
         )
     }
 }
@@ -536,6 +543,7 @@ impl<T> From<&f256> for Float<T>
 where
     T: BigUInt + HiLo + for<'a> From<&'a [u128]>,
 {
+    #[allow(clippy::cast_possible_wrap)]
     fn from(f: &f256) -> Self {
         if f.eq_zero() {
             return Self::ZERO;
@@ -573,6 +581,7 @@ impl<T> From<&Float<T>> for f256
 where
     T: BigUInt + HiLo,
 {
+    #[allow(clippy::cast_possible_wrap)]
     fn from(fp: &Float<T>) -> Self {
         if fp.is_zero() {
             return Self::ZERO;
@@ -606,10 +615,10 @@ where
                 }
                 bits
             }
-            EXP_OVERFLOW.. => f256::INFINITY.bits,
+            EXP_OVERFLOW.. => Self::INFINITY.bits,
         };
         f256_bits.hi.0 |= ((fp.signum < 0) as u128) << HI_SIGN_SHIFT;
-        f256 { bits: f256_bits }
+        Self { bits: f256_bits }
     }
 }
 
@@ -619,7 +628,10 @@ where
 {
     type Error = ();
 
-    fn try_from(value: &Float<T>) -> Result<i32, Self::Error> {
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
+    fn try_from(value: &Float<T>) -> Result<Self, Self::Error> {
         const LIM: i32 = i32::BITS as i32 - 2;
         match value.exp {
             0 if value.signum == 0 => Ok(0),
@@ -633,7 +645,7 @@ where
                     if value.signum == -1 {
                         t = -t;
                     }
-                    Ok(t as i32)
+                    Ok(t as Self)
                 } else {
                     // `value` is not an int
                     Err(())
@@ -925,7 +937,7 @@ impl<T: BigUInt + HiLo> Neg for Float<T> {
     #[inline]
     fn neg(self) -> Self::Output {
         Self::Output {
-            signum: self.signum * -1,
+            signum: -self.signum,
             exp: self.exp,
             signif: self.signif,
         }
@@ -1069,7 +1081,7 @@ pub(crate) type Float256 = Float<U256>;
 impl Float256 {
     // PI = ◯₂₅₄(π) =
     // 3.1415926535897932384626433832795028841971693993751058209749445923078164062862
-    pub(crate) const PI: Float256 = Float256::new(
+    pub(crate) const PI: Self = Self::new(
         1,
         1,
         (
@@ -1079,7 +1091,7 @@ impl Float256 {
     );
     // FRAC_PI_2 = ◯₂₅₄(½π) =
     // 1.5707963267948966192313216916397514420985846996875529104874722961539082031431
-    pub(crate) const FRAC_PI_2: Float256 = Float256::new(
+    pub(crate) const FRAC_PI_2: Self = Self::new(
         1,
         0,
         (
@@ -1089,7 +1101,7 @@ impl Float256 {
     );
     // FRAC_PI_4 = ◯₂₅₄(½π) =
     // 1.5707963267948966192313216916397514420985846996875529104874722961539082031431
-    pub(crate) const FRAC_PI_4: Float256 = Float256::new(
+    pub(crate) const FRAC_PI_4: Self = Self::new(
         1,
         -1,
         (
@@ -1099,7 +1111,7 @@ impl Float256 {
     );
     // FRAC_3_PI_2 = ◯₂₅₄(3⋅½π) =
     // 4.7123889803846898576939650749192543262957540990626587314624168884617246094293
-    pub(crate) const FRAC_3_PI_2: Float256 = Float256::new(
+    pub(crate) const FRAC_3_PI_2: Self = Self::new(
         1,
         2,
         (
@@ -1109,7 +1121,7 @@ impl Float256 {
     );
     // TAU = ◯₂₅₄(2⋅π) =
     // 6.2831853071795864769252867665590057683943387987502116419498891846156328125724
-    pub(crate) const TAU: Float256 = Float256::new(
+    pub(crate) const TAU: Self = Self::new(
         1,
         2,
         (
@@ -1119,7 +1131,7 @@ impl Float256 {
     );
     // FRAC_3_PI_4 = ◯₂₅₄(3⋅¼π) =
     // 2.3561944901923449288469825374596271631478770495313293657312084442308623047147
-    pub(crate) const FRAC_3_PI_4: Float256 = Float256::new(
+    pub(crate) const FRAC_3_PI_4: Self = Self::new(
         1,
         1,
         (
@@ -1129,7 +1141,7 @@ impl Float256 {
     );
     // FRAC_5_PI_4 = ◯₂₅₄(5⋅¼π) =
     // 3.9269908169872415480783042290993786052464617492188822762186807403847705078577
-    pub(crate) const FRAC_5_PI_4: Float256 = Float256::new(
+    pub(crate) const FRAC_5_PI_4: Self = Self::new(
         1,
         1,
         (
@@ -1139,7 +1151,7 @@ impl Float256 {
     );
     // FRAC_7_PI_4 = ◯₂₅₄(7⋅¼π) =
     // 5.4977871437821381673096259207391300473450464489064351867061530365386787110009
-    pub(crate) const FRAC_7_PI_4: Float256 = Float256::new(
+    pub(crate) const FRAC_7_PI_4: Self = Self::new(
         1,
         2,
         (
@@ -1149,7 +1161,7 @@ impl Float256 {
     );
     // FRAC_9_PI_4 = ◯₂₅₄(9⋅¼π) =
     // 7.0685834705770347865409476123788814894436311485939880971936253326925869141439
-    pub(crate) const FRAC_9_PI_4: Float256 = Float256::new(
+    pub(crate) const FRAC_9_PI_4: Self = Self::new(
         1,
         2,
         (
@@ -1159,7 +1171,7 @@ impl Float256 {
     );
     // SQRT_PI = ◯₂₅₄(√π) =
     // 1.77245385090551602729816748334114518279754945612238712821380778985291128459104
-    pub(crate) const SQRT_PI: Float256 = Float256::new(
+    pub(crate) const SQRT_PI: Self = Self::new(
         1,
         0,
         (
@@ -1169,7 +1181,7 @@ impl Float256 {
     );
     // SQRT_2 = ◯₂₅₄(√2) =
     // 1.41421356237309504880168872420969807856967187537694807317667973799073247846212
-    pub(crate) const SQRT_2: Float256 = Float256::new(
+    pub(crate) const SQRT_2: Self = Self::new(
         1,
         0,
         (
@@ -1179,7 +1191,7 @@ impl Float256 {
     );
     // FRAC_1_SQRT_2 = ◯₂₅₄(1/√2) =
     // 0.70710678118654752440084436210484903928483593768847403658833986899536623923106
-    pub(crate) const FRAC_1_SQRT_2: Float256 = Float256::new(
+    pub(crate) const FRAC_1_SQRT_2: Self = Self::new(
         1,
         -1,
         (
@@ -1214,7 +1226,7 @@ impl Float512 {
     };
     // LN_2 = ◯₅₁₀(logₑ(2)) =
     // 6.9314718055994530941723212145817656807550013436025525412068000949339362196969471560586332699641868754200148102057068573368552023575813055703267075163507602e-1
-    pub(crate) const LN_2: Float512 = Float512::new(
+    pub(crate) const LN_2: Self = Self::new(
         1,
         -1,
         &[
@@ -1226,7 +1238,7 @@ impl Float512 {
     );
     // LN_10 = ◯₅₁₀(logₑ(10)) =
     // 2.3025850929940456840179914546843642076011014886287729760333279009675726096773524802359972050895982983419677840422862486334095254650828067566662873690987815
-    pub(crate) const LN_10: Float512 = Float512::new(
+    pub(crate) const LN_10: Self = Self::new(
         1,
         1,
         &[
@@ -1238,7 +1250,7 @@ impl Float512 {
     );
     // LOG2_E = ◯₅₁₀(log₂(E)) =
     // 1.4426950408889634073599246810018921374266459541529859341354494069311092191811850798855266228935063444969975183096525442555931016871683596427206621582234795
-    pub(crate) const LOG2_E: Float512 = Float512::new(
+    pub(crate) const LOG2_E: Self = Self::new(
         1,
         0,
         &[
@@ -1250,7 +1262,7 @@ impl Float512 {
     );
     // LOG10_E = ◯₅₁₀(log₁₀(E)) =
     // 4.3429448190325182765112891891660508229439700580366656611445378316586464920887077472922494933843174831870610674476630373364167928715896390656922106466281229e-1
-    pub(crate) const LOG10_E: Float512 = Float512::new(
+    pub(crate) const LOG10_E: Self = Self::new(
         1,
         -2,
         &[

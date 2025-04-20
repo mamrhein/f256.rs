@@ -142,12 +142,12 @@ impl<'a> AsciiNumLit<'a> {
     #[allow(unsafe_code)]
     pub(super) fn get_sign(&mut self) -> u32 {
         match self.first() {
-            Some(&c) if c == b'-' => {
+            Some(b'-') => {
                 // SAFETY: safe because of match
                 unsafe { self.skip_1() };
                 1
             }
-            Some(&c) if c == b'+' => {
+            Some(b'+') => {
                 // SAFETY: safe because of match
                 unsafe { self.skip_1() };
                 0
@@ -231,12 +231,12 @@ impl<'a> AsciiNumLit<'a> {
                     None => {
                         return None;
                     }
-                    Some(&c) if c == b'-' => {
+                    Some(b'-') => {
                         // SAFETY: safe because of match
                         unsafe { self.skip_1() };
                         true
                     }
-                    Some(&c) if c == b'+' => {
+                    Some(b'+') => {
                         // SAFETY: safe because of match
                         unsafe { self.skip_1() };
                         false

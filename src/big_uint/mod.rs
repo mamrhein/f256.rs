@@ -177,7 +177,7 @@ where
     /// Returns `self - rhs - borrow` (full subtractor), along with a boolean
     /// indicating whether an arithmetic overflow occurred.
     fn borrowing_sub(&self, rhs: &Self, borrow: bool) -> (Self, bool) {
-        let (t, o1) = self.overflowing_sub(&rhs);
+        let (t, o1) = self.overflowing_sub(rhs);
         let (t, o2) = t.overflowing_sub(&Self::from(&(borrow as u128)));
         (t, o1 || o2)
     }

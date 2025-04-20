@@ -36,9 +36,9 @@ impl FP492 {
     pub(super) const ONE: Self =
         Self::new(1_u128 << HI_FRACTION_BITS, 0_u128, 0_u128, 0_u128);
     pub(super) const TWO: Self =
-        Self::new(1_u128 << HI_FRACTION_BITS + 1, 0_u128, 0_u128, 0_u128);
+        Self::new(1_u128 << (HI_FRACTION_BITS + 1), 0_u128, 0_u128, 0_u128);
     pub(super) const ONE_HALF: Self =
-        Self::new(1_u128 << HI_FRACTION_BITS - 1, 0_u128, 0_u128, 0_u128);
+        Self::new(1_u128 << (HI_FRACTION_BITS - 1), 0_u128, 0_u128, 0_u128);
     pub(super) const THREE_HALF: Self = Self::new(
         Self::ONE.0.hi.hi.0 | Self::ONE_HALF.0.hi.hi.0,
         0_u128,
@@ -168,7 +168,7 @@ impl FP492 {
             self.iabs();
         }
         let q = self.0.hi.hi.0 >> FRAC_1_OVER_256_HI_TZ;
-        let mut c = FP492::new(q << FRAC_1_OVER_256_HI_TZ, 0, 0, 0);
+        let mut c = Self::new(q << FRAC_1_OVER_256_HI_TZ, 0, 0, 0);
         self -= &c;
         (q as i32, c, self)
     }
@@ -191,14 +191,16 @@ impl From<i32> for FP492 {
 }
 
 impl From<&Float256> for FP492 {
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_sign_loss)]
     fn from(value: &Float256) -> Self {
         debug_assert!(value.exp() <= Self::INT_BITS as i32);
         let sh = (Self::INT_BITS as i32 - 1 - value.exp()) as u32;
         if sh >= U512::BITS {
-            return FP492::ZERO;
+            return Self::ZERO;
         }
         let mut res =
-            Self(&U512::from_hi_lo(value.signif(), U256::ZERO) >> sh);
+            Self(U512::from_hi_lo(value.signif(), U256::ZERO) >> sh);
         if value.signum() < 0 {
             res.ineg();
         }
@@ -207,6 +209,8 @@ impl From<&Float256> for FP492 {
 }
 
 impl From<&FP492> for Float256 {
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_sign_loss)]
     fn from(value: &FP492) -> Self {
         let signum = value.signum();
         let mut fp_abs_signif = if signum >= 0 {
@@ -234,7 +238,7 @@ impl From<&FP492> for Float256 {
             // nlz > N = 257 => shift left
             258..=511 => fp_abs_signif <<= nlz - N,
             _ => {
-                return Float256::ZERO;
+                return Self::ZERO;
             }
         };
         Self::new(signum, exp, (fp_abs_signif.lo.hi.0, fp_abs_signif.lo.lo.0))
@@ -242,6 +246,8 @@ impl From<&FP492> for Float256 {
 }
 
 impl From<&f256> for FP492 {
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_sign_loss)]
     fn from(value: &f256) -> Self {
         const LIM: f256 = f256::from_u64(1 << FP492::INT_BITS);
         debug_assert!(value < &LIM);
@@ -253,7 +259,7 @@ impl From<&f256> for FP492 {
             .clamp(Self::INT_BITS as i32 + 1 - U512::BITS as i32, 0)
             .unsigned_abs();
         let mut res =
-            Self(&U512::from_hi_lo(&signif << shl, U256::ZERO) >> shr);
+            Self(U512::from_hi_lo(signif << shl, U256::ZERO) >> shr);
         if value.is_sign_negative() {
             res.ineg();
         }
@@ -262,6 +268,8 @@ impl From<&f256> for FP492 {
 }
 
 impl From<&FP492> for f256 {
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_sign_loss)]
     fn from(value: &FP492) -> Self {
         let sign = value.signum() as u32 >> 31;
         let mut fp_abs_signif = if sign == 0 {
@@ -287,7 +295,7 @@ impl From<&FP492> for f256 {
             // nlz > U256::BITS + EXP_BITS = 275 => shift left
             276..=511 => fp_abs_signif <<= nlz - U256::BITS - EXP_BITS,
             _ => {
-                return f256::ZERO;
+                return Self::ZERO;
             }
         };
         Self::new(sign, exp, fp_abs_signif.lo)
@@ -301,10 +309,10 @@ impl From<U512> for FP492 {
     }
 }
 
-impl Into<U512> for &FP492 {
+impl From<&FP492> for U512 {
     #[inline(always)]
-    fn into(self) -> U512 {
-        self.0
+    fn from(value: &FP492) -> Self {
+        value.0
     }
 }
 
@@ -320,34 +328,36 @@ impl Neg for FP492 {
 
 impl PartialOrd for FP492 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let mut lhs = self.0;
-        lhs.hi.hi.0 ^= 1_u128 << 127;
-        let mut rhs = other.0;
-        rhs.hi.hi.0 ^= 1_u128 << 127;
-        lhs.partial_cmp(&rhs)
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for FP492 {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        let mut lhs = self.0;
+        lhs.hi.hi.0 ^= 1_u128 << 127;
+        let mut rhs = other.0;
+        rhs.hi.hi.0 ^= 1_u128 << 127;
+        lhs.cmp(&rhs)
     }
 }
 
-impl AddAssign<&FP492> for FP492 {
+impl AddAssign<&Self> for FP492 {
     #[inline(always)]
-    fn add_assign(&mut self, rhs: &FP492) {
+    fn add_assign(&mut self, rhs: &Self) {
         let mut carry = false;
         (self.0.lo, carry) = self.0.lo.overflowing_add(&rhs.0.lo);
         (self.0.hi, carry) = self.0.hi.carrying_add(&rhs.0.hi, carry);
     }
 }
 
-impl SubAssign<&FP492> for FP492 {
+impl SubAssign<&Self> for FP492 {
     #[inline(always)]
-    fn sub_assign(&mut self, rhs: &FP492) {
-        *self += &rhs.neg();
+    fn sub_assign(&mut self, rhs: &Self) {
+        let mut borrow = false;
+        (self.0.lo, borrow) = self.0.lo.overflowing_sub(&rhs.0.lo);
+        (self.0.hi, borrow) = self.0.hi.borrowing_sub(&rhs.0.hi, borrow);
     }
 }
 
