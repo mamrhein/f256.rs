@@ -1,5 +1,9 @@
 Version   Changes
 --------  --------------------------------------------------------------------
+ 0.7.0    Added fns for exponentiation:
+          f256::powi, f256::powf, f256::exp, f256::exp_m1, f256::exp2
+          Set minimal rust version to 1.80.0.
+
  0.6.0    Added fns for calculating logarithms:
           f256::log, f256::log10, f256::log2, f256::ln, f256::ln_1p
 

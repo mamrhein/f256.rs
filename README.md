@@ -56,7 +56,7 @@ Add `f256` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-f256 = "0.3"
+f256 = "0.7"
 ```
 
 ### Crate features
