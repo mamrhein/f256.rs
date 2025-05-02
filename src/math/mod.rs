@@ -9,6 +9,7 @@
 
 mod big_float;
 mod bkm;
+mod cbrt;
 mod circular_fns;
 mod exp;
 mod fp492;
