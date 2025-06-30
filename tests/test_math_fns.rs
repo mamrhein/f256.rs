@@ -74,6 +74,15 @@ mod random_math_fn_tests {
         run_tests(sqrt, 0, "test_sqrt.txt");
     }
 
+    fn cbrt(x: &f256) -> f256 {
+        x.cbrt()
+    }
+
+    #[test]
+    fn test_cbrt() {
+        run_tests(cbrt, 0, "test_cbrt.txt");
+    }
+
     #[test]
     fn test_sin_lt_2pi() {
         run_tests(f256::sin, 0, "test_sin_lt_2pi.txt");
