@@ -51,6 +51,8 @@ impl f256 {
         let mut exp =
             biased_exp as i32 + EMIN - hidden_bit - norm_shift as i32;
         let exp_is_odd = exp & 1;
+        // The following subtraction is neccessary for to get the correct
+        // quotient with a positive remainder for negative exponents!
         exp = (exp - exp_is_odd) / 2;
         // Calculate the significand, gain extra bit for final rounding
         let mut signif = fraction(&bin_enc) << norm_shift;
