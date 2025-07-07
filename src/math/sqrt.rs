@@ -60,7 +60,7 @@ impl f256 {
         let mut q = U256::new(HI_FRACTION_BIAS << 1, 0);
         let mut r = (signif << (1 + exp_is_odd as u32)) - q;
         let mut s = q;
-        for i in 1..=SIGNIFICAND_BITS {
+        for i in 0..=SIGNIFICAND_BITS {
             if r.is_zero() {
                 break;
             }
@@ -156,6 +156,13 @@ mod sqrt_tests {
         let four = f256::from(4);
         let three = f256::from(3);
         assert_eq!((nine / four).sqrt(), three / f256::TWO);
+    }
+
+    #[test]
+    fn test_near_four() {
+        let four = f256::TWO.square();
+        let four_plus_ulp = four - four.ulp();
+        assert_eq!(four_plus_ulp.sqrt(), f256::TWO - f256::TWO.ulp().div2());
     }
 
     #[test]
