@@ -47,14 +47,17 @@ impl f256 {
         let biased_exp = exp_bits(&bin_enc);
         let hidden_bit = (biased_exp != 0) as i32;
         let norm_shift = bin_enc.leading_zeros().saturating_sub(EXP_BITS);
-        // Calculate the exponent
+        // Calculate the exponent of the square root.
         let mut exp =
             biased_exp as i32 + EMIN - hidden_bit - norm_shift as i32;
         let exp_is_odd = exp & 1;
         // The following subtraction is neccessary for to get the correct
         // quotient with a positive remainder for negative exponents!
         exp = (exp - exp_is_odd) / 2;
-        // Calculate the significand, gain extra bit for final rounding
+        // Calculate the significand of the square root.
+        // The following restoring algorithm calculates one bit of the
+        // result per iteration. It is described in detail in
+        // ...
         let mut signif = fraction(&bin_enc) << norm_shift;
         signif.hi.0 |= (hidden_bit as u128) << HI_FRACTION_BITS;
         let mut q = U256::new(HI_FRACTION_BIAS << 1, 0);
@@ -64,9 +67,11 @@ impl f256 {
             if r.is_zero() {
                 break;
             }
-            s >>= 1;
+            s >>= 1; // next bit
             let t = &r << 1;
             let u = (&q << 1) + s;
+            // Tentative next remainder T = t - u
+            // If T >= 0 the next bit of the result is 1, else 0.
             if t < u {
                 r = t;
             } else {
@@ -74,11 +79,12 @@ impl f256 {
                 r = t - u;
             }
         }
-        // Final rounding
-        let rnd_bits = (q.lo.0 & 3_u128) as u32;
-        q.incr_if(rnd_bits == 3 || rnd_bits == 1 && !r.is_zero());
-        q >>= 1;
-        Self::new(0, exp, q)
+        // Final reconstruction and rounding.
+        // The sqare root of a floating point number can't be an exact
+        // midpoint between two consecutive floating point numbers, so there
+        // is no need to care about ties.
+        q = q + (q.lo.0 & 1_u128);
+        Self::new(0, exp, q >> 1)
     }
 }
 

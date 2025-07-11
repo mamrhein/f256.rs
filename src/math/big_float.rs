@@ -484,8 +484,7 @@ where
             }
         }
         // Final rounding
-        let rnd_bits = (q.last_chunk() & 3_u128) as u32;
-        q.incr_if(rnd_bits == 3 || rnd_bits == 1 && !r.is_zero());
+        q.incr_if((q.last_chunk() & 1_u128) as u32 == 1);
         q >>= 1;
         Self {
             signum: 1,
