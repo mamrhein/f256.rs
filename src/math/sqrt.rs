@@ -50,7 +50,7 @@ impl f256 {
         let norm_shift = bin_enc.leading_zeros().saturating_sub(EXP_BITS);
         let mut signif = fraction(&bin_enc) << norm_shift;
         signif.hi.0 |= (hidden_bit as u128) << HI_FRACTION_BITS;
-        // N: number of dractional digits
+        // N: number of fractional digits
         // e: base 2 exponent of the input value
         // p: base 2 exponent of the root
         // a: adjustment for the significand
