@@ -8,10 +8,11 @@
 // $Revision$
 
 use crate::{
-    abs_bits, exp_bits, f256, fraction, BigUInt, BinEncSpecial, EMIN,
+    abs_bits, exp_bits, f256, fraction, BigUInt, BinEncSpecial, HiLo, EMIN,
     EXP_BIAS, EXP_BITS, EXP_MAX, HI_FRACTION_BIAS, HI_FRACTION_BITS,
-    SIGNIFICAND_BITS, U256,
+    SIGNIFICAND_BITS, U256, U512,
 };
+use core::ops::{Add, Shr};
 
 impl f256 {
     /// Returns the square root of `self`.
@@ -47,36 +48,79 @@ impl f256 {
         let biased_exp = exp_bits(&bin_enc);
         let hidden_bit = (biased_exp != 0) as i32;
         let norm_shift = bin_enc.leading_zeros().saturating_sub(EXP_BITS);
-        // Calculate the exponent of the square root.
-        let mut exp =
-            biased_exp as i32 + EMIN - hidden_bit - norm_shift as i32;
-        let exp_is_odd = exp & 1;
-        // The following subtraction is neccessary for to get the correct
-        // quotient with a positive remainder for negative exponents!
-        exp = (exp - exp_is_odd) / 2;
-        // Calculate the significand of the square root.
-        // The following restoring algorithm calculates one bit of the
-        // result per iteration. It is described in detail in
-        // ...
         let mut signif = fraction(&bin_enc) << norm_shift;
         signif.hi.0 |= (hidden_bit as u128) << HI_FRACTION_BITS;
+        // N: number of dractional digits
+        // e: base 2 exponent of the input value
+        // p: base 2 exponent of the root
+        // a: adjustment for the significand
+        let mut e = biased_exp as i32 + EMIN - hidden_bit - norm_shift as i32;
+        let a = e & 1;
+        // The following subtraction is neccessary to get the correct
+        // quotient with a positive remainder for negative exponents!
+        let p = (e - a) / 2;
+        let m = signif << (1 + a as u32);
+        // Now we have
+        // self = m⋅2⁻¹⋅2⁻ᴺ⋅2ᵉ⁻ᵅ
+        // and
+        // √self = √(m⋅2⁻¹⋅2⁻ᴺ)⋅2ᵖ
+        // Let M = m⋅2⁻¹⋅2⁻ᴺ
+        // The following algorithm calculates the significand of the resulting
+        // root bit by bit, one per iteration, starting with 1.
+        // It is described in detail in
+        // J.-M. Muller et al., Handbook of Floating-Point Arithmetic, 2. ed.,
+        // Chapter 9.5.3.1
+        // Qᵢ: root extracted thus far
+        // Rᵢ: remainder
+        // Invariant: M = Qᵢ² + Rᵢ
+        // Q₀ = 1
+        // q₀ = Q₀⋅2ᴺ⁺¹
         let mut q = U256::new(HI_FRACTION_BIAS << 1, 0);
-        let mut r = (signif << (1 + exp_is_odd as u32)) - q;
+        // R₀ = M - Q₀²
+        // r₀ = R₀⋅2ᴺ⁺¹ = (m⋅2⁻¹⋅2⁻ᴺ - (q₀⋅2⁻¹⋅2⁻ᴺ)²)⋅2ᴺ⁺¹ = m - q₀²⋅2⁻¹⋅2⁻ᴺ
+        // Q₀ = 1 => q₀²⋅2⁻¹⋅2⁻ᴺ = q₀ => r₀ = m - q₀
+        let mut r = m - q;
+        // Qᵢ = qᵢ⋅2⁻¹⋅2⁻ᴺ
+        // Rᵢ = rᵢ⋅2⁻¹⋅2⁻ᴺ⋅2⁻ⁱ
+        // M = Qᵢ² + Rᵢ
+        // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ⋅2⁻¹⋅2⁻ᴺ)² + rᵢ⋅2⁻¹⋅2⁻ᴺ⋅2⁻ⁱ
+        // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ)⋅2⁻¹⋅2⁻ᴺ
+        // => m = qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
+        let q2 = q.widening_mul(&q);
+        debug_assert_eq!(
+            m,
+            U512::from_hi_lo(q2.1, q2.0)
+                .shr(SIGNIFICAND_BITS)
+                .lo_t()
+                .add(r)
+        );
         let mut s = q;
         for i in 0..=SIGNIFICAND_BITS {
             if r.is_zero() {
                 break;
             }
-            s >>= 1; // next bit
-            let t = &r << 1;
+            // Next bit
+            // Sᵢ = 2⁻ⁱ
+            // sᵢ = Sᵢ⋅2ᴺ⁺¹ = 2ᴺ⁺¹⁻ⁱ
+            s >>= 1;
+            // Tentative next estimation
+            // Qᵢ = Qᵢ₋₁ + Sᵢ
+            // qᵢ = Qᵢ⋅2ᴺ⁺¹ = Qᵢ₋₁⋅2ᴺ⁺¹ + Sᵢ⋅2ᴺ⁺¹ = qᵢ₋₁ + sᵢ
+            // Tentative remainder
+            // Tᵢ = M - Qᵢ²
+            // tᵢ = Tᵢ⋅2ᴺ⁺¹⁺ⁱ
+            //    = (M - Qᵢ²)⋅2ᴺ⁺¹⁺ⁱ
+            //    = (M - (Qᵢ₋₁ + Sᵢ)²)⋅2ᴺ⁺¹⁺ⁱ
+            //    = (M - (Qᵢ₋₁² + 2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²))⋅2ᴺ⁺¹⁺ⁱ
+            //    = 2⋅(M - Qᵢ₋₁²)⋅2ᴺ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²)⋅2ᴺ⁺¹⁺ⁱ
+            //    = 2⋅(M - Qᵢ₋₁²)⋅2ᴺ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅2ᴺ⁺¹ + Sᵢ⋅2ᴺ⁺¹)⋅Sᵢ⋅2ⁱ
+            //    = 2⋅rᵢ₋₁ - (2⋅qᵢ₋₁ + sᵢ)
+            r <<= 1;
             let u = (&q << 1) + s;
-            // Tentative next remainder T = t - u
-            // If T >= 0 the next bit of the result is 1, else 0.
-            if t < u {
-                r = t;
-            } else {
+            // If tᵢ >= 0 the next bit of the result is 1, else 0.
+            if r > u {
                 q += &s;
-                r = t - u;
+                r -= &u;
             }
         }
         // Final reconstruction and rounding.
@@ -84,7 +128,7 @@ impl f256 {
         // midpoint between two consecutive floating point numbers, so there
         // is no need to care about ties.
         q = q + (q.lo.0 & 1_u128);
-        Self::new(0, exp, q >> 1)
+        Self::new(0, p, q >> 1)
     }
 }
 
