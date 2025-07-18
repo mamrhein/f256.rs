@@ -86,16 +86,18 @@ impl f256 {
         // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ⋅2⁻¹⋅2⁻ᴺ)² + rᵢ⋅2⁻¹⋅2⁻ᴺ⋅2⁻ⁱ
         // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ)⋅2⁻¹⋅2⁻ᴺ
         // => m = qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
-        let q2 = q.widening_mul(&q);
-        debug_assert_eq!(
-            m,
-            U512::from_hi_lo(q2.1, q2.0)
-                .shr(SIGNIFICAND_BITS)
-                .lo_t()
-                .add(r)
-        );
+        if cfg!(debug_assertions) {
+            let q2 = q.widening_mul(&q);
+            debug_assert_eq!(
+                m,
+                U512::from_hi_lo(q2.1, q2.0)
+                    .shr(SIGNIFICAND_BITS)
+                    .lo_t()
+                    .add(r)
+            )
+        };
         let mut s = q;
-        for i in 0..=SIGNIFICAND_BITS {
+        for i in 1..=SIGNIFICAND_BITS {
             if r.is_zero() {
                 break;
             }
@@ -121,6 +123,17 @@ impl f256 {
             if r > u {
                 q += &s;
                 r -= &u;
+                // m = yᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
+                if cfg!(debug_assertions) {
+                    let q2 = q.widening_mul(&q);
+                    debug_assert!(
+                        m - U512::from_hi_lo(q2.1, q2.0)
+                            .shr(SIGNIFICAND_BITS)
+                            .lo_t()
+                            .add(r.shr(i))
+                            <= U256::ONE
+                    )
+                };
             }
         }
         // Final reconstruction and rounding.
