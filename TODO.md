@@ -4,7 +4,7 @@
 * ~~Logarithms (ln, log2, log10, ln_1p, log)~~
 * ~~Trigonometric functions (sin, cos, tan, asin, acos, atan)~~
 * ~~Square root (sqrt)~~
-* Cubic root (cbrt)
+* ~~Cubic root (cbrt)~~
 
 ### Special operators
 
@@ -29,4 +29,4 @@
 ### Tests on random data generated via rug (GNU MFPR)
 
 * For ~~add, sub, mul, div, rem~~
-* For elementary functions
+* For ~~elementary functions~~

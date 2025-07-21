@@ -1,5 +1,8 @@
 Version   Changes
 --------  --------------------------------------------------------------------
+ 0.8.0    Added fn f256::cbrt.
+          Set minimal rust version to 1.85.1.
+
  0.7.0    Added fns for exponentiation:
           f256::powi, f256::powf, f256::exp, f256::exp_m1, f256::exp2
           Set minimal rust version to 1.80.0.
