@@ -120,7 +120,7 @@ impl f256 {
             r <<= 1;
             let u = (&q << 1) + s;
             // If tᵢ >= 0 the next bit of the result is 1, else 0.
-            if r > u {
+            if r >= u {
                 q += &s;
                 r -= &u;
                 // m = yᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
