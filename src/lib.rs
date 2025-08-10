@@ -956,6 +956,31 @@ impl f256 {
         }
     }
 
+    /// Returns a number composed of the magnitude of `self` and the sign of
+    /// `other`.
+    ///
+    /// Equal to `self` if the sign of `self` and `other` are the same,
+    /// otherwise equal to `-self`.
+    /// If `self` is a NaN, then a NaN with the same payload as `self` and
+    /// the sign bit of `other` is returned.
+    /// If `other` is a NaN, then this operation will still carry over its
+    /// sign into the result. Note that IEEE 754 doesn't assign any meaning to
+    /// the sign bit in case of a NaN, and as Rust doesn't guarantee that the
+    /// bit pattern of NaNs are conserved over arithmetic operations, the
+    /// result of `copysign` with `other` being a NaN might produce an
+    /// unexpected or non-portable result.
+    #[must_use = "Method does not mutate the original value."]
+    #[inline]
+    pub const fn copysign(self, other: Self) -> Self {
+        Self {
+            bits: U256::new(
+                (self.bits.hi.0 & HI_ABS_MASK)
+                    | (other.bits.hi.0 & HI_SIGN_MASK),
+                self.bits.lo.0,
+            ),
+        }
+    }
+
     // Returns
     // * self, if self is an integral value,
     // * value returned by lt1, if 0 < self < 1,
@@ -1745,6 +1770,29 @@ mod raw_bits_tests {
         let bytes = f.to_le_bytes();
         let g = f256::from_le_bytes(bytes);
         assert_eq!(f, g);
+    }
+}
+
+#[cfg(test)]
+mod copysign_tests {
+    use super::*;
+
+    #[test]
+    fn test_non_nan() {
+        assert_eq!(f256::TWO.copysign(f256::NEG_INFINITY), -f256::TWO);
+        assert_eq!(f256::NEG_ONE.copysign(f256::TEN), f256::ONE);
+        assert_eq!(f256::TEN.copysign(f256::TWO), f256::TEN);
+        assert_eq!(f256::TEN.negated().copysign(-f256::TWO), -f256::TEN);
+    }
+
+    #[test]
+    fn test_nan() {
+        let neg_nan = f256::NAN.copysign(f256::NEG_ONE);
+        assert!(neg_nan.is_nan());
+        assert!(neg_nan.is_sign_negative());
+        assert!(f256::NAN.copysign(f256::NAN).is_nan());
+        assert_eq!(f256::NEG_ONE.copysign(f256::NAN), f256::ONE);
+        assert_eq!(f256::ONE.copysign(neg_nan), f256::NEG_ONE);
     }
 }
 
