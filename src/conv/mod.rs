@@ -11,4 +11,5 @@ mod big_decimal;
 mod from_float;
 mod from_int;
 mod from_str;
+mod to_int;
 mod to_str;
