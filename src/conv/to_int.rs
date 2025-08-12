@@ -12,9 +12,25 @@ use crate::{
     abs_bits, exp, f256, split_f256_enc, EMAX, FRACTION_BITS,
     HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, SIGNIFICAND_BITS,
 };
+use core::fmt::{Display, Formatter};
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum IntoIntError {
+    NotInteger,
+    OutOfRange,
+}
+
+impl Display for IntoIntError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::NotInteger => "Given value is not an integer.".fmt(f),
+            Self::OutOfRange => "Given value is out of range.".fmt(f),
+        }
+    }
+}
 
 impl TryFrom<&f256> for i32 {
-    type Error = ();
+    type Error = IntoIntError;
 
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cast_possible_truncation)]
@@ -27,30 +43,26 @@ impl TryFrom<&f256> for i32 {
         const EXP_LIM: i32 = SIGNIFICAND_BITS as i32;
         const SPECIAL_EXP: i32 = EMAX + 1;
         match exp {
-            ..0 => {
-                // Not an int
-                Err(())
-            }
+            ..0 => Err(IntoIntError::NotInteger),
             0..EXP_LIM => {
                 if exp
                     < FRACTION_BITS.saturating_sub(abs_bits.trailing_zeros())
                         as i32
                 {
-                    // Not an int
-                    Err(())
+                    Err(IntoIntError::NotInteger)
                 } else {
                     let u = ((abs_bits.hi.0 & HI_FRACTION_MASK)
                         + HI_FRACTION_BIAS)
                         >> HI_FRACTION_BITS - exp as u32;
                     let mut t = u as i128;
                     t = [t, -t][value.sign() as usize];
-                    Self::try_from(t).map_err(|_| ())
+                    Self::try_from(t).map_err(|_| IntoIntError::OutOfRange)
                 }
             }
-            SPECIAL_EXP => Err(()),
+            SPECIAL_EXP => Err(IntoIntError::NotInteger),
             _ => {
                 // An int, but too large
-                Err(())
+                Err(IntoIntError::OutOfRange)
             }
         }
     }
@@ -59,7 +71,7 @@ impl TryFrom<&f256> for i32 {
 #[cfg(test)]
 mod to_i32_tests {
     use super::*;
-    use crate::ONE_HALF;
+    use crate::{HI_FRACTION_BIAS, HI_FRACTION_MASK, ONE_HALF};
     use core::ops::Neg;
 
     #[test]
@@ -80,32 +92,50 @@ mod to_i32_tests {
     }
 
     #[test]
-    fn test_err() {
-        assert!(<&f256 as TryInto<i32>>::try_into(&f256::NAN).is_err());
-        assert!(
-            <&f256 as TryInto<i32>>::try_into(&f256::NEG_INFINITY).is_err()
+    fn test_non_integer() {
+        assert_eq!(
+            <&f256 as TryInto<i32>>::try_into(&f256::NAN),
+            Err(IntoIntError::NotInteger)
         );
-        assert!(<&f256 as TryInto<i32>>::try_into(&f256::INFINITY).is_err());
-        assert!(<&f256 as TryInto<i32>>::try_into(&ONE_HALF).is_err());
-        assert!(<&f256 as TryInto<i32>>::try_into(&f256::from(1234567.89))
-            .is_err());
-        assert!(<&f256 as TryInto<i32>>::try_into(&f256::from(
-            i32::MAX as i64 + 1
-        ))
-        .is_err());
-        let f = -f256::from(i32::MIN);
-        assert!(i32::try_from(&f).is_err());
-        let f = f256::from_sign_exp_signif(
-            1,
-            256,
-            (HI_FRACTION_BIAS + HI_FRACTION_MASK, u128::MAX),
+        assert_eq!(
+            <&f256 as TryInto<i32>>::try_into(&f256::NEG_INFINITY),
+            Err(IntoIntError::NotInteger)
         );
-        assert!(i32::try_from(&f).is_err());
+        assert_eq!(
+            <&f256 as TryInto<i32>>::try_into(&f256::INFINITY),
+            Err(IntoIntError::NotInteger)
+        );
+        assert_eq!(
+            <&f256 as TryInto<i32>>::try_into(&ONE_HALF),
+            Err(IntoIntError::NotInteger)
+        );
+        assert_eq!(
+            <&f256 as TryInto<i32>>::try_into(&f256::from(1234567.89)),
+            Err(IntoIntError::NotInteger)
+        );
         let f = f256::from_sign_exp_signif(
             1,
             25 - FRACTION_BITS as i32,
             (HI_FRACTION_BIAS + HI_FRACTION_MASK, u128::MAX),
         );
-        assert!(i32::try_from(&f).is_err());
+        assert_eq!(i32::try_from(&f), Err(IntoIntError::NotInteger));
+    }
+
+    #[test]
+    fn test_out_of_range() {
+        assert_eq!(
+            <&f256 as TryInto<i32>>::try_into(&f256::from(
+                i32::MAX as i64 + 1
+            )),
+            Err(IntoIntError::OutOfRange)
+        );
+        let f = -f256::from(i32::MIN);
+        assert_eq!(i32::try_from(&f), Err(IntoIntError::OutOfRange));
+        let f = f256::from_sign_exp_signif(
+            1,
+            256,
+            (HI_FRACTION_BIAS + HI_FRACTION_MASK, u128::MAX),
+        );
+        assert_eq!(i32::try_from(&f), Err(IntoIntError::OutOfRange));
     }
 }
