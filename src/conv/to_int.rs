@@ -8,7 +8,10 @@
 // $Revision$
 
 use crate::big_uint::{BigUInt, HiLo};
-use crate::{f256, split_f256_enc};
+use crate::{
+    abs_bits, exp, f256, split_f256_enc, EMAX, FRACTION_BITS,
+    HI_FRACTION_BIAS, HI_FRACTION_BITS, HI_FRACTION_MASK, SIGNIFICAND_BITS,
+};
 
 impl TryFrom<&f256> for i32 {
     type Error = ();
@@ -16,16 +19,39 @@ impl TryFrom<&f256> for i32 {
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cast_possible_truncation)]
     fn try_from(value: &f256) -> Result<Self, Self::Error> {
-        let (sign, exp, signif) = split_f256_enc(value);
-        let ntz = signif.trailing_zeros();
-        match exp + ntz as Self {
-            n @ 0..=30 => {
-                let t = (signif >> exp.unsigned_abs()).lo_t().0 as Self;
-                Ok([t, -t][sign as usize])
+        let abs_bits = abs_bits(value);
+        if abs_bits.is_zero() {
+            return Ok(0);
+        }
+        let exp = exp(&abs_bits);
+        const EXP_LIM: i32 = SIGNIFICAND_BITS as i32;
+        const SPECIAL_EXP: i32 = EMAX + 1;
+        match exp {
+            ..0 => {
+                // Not an int
+                Err(())
             }
-            31 => [Err(()), Ok(Self::MIN)][sign as usize],
-            256 => Ok(0),
-            _ => Err(()),
+            0..EXP_LIM => {
+                if exp
+                    < FRACTION_BITS.saturating_sub(abs_bits.trailing_zeros())
+                        as i32
+                {
+                    // Not an int
+                    Err(())
+                } else {
+                    let u = ((abs_bits.hi.0 & HI_FRACTION_MASK)
+                        + HI_FRACTION_BIAS)
+                        >> HI_FRACTION_BITS - exp as u32;
+                    let mut t = u as i128;
+                    t = [t, -t][value.sign() as usize];
+                    Self::try_from(t).map_err(|_| ())
+                }
+            }
+            SPECIAL_EXP => Err(()),
+            _ => {
+                // An int, but too large
+                Err(())
+            }
         }
     }
 }
@@ -67,5 +93,19 @@ mod to_i32_tests {
             i32::MAX as i64 + 1
         ))
         .is_err());
+        let f = -f256::from(i32::MIN);
+        assert!(i32::try_from(&f).is_err());
+        let f = f256::from_sign_exp_signif(
+            1,
+            256,
+            (HI_FRACTION_BIAS + HI_FRACTION_MASK, u128::MAX),
+        );
+        assert!(i32::try_from(&f).is_err());
+        let f = f256::from_sign_exp_signif(
+            1,
+            25 - FRACTION_BITS as i32,
+            (HI_FRACTION_BIAS + HI_FRACTION_MASK, u128::MAX),
+        );
+        assert!(i32::try_from(&f).is_err());
     }
 }
