@@ -94,7 +94,7 @@ impl f256 {
                     .shr(SIGNIFICAND_BITS)
                     .lo_t()
                     .add(r)
-            )
+            );
         };
         let mut s = q;
         for i in 1..=SIGNIFICAND_BITS {
@@ -132,7 +132,7 @@ impl f256 {
                             .lo_t()
                             .add(r.shr(i))
                             <= U256::ONE
-                    )
+                    );
                 };
             }
         }

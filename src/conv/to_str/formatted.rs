@@ -22,7 +22,7 @@ pub(crate) enum Part<'a> {
     Padding(usize, char),
 }
 
-impl<'a> Part<'a> {
+impl Part<'_> {
     /// Returns the byte length of given part.
     pub const fn len(&self) -> usize {
         match *self {
@@ -62,7 +62,7 @@ pub(crate) struct Formatted<'a> {
     pub(crate) parts: &'a [Part<'a>],
 }
 
-impl<'a> Formatted<'a> {
+impl Formatted<'_> {
     /// Return the byte length of the formatted result.
     pub fn len(&self) -> usize {
         self.parts.iter().map(|p| p.len()).sum()

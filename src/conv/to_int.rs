@@ -30,6 +30,7 @@ impl Display for IntoIntError {
 }
 
 #[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
 #[allow(clippy::cast_possible_truncation)]
 fn try_into_int(value: &f256) -> Result<(u32, u128), IntoIntError> {
     let abs_bits = abs_bits(value);
@@ -48,7 +49,7 @@ fn try_into_int(value: &f256) -> Result<(u32, u128), IntoIntError> {
             {
                 Err(IntoIntError::NotInteger)
             } else {
-                let t = signif(&abs_bits) >> FRACTION_BITS - exp as u32;
+                let t = signif(&abs_bits) >> (FRACTION_BITS - exp as u32);
                 if t.hi.is_zero() {
                     Ok((value.sign(), t.lo.0))
                 } else {
@@ -64,20 +65,18 @@ fn try_into_int(value: &f256) -> Result<(u32, u128), IntoIntError> {
     }
 }
 
+#[allow(clippy::cast_possible_wrap)]
 fn try_into_i128(value: &f256) -> Result<i128, IntoIntError> {
     let (sign, abs) = try_into_int(value)?;
-    let res = if sign == 0 {
+    if sign == 0 {
         i128::try_from(abs).map_err(|_| IntoIntError::OutOfRange)
+    } else if abs <= i128::MAX as u128 {
+        Ok(-(abs as i128))
+    } else if abs == i128::MAX as u128 + 1 {
+        Ok(i128::MIN)
     } else {
-        if abs <= i128::MAX as u128 {
-            Ok(-(abs as i128))
-        } else if abs == i128::MAX as u128 + 1 {
-            Ok(i128::MIN)
-        } else {
-            Err(IntoIntError::OutOfRange)
-        }
-    };
-    res
+        Err(IntoIntError::OutOfRange)
+    }
 }
 
 macro_rules! impl_try_from_f256_for_signed_int {

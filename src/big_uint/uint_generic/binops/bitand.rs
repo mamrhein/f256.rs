@@ -33,7 +33,7 @@ impl<SubUInt: BigUInt + HiLo> BitAnd for &UInt<SubUInt> {
     }
 }
 
-impl<'a, SubUInt: BigUInt + HiLo> BitAndAssign<&'a Self> for UInt<SubUInt> {
+impl<SubUInt: BigUInt + HiLo> BitAndAssign<&Self> for UInt<SubUInt> {
     fn bitand_assign(&mut self, rhs: &Self) {
         self.hi &= &rhs.hi;
         self.lo &= &rhs.lo;

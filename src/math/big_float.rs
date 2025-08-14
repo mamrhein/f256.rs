@@ -199,12 +199,12 @@ where
     }
 
     #[inline(always)]
-    pub(crate) fn flip_sign(&mut self) {
+    pub(crate) const fn flip_sign(&mut self) {
         self.signum *= -1;
     }
 
     #[inline(always)]
-    pub(crate) fn copy_sign(&mut self, other: &Self) {
+    pub(crate) const fn copy_sign(&mut self, other: &Self) {
         self.signum = other.signum;
     }
 
@@ -966,7 +966,7 @@ impl<T: BigUInt + HiLo> Add for Float<T> {
     }
 }
 
-impl<'a, T: BigUInt + HiLo> Add for &'a Float<T> {
+impl<T: BigUInt + HiLo> Add for &Float<T> {
     type Output = <Float<T> as Add>::Output;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -999,7 +999,7 @@ impl<T: BigUInt + HiLo> Sub for Float<T> {
     }
 }
 
-impl<'a, T: BigUInt + HiLo> Sub for &'a Float<T> {
+impl<T: BigUInt + HiLo> Sub for &Float<T> {
     type Output = <Float<T> as Sub>::Output;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -1032,7 +1032,7 @@ impl<T: BigUInt + HiLo> Mul for Float<T> {
     }
 }
 
-impl<'a, T: BigUInt + HiLo> Mul for &'a Float<T> {
+impl<T: BigUInt + HiLo> Mul for &Float<T> {
     type Output = <Float<T> as Mul>::Output;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -1065,7 +1065,7 @@ impl<T: BigUInt + HiLo> Div for Float<T> {
     }
 }
 
-impl<'a, T: BigUInt + HiLo> Div for &'a Float<T> {
+impl<T: BigUInt + HiLo> Div for &Float<T> {
     type Output = <Float<T> as Div>::Output;
 
     fn div(self, rhs: Self) -> Self::Output {

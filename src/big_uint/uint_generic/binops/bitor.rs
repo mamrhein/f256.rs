@@ -23,7 +23,7 @@ impl<SubUInt: BigUInt + HiLo> BitOr for UInt<SubUInt> {
     }
 }
 
-impl<'a, SubUInt: BigUInt + HiLo> BitOr for &'a UInt<SubUInt> {
+impl<SubUInt: BigUInt + HiLo> BitOr for &UInt<SubUInt> {
     type Output = UInt<SubUInt>;
 
     #[inline(always)]
@@ -40,7 +40,7 @@ impl<SubUInt: BigUInt + HiLo> BitOrAssign for UInt<SubUInt> {
     }
 }
 
-impl<'a, SubUInt: BigUInt + HiLo> BitOrAssign<&'a Self> for UInt<SubUInt> {
+impl<SubUInt: BigUInt + HiLo> BitOrAssign<&Self> for UInt<SubUInt> {
     fn bitor_assign(&mut self, rhs: &Self) {
         self.hi |= &rhs.hi;
         self.lo |= &rhs.lo;

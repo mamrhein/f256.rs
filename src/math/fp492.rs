@@ -83,7 +83,7 @@ impl FP492 {
     }
 
     #[inline(always)]
-    fn invert(&mut self) {
+    const fn invert(&mut self) {
         self.0.lo.lo.0 ^= u128::MAX;
         self.0.lo.hi.0 ^= u128::MAX;
         self.0.hi.lo.0 ^= u128::MAX;

@@ -72,7 +72,7 @@ impl PartialSignif {
         Self::MAX_N_DIGITS - self.n_chunks * 8 - self.n_rem_digits
     }
 
-    fn add_chunk(&mut self, value: u64) {
+    const fn add_chunk(&mut self, value: u64) {
         self.chunks[self.n_chunks] = value;
         self.n_chunks += 1;
     }
@@ -81,7 +81,7 @@ impl PartialSignif {
         self.n_chunks * 8 + self.n_rem_digits
     }
 
-    fn normalize(&mut self) -> usize {
+    const fn normalize(&mut self) -> usize {
         let mut n_trailing_zeroes = 0_usize;
         if self.rem == 0 && self.n_chunks > 0 {
             n_trailing_zeroes += self.n_rem_digits;

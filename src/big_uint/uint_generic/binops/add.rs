@@ -40,7 +40,7 @@ impl<SubUInt: BigUInt + HiLo> Add for UInt<SubUInt> {
     }
 }
 
-impl<'a, SubUInt: BigUInt + HiLo> Add for &'a UInt<SubUInt> {
+impl<SubUInt: BigUInt + HiLo> Add for &UInt<SubUInt> {
     type Output = <UInt<SubUInt> as Add>::Output;
 
     fn add(self, rhs: Self) -> Self::Output {

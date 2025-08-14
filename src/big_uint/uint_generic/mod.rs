@@ -484,7 +484,7 @@ impl DivRem<u64> for U256 {
     }
 }
 
-impl<'a> DivRem<u64> for &'a U256 {
+impl DivRem<u64> for &U256 {
     type Output = (U256, u64);
 
     fn div_rem(self, rhs: u64) -> Self::Output {

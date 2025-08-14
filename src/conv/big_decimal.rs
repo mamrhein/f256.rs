@@ -302,7 +302,7 @@ impl Decimal {
         self.n_digits += n_digits;
     }
 
-    pub(crate) fn add_digit(&mut self, digit: u8) {
+    pub(crate) const fn add_digit(&mut self, digit: u8) {
         if self.n_digits < MAX_DIGITS {
             self.digits[self.n_digits] = digit;
         } else if digit != 0 {
@@ -312,7 +312,7 @@ impl Decimal {
     }
 
     #[inline]
-    pub(crate) fn trim_trailing_zeroes(&mut self) {
+    pub(crate) const fn trim_trailing_zeroes(&mut self) {
         while self.n_digits != 0 && self.digits[self.n_digits - 1] == 0 {
             self.n_digits -= 1;
         }
@@ -487,7 +487,7 @@ impl Decimal {
     }
 
     // Multiply in-place by 10ⁿ.
-    pub(crate) fn imul_10_pow(&mut self, n: i32) {
+    pub(crate) const fn imul_10_pow(&mut self, n: i32) {
         self.decimal_point += n;
     }
 }

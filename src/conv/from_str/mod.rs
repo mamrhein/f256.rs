@@ -121,8 +121,9 @@ impl TryFrom<&str> for f256 {
 }
 
 #[cfg(feature = "std")]
+#[cfg(test)]
 mod cmp_algos_tests {
-    use super::{fast_approx::fast_approx, *};
+    use super::*;
 
     #[allow(clippy::print_stdout)]
     fn cmp_algos(lit: &str) -> bool {
@@ -132,8 +133,13 @@ mod cmp_algos_tests {
             let signif10 = repr.significand;
             let signif_truncated = repr.signif_truncated;
             let fe = fast_exact(lit, sign, exp10, signif10, signif_truncated);
-            let fa =
-                fast_approx(lit, sign, exp10, signif10, signif_truncated);
+            let fa = fast_approx::fast_approx(
+                lit,
+                sign,
+                exp10,
+                signif10,
+                signif_truncated,
+            );
             let fs = f256_exact(lit);
             if fe != fa || fa != fs {
                 println!("> {}", lit);
