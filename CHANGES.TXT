@@ -1,5 +1,8 @@
 Version   Changes
 --------  --------------------------------------------------------------------
+ 0.9.0    Added impl TryFrom<&f256> to all native integer types.
+          Added fns f256::copysign and f256::midpoint.
+
  0.8.0    Added fn f256::cbrt.
           Set minimal rust version to 1.85.1.
 
