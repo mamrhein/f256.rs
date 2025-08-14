@@ -981,6 +981,21 @@ impl f256 {
         }
     }
 
+    /// Returns a number that represents the sign of `self`.
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
+    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
+    /// - NaN if the number is NaN
+    #[must_use = "method does not mutate the original value"]
+    #[inline]
+    pub const fn signum(self) -> Self {
+        if self.is_nan() {
+            Self::NAN
+        } else {
+            Self::ONE.copysign(self)
+        }
+    }
+
     // Returns
     // * self, if self is an integral value,
     // * value returned by lt1, if 0 < self < 1,
@@ -1616,6 +1631,7 @@ mod repr_tests {
         assert_eq!(z.exponent(), 0);
         assert_eq!(z.significand(), f256::ZERO);
         assert!(z.is_integer());
+        assert_eq!(z.signum(), f256::ONE);
         let z = f256::NEG_ZERO;
         assert_eq!(z.sign(), 1);
         assert_eq!(z.quantum_exponent(), 0);
@@ -1624,12 +1640,14 @@ mod repr_tests {
         assert_eq!(z.exponent(), 0);
         assert_eq!(z.significand(), f256::ZERO);
         assert!(z.is_integer());
+        assert_eq!(z.signum(), f256::NEG_ONE);
     }
 
     #[test]
     fn test_one() {
         let i = f256::ONE;
         assert_eq!(i.sign(), 0);
+        assert_eq!(i.signum(), f256::ONE);
         assert_eq!(i.biased_exponent(), EXP_BIAS);
         assert_eq!(i.quantum_exponent(), INT_EXP);
         assert_eq!(
@@ -1642,6 +1660,7 @@ mod repr_tests {
         assert!(i.is_integer());
         let i = f256::NEG_ONE;
         assert_eq!(i.sign(), 1);
+        assert_eq!(i.signum(), f256::NEG_ONE);
         assert_eq!(i.biased_exponent(), EXP_BIAS);
         assert_eq!(i.quantum_exponent(), INT_EXP);
         assert_eq!(
@@ -1658,6 +1677,7 @@ mod repr_tests {
     fn test_normal() {
         let i = f256::TWO;
         assert_eq!(i.sign(), 0);
+        assert_eq!(i.signum(), f256::ONE);
         assert_eq!(i.biased_exponent(), EXP_BIAS + 1);
         assert_eq!(i.quantum_exponent(), INT_EXP + 1);
         assert_eq!(
@@ -1670,6 +1690,7 @@ mod repr_tests {
         assert!(i.is_integer());
         let f = f256::from(-3.5_f64);
         assert_eq!(f.sign(), 1);
+        assert_eq!(f.signum(), f256::NEG_ONE);
         assert_eq!(f.quantum_exponent(), -235);
         assert_eq!(
             f.integral_significand(),
@@ -1686,6 +1707,7 @@ mod repr_tests {
     fn test_subnormal() {
         let f = f256::MIN_GT_ZERO;
         assert_eq!(f.sign(), 0);
+        assert_eq!(f.signum(), f256::ONE);
         assert_eq!(f.quantum_exponent(), EMIN - FRACTION_BITS as i32);
         assert_eq!(f.integral_significand(), U256::ONE);
         assert_eq!(f.decode(), (0, EMIN - FRACTION_BITS as i32, U256::ONE));
