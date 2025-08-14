@@ -1212,6 +1212,36 @@ impl f256 {
         }
     }
 
+    /// Calculates the midpoint (average) between `self` and `rhs`.
+    ///
+    /// This returns NaN when *either* argument is NaN or if a combination of
+    /// +inf and -inf is provided as arguments.
+    #[doc(alias = "average")]
+    pub fn midpoint(self, other: Self) -> Self {
+        const LO: f256 = f256::new(
+            0,
+            exp(&MIN_POSITIVE.bits) + 1,
+            signif(&MIN_POSITIVE.bits),
+        );
+        const HI: f256 = f256::new(0, exp(&MAX.bits) - 1, signif(&MAX.bits));
+        let (a, b) = (self, other);
+        let abs_a = a.abs();
+        let abs_b = b.abs();
+        if abs_a <= HI && abs_b <= HI {
+            // Overflow is impossible
+            (a + b).div2()
+        } else if abs_a < LO {
+            // Not safe to halve `a` (would underflow)
+            a + (b.div2())
+        } else if abs_b < LO {
+            // Not safe to halve `b` (would underflow)
+            (a.div2()) + b
+        } else {
+            // Safe to halve `a` and `b`
+            (a.div2()) + (b.div2())
+        }
+    }
+
     /// Returns 2 * `self`
     #[inline(always)]
     #[must_use]
@@ -1871,6 +1901,29 @@ mod parity_tests {
         assert!(f256::INFINITY.parity().is_none());
         assert!(ONE_HALF.parity().is_none());
         assert!(EPSILON.parity().is_none());
+    }
+}
+
+#[cfg(test)]
+mod midpoint_tests {
+    use super::*;
+
+    #[test]
+    fn test_midpoint() {
+        assert!(f256::NAN.midpoint(f256::ONE).is_nan());
+        assert!(f256::ONE.midpoint(f256::NAN).is_nan());
+        assert!(f256::INFINITY.midpoint(f256::NEG_INFINITY).is_nan());
+        assert!(f256::NEG_INFINITY.midpoint(f256::INFINITY).is_nan());
+        let max_half = f256::MAX.div2();
+        assert_eq!(max_half.midpoint(max_half), max_half);
+        assert_eq!(f256::MAX.midpoint(f256::NEG_ZERO), max_half);
+        assert_eq!(f256::MAX.midpoint(f256::NEG_ONE), max_half);
+        assert_eq!(f256::ONE.midpoint(f256::MIN_POSITIVE), ONE_HALF);
+        assert_eq!(f256::MIN_POSITIVE.midpoint(f256::ONE), ONE_HALF);
+        assert_eq!(
+            f256::MIN_POSITIVE.midpoint(-f256::MIN_POSITIVE),
+            f256::ZERO
+        );
     }
 }
 
