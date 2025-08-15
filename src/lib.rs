@@ -1257,6 +1257,70 @@ impl f256 {
         }
     }
 
+    /// Returns the least number greater than `self`.
+    ///
+    /// Maps the input value as follows:
+    ///  - Self::NAN => Self::NAN
+    ///  - Self::NEG_INFINITY ==> Self::MIN
+    ///  - -Self::MIN_GT_ZERO => Self::NEG_ZERO
+    ///  - Self::ZERO or Self::NEG_ZERO => Self::MIN_GT_ZERO
+    ///  - Self::MAX or Self::INFINITY => Self::INFINITY
+    ///  - otherwise => unique least value greater than `self`
+    ///
+    /// The identity `x.next_up() == -(-x).next_down()` holds for all
+    /// non-NaN `x`. When `x` is finite `x == x.next_down().next_up()` also
+    /// holds.
+    #[inline]
+    #[doc(alias = "nextUp")]
+    pub fn next_up(self) -> Self {
+        if self.is_nan() || self == Self::INFINITY {
+            return self;
+        }
+        let abs_bits = abs_bits(&self);
+        if abs_bits.is_zero() {
+            return Self::MIN_GT_ZERO;
+        }
+        let mut res = self;
+        if res.bits.hi.0 == abs_bits.hi.0 {
+            res.bits.incr();
+        } else {
+            res.bits.decr();
+        }
+        res
+    }
+
+    /// Returns the greatest number less than `self`.
+    ///
+    /// Maps the input value as follows:
+    ///  - Self::NAN => Self::NAN
+    ///  - Self::INFINITY ==> Self::MAX
+    ///  - Self::MIN_GT_ZERO => Self::ZERO
+    ///  - Self::ZERO or Self::NEG_ZERO => -Self::MIN_GT_ZERO
+    ///  - Self::MIN or Self::NEG_INFINITY => Self::NEG_INFINITY
+    ///  - otherwise => unique greatest value less than `self`
+    ///
+    /// The identity `x.next_down() == -(-x).next_up()` holds for all
+    /// non-NaN `x`. When `x` is finite `x == x.next_down().next_up()` also
+    /// holds.
+    #[inline]
+    #[doc(alias = "nextDown")]
+    pub fn next_down(self) -> Self {
+        if self.is_nan() || self == Self::NEG_INFINITY {
+            return self;
+        }
+        let abs_bits = abs_bits(&self);
+        if abs_bits.is_zero() {
+            return -Self::MIN_GT_ZERO;
+        }
+        let mut res = self;
+        if res.bits.hi.0 == abs_bits.hi.0 {
+            res.bits.decr();
+        } else {
+            res.bits.incr();
+        }
+        res
+    }
+
     /// Returns 2 * `self`
     #[inline(always)]
     #[must_use]
@@ -1899,6 +1963,49 @@ mod ulp_tests {
         let f = f256::MIN_POSITIVE - f256::MIN_GT_ZERO;
         assert_eq!(f.ulp(), f256::MIN_GT_ZERO);
         assert_eq!(f256::MIN_GT_ZERO.ulp(), f256::MIN_GT_ZERO);
+    }
+}
+
+#[cfg(test)]
+mod next_up_down_tests {
+    use super::*;
+
+    #[test]
+    fn test_special() {
+        assert!(f256::NAN.next_up().is_nan());
+        assert!(f256::NAN.next_down().is_nan());
+        assert_eq!(f256::NEG_ZERO.next_up(), MIN_GT_ZERO);
+        assert_eq!(f256::NEG_ZERO.next_down(), -MIN_GT_ZERO);
+        assert_eq!(f256::ZERO.next_up(), MIN_GT_ZERO);
+        assert_eq!(f256::ZERO.next_down(), -MIN_GT_ZERO);
+        assert_eq!(f256::INFINITY.next_up(), f256::INFINITY);
+        assert_eq!(f256::INFINITY.next_down(), f256::MAX);
+        assert_eq!(f256::NEG_INFINITY.next_up(), f256::MIN);
+        assert_eq!(f256::NEG_INFINITY.next_down(), f256::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_normal() {
+        assert_eq!(f256::ONE.next_up(), f256::ONE + f256::ONE.ulp());
+        assert_eq!(f256::ONE.next_down(), f256::ONE - f256::EPSILON.div2());
+        let f = f256::MAX.div_pow2(3);
+        assert_eq!(f.next_up(), f + f.ulp());
+        assert_eq!(f.next_down(), f - f.ulp());
+        let f = f256::MIN / f256::TEN;
+        assert_eq!(f.next_up().next_down(), f);
+        assert_eq!(f.next_down().next_up(), f);
+    }
+
+    #[test]
+    fn test_subnormal() {
+        assert_eq!((-f256::MIN_GT_ZERO).next_up(), f256::NEG_ZERO);
+        assert_eq!(f256::MIN_GT_ZERO.next_down(), f256::ZERO);
+        let f = f256::EPSILON.div_pow2(3);
+        assert_eq!(f.next_up(), f + f.ulp());
+        assert_eq!(f.next_down(), f - f.ulp().div2());
+        let f = f256::MIN_GT_ZERO * f256::TEN;
+        assert_eq!(f.next_up().next_down(), f);
+        assert_eq!(f.next_down().next_up(), f);
     }
 }
 
