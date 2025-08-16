@@ -1246,11 +1246,11 @@ impl f256 {
             // Overflow is impossible
             (a + b).div2()
         } else if abs_a < LO {
-            // Not safe to halve `a` (would underflow)
-            a + (b.div2())
+            // No need to halve `a` (would underflow)
+            b.div2()
         } else if abs_b < LO {
-            // Not safe to halve `b` (would underflow)
-            (a.div2()) + b
+            // No need to halve `b` (would underflow)
+            a.div2()
         } else {
             // Safe to halve `a` and `b`
             (a.div2()) + (b.div2())
@@ -2043,6 +2043,12 @@ mod midpoint_tests {
         assert!(f256::ONE.midpoint(f256::NAN).is_nan());
         assert!(f256::INFINITY.midpoint(f256::NEG_INFINITY).is_nan());
         assert!(f256::NEG_INFINITY.midpoint(f256::INFINITY).is_nan());
+        assert_eq!(f256::MAX.midpoint(f256::MAX), f256::MAX);
+        assert_eq!(f256::MIN.midpoint(f256::MIN), f256::MIN);
+        assert_eq!(
+            f256::MIN_POSITIVE.midpoint(f256::MIN_POSITIVE),
+            f256::MIN_POSITIVE
+        );
         let max_half = f256::MAX.div2();
         assert_eq!(max_half.midpoint(max_half), max_half);
         assert_eq!(f256::MAX.midpoint(f256::NEG_ZERO), max_half);
@@ -2053,6 +2059,9 @@ mod midpoint_tests {
             f256::MIN_POSITIVE.midpoint(-f256::MIN_POSITIVE),
             f256::ZERO
         );
+        let f = max_half.next_up();
+        assert_eq!(f.midpoint(f256::MIN_POSITIVE), f.div2());
+        assert_eq!(f256::MIN_POSITIVE.midpoint(f), f.div2());
     }
 }
 
