@@ -13,6 +13,7 @@ use core::{
     ops::{ShlAssign, ShrAssign},
 };
 
+use crate::big_uint::{UInt, U128};
 use crate::{
     abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, signif, BigUInt,
     BinEncAnySpecial, HiLo, EMAX, EMIN, EXP_BITS, EXP_MAX, FRACTION_BITS,
@@ -21,56 +22,19 @@ use crate::{
 
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
-pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
-    // Squares are always positive, so there's no need to care about the signs
-    // of the operands.
-    let mut abs_bits_x = abs_bits(x);
-    let mut abs_bits_y = abs_bits(y);
-    // Check whether one or both operands are NaN, infinite or zero.
-    // We mask off the sign bit and mark subnormals having a significand less
-    // than 2¹²⁸ in least bit of the representations high u128. This allows to
-    // use only that part for the handling of special cases.
-    let abs_bits_sticky_x = abs_bits_sticky(&abs_bits_x);
-    let abs_bits_sticky_y = abs_bits_sticky(&abs_bits_y);
-    if (abs_bits_sticky_x, abs_bits_sticky_y).any_non_normal() {
-        let max_abs_bits_sticky = max(abs_bits_sticky_x, abs_bits_sticky_y);
-        if max_abs_bits_sticky <= HI_FRACTION_MASK {
-            // Both operands are zero or subnormal.
-            return f256::ZERO;
-        }
-        if max_abs_bits_sticky > HI_EXP_MASK {
-            // Atleast one operand is NAN.
-            return f256::NAN;
-        }
-        if abs_bits_sticky_x <= HI_FRACTION_MASK {
-            // x is zero or subnormal.
-            return y.square();
-        }
-        if abs_bits_sticky_y <= HI_FRACTION_MASK {
-            // y is zero or subnormal.
-            return x.square();
-        }
-        // For all other special cases the result is INF.
-        return f256::INFINITY;
-    }
-
-    // Both operands are finite and non-zero.
-
+fn sum_squares(abs_bits_x: &mut U256, abs_bits_y: &mut U256) -> (U512, i32) {
     // Compare the absolute values of the operands and swap them in case
     // |x| < |y|.
     if abs_bits_x < abs_bits_y {
-        swap(&mut abs_bits_x, &mut abs_bits_y);
+        swap(abs_bits_x, abs_bits_y);
     }
-
     // Extract biased exponents and significands.
-    let mut exp_bits_x = exp_bits(&abs_bits_x) as i32;
-    let norm_bit_x = norm_bit(&abs_bits_x) as i32;
-    let mut signif_x = signif(&abs_bits_x);
-    let exp_bits_y = exp_bits(&abs_bits_y) as i32;
-    let norm_bit_y = norm_bit(&abs_bits_y) as i32;
-    let mut signif_y = signif(&abs_bits_y);
-
-    // Calculate x² + y²
+    let exp_bits_x = exp_bits(abs_bits_x) as i32;
+    let norm_bit_x = norm_bit(abs_bits_x) as i32;
+    let mut signif_x = signif(abs_bits_x);
+    let exp_bits_y = exp_bits(abs_bits_y) as i32;
+    let norm_bit_y = norm_bit(abs_bits_y) as i32;
+    let mut signif_y = signif(abs_bits_y);
 
     // |x| >= |y| => x² >= y²
     // Square the operands significands. Shift the greater one left by 20 bits
@@ -114,6 +78,51 @@ pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
     signif_z >>= shr.clamp(0, 511) as u32;
     signif_z <<= shl as u32;
     exp_bits_z += shr - shl + (signif_z.hi.hi.0 > HI_FRACTION_MASK) as i32;
+    (signif_z, exp_bits_z)
+}
+
+#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_sign_loss)]
+pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
+    // Squares are always positive, so there's no need to care about the signs
+    // of the operands.
+    let mut abs_bits_x = abs_bits(x);
+    let mut abs_bits_y = abs_bits(y);
+    // Check whether one or both operands are NaN, infinite or zero.
+    // We mask off the sign bit and mark subnormals having a significand less
+    // than 2¹²⁸ in least bit of the representations high u128. This allows to
+    // use only that part for the handling of special cases.
+    let abs_bits_sticky_x = abs_bits_sticky(&abs_bits_x);
+    let abs_bits_sticky_y = abs_bits_sticky(&abs_bits_y);
+    if (abs_bits_sticky_x, abs_bits_sticky_y).any_non_normal() {
+        let max_abs_bits_sticky = max(abs_bits_sticky_x, abs_bits_sticky_y);
+        if max_abs_bits_sticky <= HI_FRACTION_MASK {
+            // Both operands are zero or subnormal.
+            return f256::ZERO;
+        }
+        if max_abs_bits_sticky > HI_EXP_MASK {
+            // Atleast one operand is NAN.
+            return f256::NAN;
+        }
+        if abs_bits_sticky_x <= HI_FRACTION_MASK {
+            // x is zero or subnormal.
+            return y.square();
+        }
+        if abs_bits_sticky_y <= HI_FRACTION_MASK {
+            // y is zero or subnormal.
+            return x.square();
+        }
+        // For all other special cases the result is INF.
+        return f256::INFINITY;
+    }
+
+    // Both operands are finite and non-zero.
+
+    // Calculate x² + y².
+    let (signif_z, exp_bits_z) =
+        sum_squares(&mut abs_bits_x, &mut abs_bits_y);
+
+    // Convert intermediate result to f256.
     if exp_bits_z >= EXP_MAX as i32 {
         return f256::INFINITY;
     }
