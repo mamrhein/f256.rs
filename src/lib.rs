@@ -1232,6 +1232,7 @@ impl f256 {
     /// This returns NaN when *either* argument is NaN or if a combination of
     /// +inf and -inf is provided as arguments.
     #[doc(alias = "average")]
+    #[must_use]
     pub fn midpoint(self, other: Self) -> Self {
         const LO: f256 = f256::new(
             0,
@@ -1270,8 +1271,8 @@ impl f256 {
     /// The identity `x.next_up() == -(-x).next_down()` holds for all
     /// non-NaN `x`. When `x` is finite `x == x.next_down().next_up()` also
     /// holds.
-    #[inline]
     #[doc(alias = "nextUp")]
+    #[must_use]
     pub fn next_up(self) -> Self {
         if self.is_nan() || self == Self::INFINITY {
             return self;
@@ -1302,8 +1303,8 @@ impl f256 {
     /// The identity `x.next_down() == -(-x).next_up()` holds for all
     /// non-NaN `x`. When `x` is finite `x == x.next_down().next_up()` also
     /// holds.
-    #[inline]
     #[doc(alias = "nextDown")]
+    #[must_use]
     pub fn next_down(self) -> Self {
         if self.is_nan() || self == Self::NEG_INFINITY {
             return self;
