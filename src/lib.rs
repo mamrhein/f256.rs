@@ -1986,6 +1986,16 @@ mod next_up_down_tests {
     }
 
     #[test]
+    fn test_overflow() {
+        assert_eq!(f256::MAX.next_up(), f256::INFINITY);
+    }
+
+    #[test]
+    fn test_underflow() {
+        assert_eq!(f256::MIN.next_down(), f256::NEG_INFINITY);
+    }
+
+    #[test]
     fn test_normal() {
         assert_eq!(f256::ONE.next_up(), f256::ONE + f256::ONE.ulp());
         assert_eq!(f256::ONE.next_down(), f256::ONE - f256::EPSILON.div2());
