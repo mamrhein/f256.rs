@@ -7,12 +7,104 @@
 // $Source$
 // $Revision$
 
+use crate::big_uint::{UInt, U128};
 use crate::{
-    abs_bits, exp_bits, f256, fraction, BigUInt, BinEncSpecial, HiLo, EMIN,
-    EXP_BIAS, EXP_BITS, EXP_MAX, HI_FRACTION_BIAS, HI_FRACTION_BITS,
-    SIGNIFICAND_BITS, U256, U512,
+    abs_bits, exp_bits, f256, fraction, norm_signif_exp, BigUInt,
+    BinEncSpecial, HiLo, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, HI_FRACTION_BIAS,
+    HI_FRACTION_BITS, SIGNIFICAND_BITS, U256, U512,
 };
 use core::ops::{Add, Shr};
+
+#[allow(clippy::integer_division)]
+#[allow(clippy::cast_sign_loss)]
+pub(crate) fn square_root(signif: &U256, exp: i32) -> (i32, U256) {
+    let a = exp & 1;
+    // The following subtraction is neccessary to get the correct
+    // quotient with a positive remainder for negative exponents!
+    let p = (exp - a) / 2;
+    let m = signif << (1 + a as u32);
+    // Now we have
+    // N: number of fractional digits
+    // e: base 2 exponent of the input value
+    // p: base 2 exponent of the root
+    // a: adjustment for the significand
+    // self = m⋅2⁻¹⋅2⁻ᴺ⋅2ᵉ⁻ᵅ
+    // and
+    // √self = √(m⋅2⁻¹⋅2⁻ᴺ)⋅2ᵖ
+    // Let M = m⋅2⁻¹⋅2⁻ᴺ
+    // The following algorithm calculates the significand of the resulting
+    // root bit by bit, one per iteration, starting with 1.
+    // It is described in detail in
+    // J.-M. Muller et al., Handbook of Floating-Point Arithmetic, 2. ed.,
+    // Chapter 9.5.3.1
+    // Qᵢ: root extracted thus far
+    // Rᵢ: remainder
+    // Invariant: M = Qᵢ² + Rᵢ
+    // Q₀ = 1
+    // q₀ = Q₀⋅2ᴺ⁺¹
+    let mut q = U256::new(HI_FRACTION_BIAS << 1, 0);
+    // R₀ = M - Q₀²
+    // r₀ = R₀⋅2ᴺ⁺¹ = (m⋅2⁻¹⋅2⁻ᴺ - (q₀⋅2⁻¹⋅2⁻ᴺ)²)⋅2ᴺ⁺¹ = m - q₀²⋅2⁻¹⋅2⁻ᴺ
+    // Q₀ = 1 => q₀²⋅2⁻¹⋅2⁻ᴺ = q₀ => r₀ = m - q₀
+    let mut r = m - q;
+    // Qᵢ = qᵢ⋅2⁻¹⋅2⁻ᴺ
+    // Rᵢ = rᵢ⋅2⁻¹⋅2⁻ᴺ⋅2⁻ⁱ
+    // M = Qᵢ² + Rᵢ
+    // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ⋅2⁻¹⋅2⁻ᴺ)² + rᵢ⋅2⁻¹⋅2⁻ᴺ⋅2⁻ⁱ
+    // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ)⋅2⁻¹⋅2⁻ᴺ
+    // => m = qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
+    if cfg!(debug_assertions) {
+        let q2 = q.widening_mul(&q);
+        debug_assert_eq!(
+            m,
+            U512::from_hi_lo(q2.1, q2.0)
+                .shr(SIGNIFICAND_BITS)
+                .lo_t()
+                .add(r)
+        );
+    };
+    let mut s = q;
+    for i in 1..=SIGNIFICAND_BITS {
+        if r.is_zero() {
+            break;
+        }
+        // Next bit
+        // Sᵢ = 2⁻ⁱ
+        // sᵢ = Sᵢ⋅2ᴺ⁺¹ = 2ᴺ⁺¹⁻ⁱ
+        s >>= 1;
+        // Tentative next estimation
+        // Qᵢ = Qᵢ₋₁ + Sᵢ
+        // qᵢ = Qᵢ⋅2ᴺ⁺¹ = Qᵢ₋₁⋅2ᴺ⁺¹ + Sᵢ⋅2ᴺ⁺¹ = qᵢ₋₁ + sᵢ
+        // Tentative remainder
+        // Tᵢ = M - Qᵢ²
+        // tᵢ = Tᵢ⋅2ᴺ⁺¹⁺ⁱ
+        //    = (M - Qᵢ²)⋅2ᴺ⁺¹⁺ⁱ
+        //    = (M - (Qᵢ₋₁ + Sᵢ)²)⋅2ᴺ⁺¹⁺ⁱ
+        //    = (M - (Qᵢ₋₁² + 2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²))⋅2ᴺ⁺¹⁺ⁱ
+        //    = 2⋅(M - Qᵢ₋₁²)⋅2ᴺ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²)⋅2ᴺ⁺¹⁺ⁱ
+        //    = 2⋅(M - Qᵢ₋₁²)⋅2ᴺ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅2ᴺ⁺¹ + Sᵢ⋅2ᴺ⁺¹)⋅Sᵢ⋅2ⁱ
+        //    = 2⋅rᵢ₋₁ - (2⋅qᵢ₋₁ + sᵢ)
+        r <<= 1;
+        let u = (&q << 1) + s;
+        // If tᵢ >= 0 the next bit of the result is 1, else 0.
+        if r >= u {
+            q += &s;
+            r -= &u;
+            // m = yᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
+            if cfg!(debug_assertions) {
+                let q2 = q.widening_mul(&q);
+                debug_assert!(
+                    m - U512::from_hi_lo(q2.1, q2.0)
+                        .shr(SIGNIFICAND_BITS)
+                        .lo_t()
+                        .add(r.shr(i))
+                        <= U256::ONE
+                );
+            };
+        }
+    }
+    (p, q)
+}
 
 impl f256 {
     /// Returns the square root of `self`.
@@ -29,7 +121,6 @@ impl f256 {
     /// assert_eq!(f256::NEG_ZERO.sqrt(), f256::NEG_ZERO);
     /// ```
     #[must_use]
-    #[allow(clippy::integer_division)]
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cast_sign_loss)]
     pub fn sqrt(self) -> Self {
@@ -45,97 +136,8 @@ impl f256 {
         }
 
         // `self` is (sub-)normal and positive
-        let biased_exp = exp_bits(&bin_enc);
-        let hidden_bit = (biased_exp != 0) as i32;
-        let norm_shift = bin_enc.leading_zeros().saturating_sub(EXP_BITS);
-        let mut signif = fraction(&bin_enc) << norm_shift;
-        signif.hi.0 |= (hidden_bit as u128) << HI_FRACTION_BITS;
-        // N: number of fractional digits
-        // e: base 2 exponent of the input value
-        // p: base 2 exponent of the root
-        // a: adjustment for the significand
-        let mut e = biased_exp as i32 + EMIN - hidden_bit - norm_shift as i32;
-        let a = e & 1;
-        // The following subtraction is neccessary to get the correct
-        // quotient with a positive remainder for negative exponents!
-        let p = (e - a) / 2;
-        let m = signif << (1 + a as u32);
-        // Now we have
-        // self = m⋅2⁻¹⋅2⁻ᴺ⋅2ᵉ⁻ᵅ
-        // and
-        // √self = √(m⋅2⁻¹⋅2⁻ᴺ)⋅2ᵖ
-        // Let M = m⋅2⁻¹⋅2⁻ᴺ
-        // The following algorithm calculates the significand of the resulting
-        // root bit by bit, one per iteration, starting with 1.
-        // It is described in detail in
-        // J.-M. Muller et al., Handbook of Floating-Point Arithmetic, 2. ed.,
-        // Chapter 9.5.3.1
-        // Qᵢ: root extracted thus far
-        // Rᵢ: remainder
-        // Invariant: M = Qᵢ² + Rᵢ
-        // Q₀ = 1
-        // q₀ = Q₀⋅2ᴺ⁺¹
-        let mut q = U256::new(HI_FRACTION_BIAS << 1, 0);
-        // R₀ = M - Q₀²
-        // r₀ = R₀⋅2ᴺ⁺¹ = (m⋅2⁻¹⋅2⁻ᴺ - (q₀⋅2⁻¹⋅2⁻ᴺ)²)⋅2ᴺ⁺¹ = m - q₀²⋅2⁻¹⋅2⁻ᴺ
-        // Q₀ = 1 => q₀²⋅2⁻¹⋅2⁻ᴺ = q₀ => r₀ = m - q₀
-        let mut r = m - q;
-        // Qᵢ = qᵢ⋅2⁻¹⋅2⁻ᴺ
-        // Rᵢ = rᵢ⋅2⁻¹⋅2⁻ᴺ⋅2⁻ⁱ
-        // M = Qᵢ² + Rᵢ
-        // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ⋅2⁻¹⋅2⁻ᴺ)² + rᵢ⋅2⁻¹⋅2⁻ᴺ⋅2⁻ⁱ
-        // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ)⋅2⁻¹⋅2⁻ᴺ
-        // => m = qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
-        if cfg!(debug_assertions) {
-            let q2 = q.widening_mul(&q);
-            debug_assert_eq!(
-                m,
-                U512::from_hi_lo(q2.1, q2.0)
-                    .shr(SIGNIFICAND_BITS)
-                    .lo_t()
-                    .add(r)
-            );
-        };
-        let mut s = q;
-        for i in 1..=SIGNIFICAND_BITS {
-            if r.is_zero() {
-                break;
-            }
-            // Next bit
-            // Sᵢ = 2⁻ⁱ
-            // sᵢ = Sᵢ⋅2ᴺ⁺¹ = 2ᴺ⁺¹⁻ⁱ
-            s >>= 1;
-            // Tentative next estimation
-            // Qᵢ = Qᵢ₋₁ + Sᵢ
-            // qᵢ = Qᵢ⋅2ᴺ⁺¹ = Qᵢ₋₁⋅2ᴺ⁺¹ + Sᵢ⋅2ᴺ⁺¹ = qᵢ₋₁ + sᵢ
-            // Tentative remainder
-            // Tᵢ = M - Qᵢ²
-            // tᵢ = Tᵢ⋅2ᴺ⁺¹⁺ⁱ
-            //    = (M - Qᵢ²)⋅2ᴺ⁺¹⁺ⁱ
-            //    = (M - (Qᵢ₋₁ + Sᵢ)²)⋅2ᴺ⁺¹⁺ⁱ
-            //    = (M - (Qᵢ₋₁² + 2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²))⋅2ᴺ⁺¹⁺ⁱ
-            //    = 2⋅(M - Qᵢ₋₁²)⋅2ᴺ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²)⋅2ᴺ⁺¹⁺ⁱ
-            //    = 2⋅(M - Qᵢ₋₁²)⋅2ᴺ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅2ᴺ⁺¹ + Sᵢ⋅2ᴺ⁺¹)⋅Sᵢ⋅2ⁱ
-            //    = 2⋅rᵢ₋₁ - (2⋅qᵢ₋₁ + sᵢ)
-            r <<= 1;
-            let u = (&q << 1) + s;
-            // If tᵢ >= 0 the next bit of the result is 1, else 0.
-            if r >= u {
-                q += &s;
-                r -= &u;
-                // m = yᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
-                if cfg!(debug_assertions) {
-                    let q2 = q.widening_mul(&q);
-                    debug_assert!(
-                        m - U512::from_hi_lo(q2.1, q2.0)
-                            .shr(SIGNIFICAND_BITS)
-                            .lo_t()
-                            .add(r.shr(i))
-                            <= U256::ONE
-                    );
-                };
-            }
-        }
+        let (signif, exp) = norm_signif_exp(&bin_enc);
+        let (p, mut q) = square_root(&signif, exp);
         // Final reconstruction and rounding.
         // The sqare root of a floating point number can't be an exact
         // midpoint between two consecutive floating point numbers, so there
