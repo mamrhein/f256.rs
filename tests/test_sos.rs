@@ -91,6 +91,12 @@ mod sum_of_squares_tests {
     }
 
     #[test]
+    fn test_square_no_overflow() {
+        let f = f256::MAX.div2().sqrt();
+        assert_eq!(f.sum_of_squares(f), f256::MAX);
+    }
+
+    #[test]
     fn test_square_overflow() {
         let f = f256::MAX;
         let z = f.sum_of_squares(f256::ONE);
