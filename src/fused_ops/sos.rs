@@ -7,17 +7,17 @@
 // $Source$
 // $Revision$
 
+use crate::big_uint::{UInt, U128};
+use crate::{
+    abs_bits, abs_bits_sticky, exp, f256, norm_bit, norm_signif_exp, signif,
+    BigUInt, BinEncAnySpecial, HiLo, EMAX, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX,
+    FRACTION_BITS, HI_EXP_MASK, HI_FRACTION_BITS, HI_FRACTION_MASK, INF_HI,
+    U256, U512,
+};
 use core::{
     cmp::max,
     mem::swap,
     ops::{ShlAssign, ShrAssign},
-};
-
-use crate::big_uint::{UInt, U128};
-use crate::{
-    abs_bits, abs_bits_sticky, exp_bits, f256, norm_bit, signif, BigUInt,
-    BinEncAnySpecial, HiLo, EMAX, EMIN, EXP_BITS, EXP_MAX, FRACTION_BITS,
-    HI_EXP_MASK, HI_FRACTION_BITS, HI_FRACTION_MASK, INF_HI, U256, U512,
 };
 
 #[allow(clippy::cast_possible_wrap)]
@@ -29,12 +29,8 @@ fn sum_squares(abs_bits_x: &mut U256, abs_bits_y: &mut U256) -> (U512, i32) {
         swap(abs_bits_x, abs_bits_y);
     }
     // Extract biased exponents and significands.
-    let exp_bits_x = exp_bits(abs_bits_x) as i32;
-    let norm_bit_x = norm_bit(abs_bits_x) as i32;
-    let mut signif_x = signif(abs_bits_x);
-    let exp_bits_y = exp_bits(abs_bits_y) as i32;
-    let norm_bit_y = norm_bit(abs_bits_y) as i32;
-    let mut signif_y = signif(abs_bits_y);
+    let (mut signif_x, exp_x) = norm_signif_exp(&abs_bits_x);
+    let (signif_y, exp_y) = (signif(&abs_bits_y), exp(&abs_bits_y));
 
     // |x| >= |y| => x² >= y²
     // Square the operands significands. Shift the greater one left by 20 bits
@@ -49,8 +45,7 @@ fn sum_squares(abs_bits_x: &mut U256, abs_bits_y: &mut U256) -> (U512, i32) {
     let t = signif_y.widening_mul(&signif_y);
     let mut signif_y2 = U512 { hi: t.1, lo: t.0 };
     // |x| >= |y| => exp(x) >= exp(y), so the following can not overflow.
-    let d = (2 * (exp_bits_x - norm_bit_x) - 2 * (exp_bits_y - norm_bit_y))
-        as u32;
+    let d = 2 * (exp_x - exp_y) as u32;
     match d {
         0..=19 => {
             signif_y2 <<= (20 - d);
@@ -70,15 +65,8 @@ fn sum_squares(abs_bits_x: &mut U256, abs_bits_y: &mut U256) -> (U512, i32) {
     // The results radix point is aligned at bit 492 of signif_z, it has
     // atmost 3 leading bits, 2 from the squaring and 1 from the possible
     // overflow of the addition.
-    let nlz = signif_z.leading_zeros() as i32;
-    let mut exp_bits_z = 2 * (exp_bits_x - norm_bit_x) + EMIN;
-    let shr = max(-exp_bits_z, EXP_BITS as i32 - nlz);
-    let shl =
-        max(exp_bits_z - EXP_MAX as i32, nlz - EXP_BITS as i32).clamp(0, 236);
-    signif_z >>= shr.clamp(0, 511) as u32;
-    signif_z <<= shl as u32;
-    exp_bits_z += shr - shl + (signif_z.hi.hi.0 > HI_FRACTION_MASK) as i32;
-    (signif_z, exp_bits_z)
+    debug_assert!(signif_z.leading_zeros() <= EXP_BITS);
+    (signif_z, 2 * exp_x)
 }
 
 #[allow(clippy::cast_possible_wrap)]
@@ -119,19 +107,24 @@ pub(crate) fn sos(x: &f256, y: &f256) -> f256 {
     // Both operands are finite and non-zero.
 
     // Calculate x² + y².
-    let (signif_z, exp_bits_z) =
+    let (mut signif_z, mut exp_z) =
         sum_squares(&mut abs_bits_x, &mut abs_bits_y);
 
     // Convert intermediate result to f256.
-    if exp_bits_z >= EXP_MAX as i32 {
+    let shr = EXP_BITS - signif_z.hi.hi.0.leading_zeros();
+    let sticky_bit = (signif_z.lo.lo.0 != 0) as u128;
+    signif_z >>= shr;
+    signif_z.lo.lo.0 |= sticky_bit;
+    exp_z += shr as i32;
+    if exp_z > EMAX {
         return f256::INFINITY;
     }
-    let exp_bits_z_minus_1 = (exp_bits_z - 1).clamp(0, EXP_MAX as i32);
+    let exp_bits_z_minus_1 = (EXP_BIAS as i32 + exp_z - 1) as u128;
     let rnd_bits = (signif_z.lo.hi.0 >> (u128::BITS - 3)) as u32
         | ((signif_z.lo.hi.0 << 3) != 0) as u32
         | (signif_z.lo.lo.0 != 0) as u32;
     let mut abs_bits_z = signif_z.hi;
-    abs_bits_z.hi.0 += (exp_bits_z_minus_1 as u128) << HI_FRACTION_BITS;
+    abs_bits_z.hi.0 += exp_bits_z_minus_1 << HI_FRACTION_BITS;
     // Final rounding. Possibly overflowing into the exponent, but that is ok.
     if rnd_bits > 0x4 || rnd_bits == 0x4 && abs_bits_z.lo.is_odd() {
         abs_bits_z.incr();
