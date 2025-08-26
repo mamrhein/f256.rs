@@ -1258,6 +1258,16 @@ impl f256 {
         }
     }
 
+    /// Compute the distance between the origin and a point (`x`, `y`) on the
+    /// Euclidean plane. Equivalently, compute the length of the hypotenuse of
+    /// a right-angle triangle with other sides having length `x.abs()` and
+    /// `y.abs()`.
+    #[inline(always)]
+    #[must_use]
+    pub fn hypot(self, other: Self) -> Self {
+        fused_ops::hypot::hypot(&self, &other)
+    }
+
     /// Returns the least number greater than `self`.
     ///
     /// Maps the input value as follows:

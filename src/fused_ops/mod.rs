@@ -8,4 +8,5 @@
 // $Revision$
 
 pub(crate) mod fma;
+pub(crate) mod hypot;
 pub(crate) mod sos;
