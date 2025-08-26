@@ -10,28 +10,33 @@
 use crate::big_uint::{UInt, U128};
 use crate::{
     abs_bits, exp_bits, f256, fraction, norm_signif_exp, BigUInt,
-    BinEncSpecial, HiLo, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, HI_FRACTION_BIAS,
-    HI_FRACTION_BITS, SIGNIFICAND_BITS, U256, U512,
+    BinEncSpecial, HiLo, EMIN, EXP_BIAS, EXP_BITS, EXP_MAX, FRACTION_BITS,
+    HI_FRACTION_BIAS, HI_FRACTION_BITS, SIGNIFICAND_BITS, U256, U512,
 };
 use core::ops::{Add, Shr};
 
 #[allow(clippy::integer_division)]
 #[allow(clippy::cast_sign_loss)]
 pub(crate) fn square_root(signif: &U256, exp: i32) -> (i32, U256) {
-    let a = exp & 1;
+    debug_assert!(signif.hi.0.leading_zeros() <= EXP_BITS);
+    debug_assert!(signif.hi.0.leading_zeros() >= 2);
+    let n = signif.msb();
+    let e = exp + (n - FRACTION_BITS) as i32;
+    let a = e & 1;
     // The following subtraction is neccessary to get the correct
     // quotient with a positive remainder for negative exponents!
-    let p = (exp - a) / 2;
+    let p = (e - a) / 2;
     let m = signif << (1 + a as u32);
     // Now we have
-    // N: number of fractional digits
+    // x: input value
+    // n: number of fractional digits
     // e: base 2 exponent of the input value
     // p: base 2 exponent of the root
     // a: adjustment for the significand
-    // self = m⋅2⁻¹⋅2⁻ᴺ⋅2ᵉ⁻ᵅ
+    // x = m⋅2⁻¹⋅2⁻ⁿ⋅2ᵉ⁻ᵅ
     // and
-    // √self = √(m⋅2⁻¹⋅2⁻ᴺ)⋅2ᵖ
-    // Let M = m⋅2⁻¹⋅2⁻ᴺ
+    // √x = √(m⋅2⁻¹⋅2⁻ⁿ)⋅2ᵖ
+    // Let M = m⋅2⁻¹⋅2⁻ⁿ
     // The following algorithm calculates the significand of the resulting
     // root bit by bit, one per iteration, starting with 1.
     // It is described in detail in
@@ -41,27 +46,22 @@ pub(crate) fn square_root(signif: &U256, exp: i32) -> (i32, U256) {
     // Rᵢ: remainder
     // Invariant: M = Qᵢ² + Rᵢ
     // Q₀ = 1
-    // q₀ = Q₀⋅2ᴺ⁺¹
-    let mut q = U256::new(HI_FRACTION_BIAS << 1, 0);
+    // q₀ = Q₀⋅2ⁿ⁺¹
+    let mut q = U256::new(1_u128 << (n - 127), 0);
     // R₀ = M - Q₀²
-    // r₀ = R₀⋅2ᴺ⁺¹ = (m⋅2⁻¹⋅2⁻ᴺ - (q₀⋅2⁻¹⋅2⁻ᴺ)²)⋅2ᴺ⁺¹ = m - q₀²⋅2⁻¹⋅2⁻ᴺ
-    // Q₀ = 1 => q₀²⋅2⁻¹⋅2⁻ᴺ = q₀ => r₀ = m - q₀
+    // r₀ = R₀⋅2ⁿ⁺¹ = (m⋅2⁻¹⋅2⁻ⁿ - (q₀⋅2⁻¹⋅2⁻ⁿ)²)⋅2ⁿ⁺¹ = m - q₀²⋅2⁻¹⋅2⁻ⁿ
+    // Q₀ = 1 => q₀²⋅2⁻¹⋅2⁻ⁿ = q₀ => r₀ = m - q₀
     let mut r = m - q;
-    // Qᵢ = qᵢ⋅2⁻¹⋅2⁻ᴺ
-    // Rᵢ = rᵢ⋅2⁻¹⋅2⁻ᴺ⋅2⁻ⁱ
+    // Qᵢ = qᵢ⋅2⁻¹⋅2⁻ⁿ
+    // Rᵢ = rᵢ⋅2⁻¹⋅2⁻ⁿ⋅2⁻ⁱ
     // M = Qᵢ² + Rᵢ
-    // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ⋅2⁻¹⋅2⁻ᴺ)² + rᵢ⋅2⁻¹⋅2⁻ᴺ⋅2⁻ⁱ
-    // => m⋅2⁻¹⋅2⁻ᴺ = (qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ)⋅2⁻¹⋅2⁻ᴺ
-    // => m = qᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
+    // => m⋅2⁻¹⋅2⁻ⁿ = (qᵢ⋅2⁻¹⋅2⁻ⁿ)² + rᵢ⋅2⁻¹⋅2⁻ⁿ⋅2⁻ⁱ
+    // => m⋅2⁻¹⋅2⁻ⁿ = (qᵢ²⋅2⁻¹⋅2⁻ⁿ + rᵢ⋅2⁻ⁱ)⋅2⁻¹⋅2⁻ⁿ
+    // => m = qᵢ²⋅2⁻¹⋅2⁻ⁿ + rᵢ⋅2⁻ⁱ
     if cfg!(debug_assertions) {
         let q2 = q.widening_mul(&q);
-        debug_assert_eq!(
-            m,
-            U512::from_hi_lo(q2.1, q2.0)
-                .shr(SIGNIFICAND_BITS)
-                .lo_t()
-                .add(r)
-        );
+        let q2r = U512::from_hi_lo(q2.1, q2.0).shr(n + 1).lo_t().add(r);
+        debug_assert_eq!(m, q2r, "{m:?} != {q2r:?}");
     };
     let mut s = q;
     for i in 1..=SIGNIFICAND_BITS {
@@ -70,19 +70,19 @@ pub(crate) fn square_root(signif: &U256, exp: i32) -> (i32, U256) {
         }
         // Next bit
         // Sᵢ = 2⁻ⁱ
-        // sᵢ = Sᵢ⋅2ᴺ⁺¹ = 2ᴺ⁺¹⁻ⁱ
+        // sᵢ = Sᵢ⋅2ⁿ⁺¹ = 2ⁿ⁺¹⁻ⁱ
         s >>= 1;
         // Tentative next estimation
         // Qᵢ = Qᵢ₋₁ + Sᵢ
-        // qᵢ = Qᵢ⋅2ᴺ⁺¹ = Qᵢ₋₁⋅2ᴺ⁺¹ + Sᵢ⋅2ᴺ⁺¹ = qᵢ₋₁ + sᵢ
+        // qᵢ = Qᵢ⋅2ⁿ⁺¹ = Qᵢ₋₁⋅2ⁿ⁺¹ + Sᵢ⋅2ⁿ⁺¹ = qᵢ₋₁ + sᵢ
         // Tentative remainder
         // Tᵢ = M - Qᵢ²
-        // tᵢ = Tᵢ⋅2ᴺ⁺¹⁺ⁱ
-        //    = (M - Qᵢ²)⋅2ᴺ⁺¹⁺ⁱ
-        //    = (M - (Qᵢ₋₁ + Sᵢ)²)⋅2ᴺ⁺¹⁺ⁱ
-        //    = (M - (Qᵢ₋₁² + 2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²))⋅2ᴺ⁺¹⁺ⁱ
-        //    = 2⋅(M - Qᵢ₋₁²)⋅2ᴺ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²)⋅2ᴺ⁺¹⁺ⁱ
-        //    = 2⋅(M - Qᵢ₋₁²)⋅2ᴺ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅2ᴺ⁺¹ + Sᵢ⋅2ᴺ⁺¹)⋅Sᵢ⋅2ⁱ
+        // tᵢ = Tᵢ⋅2ⁿ⁺¹⁺ⁱ
+        //    = (M - Qᵢ²)⋅2ⁿ⁺¹⁺ⁱ
+        //    = (M - (Qᵢ₋₁ + Sᵢ)²)⋅2ⁿ⁺¹⁺ⁱ
+        //    = (M - (Qᵢ₋₁² + 2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²))⋅2ⁿ⁺¹⁺ⁱ
+        //    = 2⋅(M - Qᵢ₋₁²)⋅2ⁿ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅Sᵢ + Sᵢ²)⋅2ⁿ⁺¹⁺ⁱ
+        //    = 2⋅(M - Qᵢ₋₁²)⋅2ⁿ⁺¹⁺ⁱ⁻¹ - (2⋅Qᵢ₋₁⋅2ⁿ⁺¹ + Sᵢ⋅2ⁿ⁺¹)⋅Sᵢ⋅2ⁱ
         //    = 2⋅rᵢ₋₁ - (2⋅qᵢ₋₁ + sᵢ)
         r <<= 1;
         let u = (&q << 1) + s;
@@ -90,20 +90,18 @@ pub(crate) fn square_root(signif: &U256, exp: i32) -> (i32, U256) {
         if r >= u {
             q += &s;
             r -= &u;
-            // m = yᵢ²⋅2⁻¹⋅2⁻ᴺ + rᵢ⋅2⁻ⁱ
+            // m = yᵢ²⋅2⁻¹⋅2⁻ⁿ + rᵢ⋅2⁻ⁱ
             if cfg!(debug_assertions) {
                 let q2 = q.widening_mul(&q);
-                debug_assert!(
-                    m - U512::from_hi_lo(q2.1, q2.0)
-                        .shr(SIGNIFICAND_BITS)
-                        .lo_t()
-                        .add(r.shr(i))
-                        <= U256::ONE
-                );
+                let q2r = U512::from_hi_lo(q2.1, q2.0)
+                    .shr(n + 1)
+                    .lo_t()
+                    .add(r.shr(i));
+                debug_assert!(m - q2r <= U256::ONE, "{m:?} - {q2r:?} > 1");
             };
         }
     }
-    (p, q)
+    (p, q >> (n - FRACTION_BITS))
 }
 
 impl f256 {

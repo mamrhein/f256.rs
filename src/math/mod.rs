@@ -15,7 +15,7 @@ mod exp;
 mod fp492;
 mod log;
 mod pow;
-mod sqrt;
+pub(crate) mod sqrt;
 
 use big_float::{Float, Float256, Float512};
 use fp492::FP492;
