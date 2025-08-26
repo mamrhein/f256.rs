@@ -22,7 +22,10 @@ use core::{
 
 #[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
-fn sum_squares(abs_bits_x: &mut U256, abs_bits_y: &mut U256) -> (U512, i32) {
+pub(crate) fn sum_squares(
+    abs_bits_x: &mut U256,
+    abs_bits_y: &mut U256,
+) -> (U512, i32) {
     // Compare the absolute values of the operands and swap them in case
     // |x| < |y|.
     if abs_bits_x < abs_bits_y {
@@ -30,7 +33,7 @@ fn sum_squares(abs_bits_x: &mut U256, abs_bits_y: &mut U256) -> (U512, i32) {
     }
     // Extract biased exponents and significands.
     let (mut signif_x, exp_x) = norm_signif_exp(&abs_bits_x);
-    let (signif_y, exp_y) = (signif(&abs_bits_y), exp(&abs_bits_y));
+    let (signif_y, exp_y) = norm_signif_exp(&abs_bits_y);
 
     // |x| >= |y| => x² >= y²
     // Square the operands significands. Shift the greater one left by 20 bits
