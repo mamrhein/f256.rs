@@ -1,5 +1,7 @@
 Version   Changes
 --------  --------------------------------------------------------------------
+ 0.10.0   Added fns f256::signum, f256::next_up, f256::next_down, f256::hypot.
+
  0.9.0    Added impl TryFrom<&f256> to all native integer types.
           Added fns f256::copysign and f256::midpoint.
 
