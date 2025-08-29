@@ -16,6 +16,7 @@ use crate::{
 use core::ops::{Add, Shr};
 
 #[allow(clippy::integer_division)]
+#[allow(clippy::cast_possible_wrap)]
 #[allow(clippy::cast_sign_loss)]
 pub(crate) fn square_root(signif: &U256, exp: i32) -> (i32, U256) {
     debug_assert!(signif.hi.0.leading_zeros() <= EXP_BITS);

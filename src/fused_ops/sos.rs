@@ -32,8 +32,8 @@ pub(crate) fn sum_squares(
         swap(abs_bits_x, abs_bits_y);
     }
     // Extract biased exponents and significands.
-    let (mut signif_x, exp_x) = norm_signif_exp(&abs_bits_x);
-    let (signif_y, exp_y) = norm_signif_exp(&abs_bits_y);
+    let (mut signif_x, exp_x) = norm_signif_exp(abs_bits_x);
+    let (signif_y, exp_y) = norm_signif_exp(abs_bits_y);
 
     // |x| >= |y| => x² >= y²
     // Square the operands significands. Shift the greater one left by 20 bits
