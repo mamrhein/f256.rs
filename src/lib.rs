@@ -1455,6 +1455,31 @@ impl f256 {
             ),
         }
     }
+
+    /// Calculates Euclidean division, the matching method for rem_euclid.
+    ///
+    /// This computes the integer n such that
+    /// self = n * rhs + self.rem_euclid(rhs).
+    /// In other words, the result is self / rhs rounded to the integer n
+    /// such that self >= n * rhs.
+    pub fn div_euclid(self, rhs: Self) -> Self {
+        (self / rhs).floor()
+    }
+
+    /// Calculates the least nonnegative remainder of self (mod rhs).
+    ///
+    /// In particular, the return value r satisfies 0.0 <= r < rhs.abs() in
+    /// most cases. However, due to a floating point round-off error it can
+    /// result in r == rhs.abs(), violating the mathematical definition, if
+    /// self is much smaller than rhs.abs() in magnitude and self < 0.0.
+    /// This result is not an element of the function's codomain, but it is
+    /// the closest floating point number in the real numbers and thus
+    /// fulfills the property
+    /// self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)
+    /// approximately.
+    pub fn rem_euclid(self, rhs: Self) -> Self {
+        self.div_euclid(rhs).mul_add(-rhs, self)
+    }
 }
 
 impl Neg for f256 {
