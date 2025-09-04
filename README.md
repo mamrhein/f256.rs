@@ -1,5 +1,6 @@
-This crate provides an implementation of octuple-precision binary
-floating-point arithmetics.
+This is a comprehensive Rust implementation of a 256-bit floating-point type
+(`f256`) with extensive functionality for arithmetic and various mathematical
+operations.
 
 ### From Wikipedia:
 
@@ -47,8 +48,48 @@ a precision of only one bit. The minimum positive normal value is 2⁻²⁶²¹�
 2.4824 × 10⁻⁷⁸⁹¹³. The maximum representable value is 2²⁶²¹⁴⁴ − 2²⁶¹⁹⁰⁷ ≈
 1.6113 × 10⁷⁸⁹¹³.
 
-The type `f256` will provide the same stable API as the built-in `f64`
-(besides differences caused by the increased precision).
+### Key features include:
+
+##### Core Implementation
+
+- **Binary Encoding**: Uses a 256-bit representation compliant with IEEE
+  floating point standard
+- **Special Values**: Proper handling of NaN, infinity, and zero
+- **Precision**: Supports subnormal numbers and full precision arithmetic
+
+##### Arithmetic Operations
+
+- **Basic arithmetic**: `+`, `-`, `*`, `/`
+- **Comparison operators**: `==`, `!=`, `<`, `>`, `<=`, `>=`
+- **Negation**: `Neg` trait implementation
+- **Division with Euclidean remainder**: `div_euclid`, `rem_euclid`
+
+##### Elementary Functions
+
+- **Exponentiation**: `powf`, `powi`, `exp`, `exp_m1`, `exp2`
+- **Logarithms**: `ln`, `log2`, `log10`, `ln_1p`, `log`
+- **Trigonometric functions**: `sin`, `cos`, `tan`, `asin`, `acos`, `atan`
+- **Roots**: `sqrt`, `cbrt`
+
+##### Utility Functions
+
+- **Conversion**: Proper conversion from / into strings and basic numerical
+  types
+- **Classification**: `is_normal`, `is_subnormal`, `is_special`, `is_integer`
+- **Mathematical Functions**: `ulp` (unit in last place), `next_up`, `next_down`
+
+##### Key Constants
+
+- `ZERO`, `ONE`, `TWO`, `MIN_POSITIVE`, `MIN_GT_ZERO`, `MAX`, `MIN`
+- `INFINITY`, `NEG_INFINITY`, `NAN`
+- `EPSILON`, `PI`, `E`
+
+##### Advanced Features
+
+- **Precision Handling**: Proper rounding for all operations
+- **Subnormal Support**: Correct handling of very small numbers
+- **Overflow/Underflow**: Appropriate behavior for extreme values
+- **Special Cases**: NaN propagation, infinity arithmetic
 
 ### Getting started
 
