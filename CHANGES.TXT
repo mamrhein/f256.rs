@@ -1,5 +1,7 @@
 Version   Changes
 --------  --------------------------------------------------------------------
+          Set minimal rust version to 1.86.0.
+
  0.10.0   Added fns f256::signum, f256::next_up, f256::next_down, f256::hypot.
 
  0.9.0    Added impl TryFrom<&f256> to all native integer types.

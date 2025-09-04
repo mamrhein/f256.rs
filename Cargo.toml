@@ -2,7 +2,7 @@
 name = "f256"
 version = "0.10.0"
 edition = "2021"
-rust-version = "1.85.1"
+rust-version = "1.86.0"
 authors = ["Michael Amrhein <michael@adrhinum.de>"]
 description = "Octuple-precision floating-point arithmetic."
 readme = "README.md"
