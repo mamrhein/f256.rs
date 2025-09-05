@@ -1462,6 +1462,7 @@ impl f256 {
     /// self = n * rhs + self.rem_euclid(rhs).
     /// In other words, the result is self / rhs rounded to the integer n
     /// such that self >= n * rhs.
+    #[inline]
     pub fn div_euclid(self, rhs: Self) -> Self {
         (self / rhs).floor()
     }
@@ -1477,6 +1478,7 @@ impl f256 {
     /// fulfills the property
     /// self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)
     /// approximately.
+    #[inline]
     pub fn rem_euclid(self, rhs: Self) -> Self {
         self.div_euclid(rhs).mul_add(-rhs, self)
     }
