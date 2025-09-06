@@ -1705,7 +1705,7 @@ pub(crate) fn fast_sum(a: &f256, b: &f256) -> (f256, f256) {
 pub(crate) fn sum(a: &f256, b: &f256) -> (f256, f256) {
     let s = a + b;
     let ta = a - (s - b);
-    let tb = b - (s - ta);
+    let tb = b - (s - a);
     let r = ta + tb;
     (s, r)
 }
