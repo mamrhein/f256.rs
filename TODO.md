@@ -22,9 +22,9 @@
 
 ### Helper functions
 
-* Fast2Sum (frn2sum)
-* 2Sum (rn2sum)
-* 2MultFMA (rn2mul)
+* ~~Fast2Sum (frn2sum)~~
+* ~~2Sum (rn2sum)~~
+* ~~2MultFMA (rn2mul)~~
 
 ### Tests on random data generated via rug (GNU MFPR)
 
