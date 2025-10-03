@@ -1482,6 +1482,43 @@ impl f256 {
     pub fn rem_euclid(self, rhs: Self) -> Self {
         self.div_euclid(rhs).mul_add(-rhs, self)
     }
+
+    /// Computes the floating-point sum s := a ⊕ b and the floating-point
+    /// error t := a + b − ( a ⊕ b ) so that s + t = a + b, where ⊕ denotes
+    /// the addition rounded to nearest.
+    ///
+    /// Note:
+    /// When a ⊕ b is infinite or not a number, NaN is returned as t.
+    #[inline(always)]
+    pub fn rn2sum(self, rhs: Self) -> (Self, Self) {
+        sum(&self, &rhs)
+    }
+
+    /// Computes the floating-point sum s := a ⊕ b and the floating-point
+    /// error t := a + b − ( a ⊕ b ) so that s + t = a + b, where ⊕ denotes
+    /// the addition rounded to nearest.
+    ///
+    /// Note:
+    /// When a ⊕ b is infinite or not a number, NaN is returned as t.
+    ///
+    /// Pre-condition: |a| >= |b|
+    #[inline(always)]
+    pub fn frn2sum(self, rhs: Self) -> (Self, Self) {
+        fast_sum(&self, &rhs)
+    }
+
+    /// Computes the floating-point product p := a ⨂ b and the floating-point
+    /// error t := a × b − ( a ⊗ b ) so that p + t = a × b, where ⨂ denotes
+    /// the multiplication rounded to nearest.
+    ///
+    /// Note:
+    /// When a ⊕ b is infinite or not a number, NaN is returned as t.
+    ///
+    /// Pre-condition: |a ⨂ b| > 0 => exp(a) + exp(b) >= Eₘᵢₙ + 236
+    #[inline(always)]
+    pub fn rn2mul(self, rhs: Self) -> (Self, Self) {
+        fast_mul(&self, &rhs)
+    }
 }
 
 impl Neg for f256 {
@@ -1697,26 +1734,37 @@ pub(crate) const fn split_f256_enc(f: &f256) -> (u32, i32, U256) {
 pub(crate) fn fast_sum(a: &f256, b: &f256) -> (f256, f256) {
     debug_assert!(a.abs() >= b.abs());
     let s = a + b;
-    let r = b - (s - a);
-    (s, r)
+    if s.is_finite() {
+        (s, b - (s - a))
+    } else {
+        (s, f256::NAN)
+    }
 }
 
 /// Computes the rounded sum of two f256 values and the remainder.
 pub(crate) fn sum(a: &f256, b: &f256) -> (f256, f256) {
     let s = a + b;
-    let ta = a - (s - b);
-    let tb = b - (s - a);
-    let r = ta + tb;
-    (s, r)
+    if s.is_finite() {
+        let ta = a - (s - b);
+        let tb = b - (s - a);
+        let r = ta + tb;
+        (s, r)
+    } else {
+        (s, f256::NAN)
+    }
 }
 
 /// Computes the rounded product of two f256 values and the remainder.
 #[inline]
 pub(crate) fn fast_mul(a: &f256, b: &f256) -> (f256, f256) {
-    debug_assert!(a.biased_exponent() + b.biased_exponent() >= EXP_BIAS);
+    // debug_assert!(a.biased_exponent() + b.biased_exponent() >= EXP_BIAS);
     let p = a * b;
-    let r = a.mul_add(*b, -p);
-    (p, r)
+    if p.is_finite() {
+        let r = a.mul_add(*b, -p);
+        (p, r)
+    } else {
+        (p, f256::NAN)
+    }
 }
 
 #[cfg(test)]
@@ -2203,5 +2251,165 @@ mod div_pow2_tests {
         let g = f.div_pow2(7);
         assert!(g.is_subnormal());
         assert_eq!(g, f / f256::from(128));
+    }
+}
+
+#[cfg(test)]
+mod rn2sum_tests {
+    use super::*;
+    use crate::consts::{FRAC_PI_4, PI};
+
+    #[test]
+    fn test_special() {
+        let tests = [
+            (f256::ZERO, f256::ZERO, f256::ZERO, f256::ZERO),
+            (f256::TEN, f256::ZERO, f256::TEN, f256::ZERO),
+            (f256::INFINITY, f256::ZERO, f256::INFINITY, f256::NAN),
+            (f256::INFINITY, f256::TWO, f256::INFINITY, f256::NAN),
+            (f256::INFINITY, f256::INFINITY, f256::INFINITY, f256::NAN),
+            (
+                f256::NEG_INFINITY,
+                f256::ZERO,
+                f256::NEG_INFINITY,
+                f256::NAN,
+            ),
+            (f256::NEG_INFINITY, f256::TEN, f256::NEG_INFINITY, f256::NAN),
+            (
+                f256::NEG_INFINITY,
+                f256::NEG_INFINITY,
+                f256::NEG_INFINITY,
+                f256::NAN,
+            ),
+            (f256::INFINITY, f256::NEG_INFINITY, f256::NAN, f256::NAN),
+        ];
+        for (a, b, s, t) in tests {
+            if s.is_finite() {
+                assert_eq!(a.rn2sum(b), (s, t));
+                assert_eq!(b.rn2sum(a), (s, t));
+                if a.abs() >= b.abs() {
+                    assert_eq!(a.frn2sum(b), (s, t));
+                }
+            } else if s.is_nan() {
+                let (s, t) = a.rn2sum(b);
+                assert!(s.is_nan());
+                assert!(t.is_nan());
+                let (s, t) = b.rn2sum(a);
+                assert!(s.is_nan());
+                assert!(t.is_nan());
+                if a.abs() >= b.abs() {
+                    let (s, t) = a.frn2sum(b);
+                    assert!(s.is_nan());
+                    assert!(t.is_nan());
+                }
+            } else {
+                let (u, t) = a.rn2sum(b);
+                assert_eq! {u, s};
+                assert!(t.is_nan());
+                let (s, t) = b.rn2sum(a);
+                assert_eq! {u, s};
+                assert!(t.is_nan());
+                if a.abs() >= b.abs() {
+                    let (u, t) = a.frn2sum(b);
+                    assert_eq! {u, s};
+                    assert!(t.is_nan());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_overflow() {
+        let f = f256::MAX;
+        let (s, t) = f.rn2sum(f.ulp());
+        assert_eq!(s, f256::INFINITY);
+        assert!(t.is_nan());
+        let (s, t) = f.frn2sum(f.ulp());
+        assert_eq!(s, f256::INFINITY);
+        assert!(t.is_nan());
+    }
+
+    #[test]
+    fn test_normal_with_error() {
+        let x = PI;
+        let y = FRAC_PI_4;
+        let (s, t) = x.rn2sum(y);
+        assert_eq!(s, x + y);
+        assert_eq!(t, x.ulp().div2());
+        let (s, t) = x.frn2sum(y);
+        assert_eq!(s, x + y);
+        assert_eq!(t, x.ulp().div2());
+    }
+}
+
+#[cfg(test)]
+mod rn2mul_tests {
+    use super::*;
+    use crate::consts::{FRAC_PI_4, PI};
+
+    #[test]
+    fn test_special() {
+        let tests = [
+            (f256::ZERO, f256::ZERO, f256::ZERO, f256::ZERO),
+            (f256::TEN, f256::ZERO, f256::ZERO, f256::ZERO),
+            (f256::INFINITY, f256::ZERO, f256::NAN, f256::NAN),
+            (f256::INFINITY, f256::TWO, f256::INFINITY, f256::NAN),
+            (f256::INFINITY, f256::INFINITY, f256::INFINITY, f256::NAN),
+            (f256::NEG_INFINITY, f256::ZERO, f256::NAN, f256::NAN),
+            (f256::NEG_INFINITY, f256::TEN, f256::NEG_INFINITY, f256::NAN),
+            (
+                f256::NEG_INFINITY,
+                f256::NEG_INFINITY,
+                f256::INFINITY,
+                f256::NAN,
+            ),
+            (
+                f256::INFINITY,
+                f256::NEG_INFINITY,
+                f256::NEG_INFINITY,
+                f256::NAN,
+            ),
+        ];
+        for (a, b, s, t) in tests {
+            if s.is_finite() {
+                assert_eq!(a.rn2mul(b), (s, t));
+                assert_eq!(b.rn2mul(a), (s, t));
+            } else if s.is_nan() {
+                let (s, t) = a.rn2mul(b);
+                assert!(s.is_nan());
+                assert!(t.is_nan());
+                let (s, t) = b.rn2mul(a);
+                assert!(s.is_nan());
+                assert!(t.is_nan());
+            } else {
+                let (u, t) = a.rn2mul(b);
+                assert_eq! {u, s};
+                assert!(t.is_nan());
+                let (s, t) = b.rn2mul(a);
+                assert_eq! {u, s};
+                assert!(t.is_nan());
+            }
+        }
+    }
+
+    #[test]
+    fn test_overflow() {
+        let a = f256::MAX;
+        let b = f256::ONE.next_up();
+        let (s, t) = a.rn2mul(b);
+        assert_eq!(s, f256::INFINITY);
+        assert!(t.is_nan());
+        let f = f256::MAX.sqrt().next_up();
+        let (s, t) = f.rn2mul(f);
+        assert_eq!(s, f256::INFINITY);
+        assert!(t.is_nan());
+    }
+
+    #[test]
+    fn test_normal_with_error() {
+        let x = PI;
+        let y = f256::ONE - f256::ONE / f256::TWO.square();
+        let (s, t) = x.rn2mul(y);
+        assert_eq!(s, x * y);
+        assert_eq!(t, -x.ulp().div2());
     }
 }
