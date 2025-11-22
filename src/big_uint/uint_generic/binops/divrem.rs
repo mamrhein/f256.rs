@@ -121,7 +121,7 @@ where
             (quot, UInt::<SubUInt>::from_hi_lo(SubUInt::ZERO, rem))
         } else if rhs.hi > self.hi {
             // self < rhs
-            return (UInt::<SubUInt>::ZERO, *self);
+            (UInt::<SubUInt>::ZERO, *self)
         } else {
             // estimate the quotient
             let nlz = self.hi.leading_zeros();

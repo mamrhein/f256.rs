@@ -134,6 +134,7 @@ mod to_i32_tests {
     use core::ops::Neg;
 
     #[test]
+    #[allow(clippy::integer_division)]
     fn test_ok() {
         assert_eq!((&f256::ZERO).try_into(), Ok(0_i32));
         assert_eq!((&f256::TWO).try_into(), Ok(2_i32));
@@ -153,6 +154,7 @@ mod to_i32_tests {
     }
 
     #[test]
+    #[allow(clippy::cast_possible_wrap)]
     fn test_non_integer() {
         assert_eq!(
             <&f256 as TryInto<i32>>::try_into(&f256::NAN),

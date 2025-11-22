@@ -261,6 +261,7 @@ mod powi_tests {
     use crate::{EMAX, FRACTION_BITS, SIGNIFICAND_BITS};
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn test_specials() {
         for n in [1, 786, i32::MAX] {
             assert_eq!(f256::INFINITY.powi(n), f256::INFINITY);
@@ -313,6 +314,7 @@ mod powi_tests {
     }
 
     #[test]
+    #[allow(clippy::integer_division)]
     fn test_overflow() {
         let mut f = f256::MAX.sqrt();
         f += f.ulp();
@@ -333,6 +335,8 @@ mod powi_tests {
     }
 
     #[test]
+    #[allow(clippy::integer_division)]
+    #[allow(clippy::cast_possible_wrap)]
     fn test_underflow() {
         let mut f =
             f256::MAX.sqrt() * f256::from(2_u128.pow(FRACTION_BITS / 2));
@@ -356,6 +360,7 @@ mod powi_tests {
     }
 
     #[test]
+    #[allow(clippy::cast_sign_loss)]
     fn test_int_base_with_n_gt_0() {
         let m = 73_u64;
         let f = f256::from(m);
@@ -396,6 +401,7 @@ mod powi_tests {
     }
 
     #[test]
+    #[allow(clippy::cast_possible_wrap)]
     fn test_max() {
         let f = f256::TWO;
         let p =
@@ -418,6 +424,7 @@ mod powf_tests {
     use crate::{EMAX, FIVE, FRACTION_BITS, ONE_HALF};
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn test_specials() {
         let g = f256::from(123.45_f64);
         let h = f256::TWO.powi(236) - f256::ONE;
@@ -569,6 +576,7 @@ mod powf_tests {
     }
 
     #[test]
+    #[allow(clippy::integer_division)]
     fn test_overflow() {
         let mut x = f256::MAX.sqrt();
         x += x.ulp();
@@ -591,6 +599,8 @@ mod powf_tests {
     }
 
     #[test]
+    #[allow(clippy::integer_division)]
+    #[allow(clippy::cast_possible_wrap)]
     fn test_underflow() {
         let mut x =
             f256::MAX.sqrt() * f256::from(2_u128.pow(FRACTION_BITS / 2));

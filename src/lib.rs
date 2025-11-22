@@ -24,7 +24,6 @@
 #![warn(clippy::cast_precision_loss)]
 #![warn(clippy::cast_sign_loss)]
 #![warn(clippy::cognitive_complexity)]
-#![warn(clippy::decimal_literal_representation)]
 #![warn(clippy::enum_glob_use)]
 #![warn(clippy::equatable_if_let)]
 #![warn(clippy::fallible_impl_from)]
@@ -47,7 +46,6 @@
 #![warn(clippy::print_stdout)]
 #![warn(clippy::semicolon_if_nothing_returned)]
 #![warn(clippy::str_to_string)]
-#![warn(clippy::string_to_string)]
 #![warn(clippy::undocumented_unsafe_blocks)]
 #![warn(clippy::unicode_not_nfc)]
 #![warn(clippy::unimplemented)]
@@ -1463,6 +1461,7 @@ impl f256 {
     /// In other words, the result is self / rhs rounded to the integer n
     /// such that self >= n * rhs.
     #[inline]
+    #[must_use]
     pub fn div_euclid(self, rhs: Self) -> Self {
         (self / rhs).floor()
     }
@@ -1479,6 +1478,7 @@ impl f256 {
     /// self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)
     /// approximately.
     #[inline]
+    #[must_use]
     pub fn rem_euclid(self, rhs: Self) -> Self {
         self.div_euclid(rhs).mul_add(-rhs, self)
     }
@@ -1490,6 +1490,7 @@ impl f256 {
     /// Note:
     /// When a ⊕ b is infinite or not a number, NaN is returned as t.
     #[inline(always)]
+    #[must_use]
     pub fn rn2sum(self, rhs: Self) -> (Self, Self) {
         sum(&self, &rhs)
     }
@@ -1503,6 +1504,7 @@ impl f256 {
     ///
     /// Pre-condition: |a| >= |b|
     #[inline(always)]
+    #[must_use]
     pub fn frn2sum(self, rhs: Self) -> (Self, Self) {
         fast_sum(&self, &rhs)
     }
@@ -1516,6 +1518,7 @@ impl f256 {
     ///
     /// Pre-condition: |a ⨂ b| > 0 => exp(a) + exp(b) >= Eₘᵢₙ + 236
     #[inline(always)]
+    #[must_use]
     pub fn rn2mul(self, rhs: Self) -> (Self, Self) {
         fast_mul(&self, &rhs)
     }
@@ -1782,6 +1785,10 @@ mod repr_tests {
         assert_eq!(z.significand(), f256::ZERO);
         assert!(z.is_integer());
         assert_eq!(z.signum(), f256::ONE);
+    }
+
+    #[test]
+    fn test_neg_zero() {
         let z = f256::NEG_ZERO;
         assert_eq!(z.sign(), 1);
         assert_eq!(z.quantum_exponent(), 0);
@@ -1808,6 +1815,10 @@ mod repr_tests {
         assert_eq!(i.exponent(), 0);
         assert_eq!(i.significand(), f256::ONE);
         assert!(i.is_integer());
+    }
+
+    #[test]
+    fn test_neg_one() {
         let i = f256::NEG_ONE;
         assert_eq!(i.sign(), 1);
         assert_eq!(i.signum(), f256::NEG_ONE);
@@ -1824,7 +1835,7 @@ mod repr_tests {
     }
 
     #[test]
-    fn test_normal() {
+    fn test_normal_integral() {
         let i = f256::TWO;
         assert_eq!(i.sign(), 0);
         assert_eq!(i.signum(), f256::ONE);
@@ -1838,6 +1849,10 @@ mod repr_tests {
         assert_eq!(i.exponent(), 1);
         assert_eq!(i.significand(), f256::ONE);
         assert!(i.is_integer());
+    }
+
+    #[test]
+    fn test_normal_float() {
         let f = f256::from(-3.5_f64);
         assert_eq!(f.sign(), 1);
         assert_eq!(f.signum(), f256::NEG_ONE);
@@ -2028,6 +2043,7 @@ mod ulp_tests {
     }
 
     #[test]
+    #[allow(clippy::cast_possible_wrap)]
     fn test_normal() {
         assert_eq!(f256::ONE.ulp(), f256::EPSILON);
         assert_eq!(f256::TWO.ulp(), f256::TWO * f256::EPSILON);
@@ -2134,6 +2150,7 @@ mod midpoint_tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn test_midpoint() {
         assert!(f256::NAN.midpoint(f256::ONE).is_nan());
         assert!(f256::ONE.midpoint(f256::NAN).is_nan());
@@ -2260,6 +2277,7 @@ mod rn2sum_tests {
     use crate::consts::{FRAC_PI_4, PI};
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn test_special() {
         let tests = [
             (f256::ZERO, f256::ZERO, f256::ZERO, f256::ZERO),

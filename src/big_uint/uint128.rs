@@ -464,6 +464,7 @@ mod divrem_tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::integer_division)]
     fn test_divrem_self() {
         let x = U128::MAX;
         let y = U128::new(7_u128);
@@ -473,6 +474,7 @@ mod divrem_tests {
     }
 
     #[test]
+    #[allow(clippy::integer_division)]
     fn test_divrem_u128() {
         let x = U128::MAX;
         let y = 37_u128;

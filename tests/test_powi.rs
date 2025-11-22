@@ -62,7 +62,7 @@ mod random_powi_tests {
         }
     }
 
-    fn powi<'a>(x: &'a f256, y: i32) -> f256 {
+    fn powi(x: &f256, y: i32) -> f256 {
         x.powi(y)
     }
 

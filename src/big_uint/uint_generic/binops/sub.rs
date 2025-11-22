@@ -88,7 +88,7 @@ mod u512_sub_assign_tests {
 
     #[test]
     fn test_sub_assign_1() {
-        let two = &U256::ONE + &U256::ONE;
+        let two = U256::ONE + U256::ONE;
         let mut v = U512::from_hi_lo(two, two);
         let w = U512::from_hi_lo(U256::ONE, U256::ONE);
         v -= &w;
@@ -99,7 +99,7 @@ mod u512_sub_assign_tests {
     fn test_sub_assign_2() {
         let mut v = U512::from_hi_lo(U256::MAX, U256::ZERO);
         let w = U512::from_hi_lo(U256::ZERO, U256::ONE);
-        let z = U512::from_hi_lo(&U256::MAX - &U256::ONE, U256::MAX);
+        let z = U512::from_hi_lo(U256::MAX - U256::ONE, U256::MAX);
         v -= &w;
         assert_eq!(v, z);
     }
@@ -107,7 +107,7 @@ mod u512_sub_assign_tests {
     #[test]
     fn test_sub_assign_3() {
         let mut v = U512::from_hi_lo(U256::ONE, U256::MAX);
-        let w = U512::from_hi_lo(U256::ONE, &U256::MAX - &U256::ONE);
+        let w = U512::from_hi_lo(U256::ONE, U256::MAX - U256::ONE);
         let z = U512::from_hi_lo(U256::ZERO, U256::ONE);
         v -= &w;
         assert_eq!(v, z);
@@ -116,7 +116,7 @@ mod u512_sub_assign_tests {
     #[test]
     #[should_panic]
     fn test_sub_assign_ovfl() {
-        let mut v = U512::from_hi_lo(U256::ONE, &U256::MAX - &U256::ONE);
+        let mut v = U512::from_hi_lo(U256::ONE, U256::MAX - U256::ONE);
         let w = U512::from_hi_lo(U256::ONE, U256::MAX);
         v -= &w;
     }

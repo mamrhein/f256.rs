@@ -669,7 +669,7 @@ mod from_i32_tests {
         assert_eq!(Float256::from(-1_i32), Float256::NEG_ONE);
         assert_eq!(Float512::from(0_i32), Float512::ZERO);
         assert_eq!(Float512::from(-2_i32), -Float512::TWO);
-        let i = -262142_i32;
+        let i = -0x3FFFE_i32;
         assert_eq!(
             Float512::from(i),
             Float512::new(
@@ -839,7 +839,7 @@ mod into_f256_tests {
         let fp = Float::<T> {
             signum: 1,
             exp: EMAX,
-            signif: (T::MAX >> 1) - T::from(&131071_u128),
+            signif: (T::MAX >> 1) - T::from(&0x1FFFF_u128),
         };
         let f = f256::from(&fp);
         assert_eq!(f, f256::INFINITY);
@@ -868,6 +868,7 @@ mod into_f256_tests {
         test_overflow_3_::<U512>();
     }
 
+    #[allow(clippy::cast_possible_wrap)]
     fn test_underflow_<T: BigUInt + HiLo>() {
         let fp = Float::<T> {
             signum: 1,
@@ -884,6 +885,7 @@ mod into_f256_tests {
         test_underflow_::<U512>();
     }
 
+    #[allow(clippy::cast_possible_wrap)]
     fn test_round_to_min_gt_zero_<T: BigUInt + HiLo>() {
         let fp = Float::<T> {
             signum: 1,

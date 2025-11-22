@@ -73,7 +73,7 @@ mod u512_add_assign_tests {
 
     #[test]
     fn test_add_assign_1() {
-        let two = &U256::ONE + &U256::ONE;
+        let two = U256::ONE + U256::ONE;
         let mut v = U512::from_hi_lo(U256::ONE, U256::ONE);
         let w = v;
         let z = U512::from_hi_lo(two, two);
@@ -85,7 +85,7 @@ mod u512_add_assign_tests {
     fn test_add_assign_2() {
         let mut v = U512::from_hi_lo(U256::ZERO, U256::MAX);
         let w = U512::from_hi_lo(U256::ONE, U256::ONE);
-        let z = U512::from_hi_lo(&U256::ONE + &U256::ONE, U256::ZERO);
+        let z = U512::from_hi_lo(U256::ONE + U256::ONE, U256::ZERO);
         v += &w;
         assert_eq!(v, z);
     }
@@ -94,7 +94,7 @@ mod u512_add_assign_tests {
     fn test_add_assign_3() {
         let mut v = U512::from_hi_lo(U256::ZERO, U256::MAX);
         let w = v;
-        let z = U512::from_hi_lo(U256::ONE, &U256::MAX - &U256::ONE);
+        let z = U512::from_hi_lo(U256::ONE, U256::MAX - U256::ONE);
         v += &w;
         assert_eq!(v, z);
     }

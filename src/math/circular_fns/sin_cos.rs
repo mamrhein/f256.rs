@@ -62,6 +62,7 @@ mod sin_cos_tests {
 
     //noinspection DuplicatedCode
     #[test]
+    #[allow(clippy::integer_division)]
     fn test_frac_pi_2_multiples() {
         const EXACT: [(f256, f256); 4] = [
             (f256::ZERO, f256::ONE),

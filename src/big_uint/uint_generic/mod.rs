@@ -519,14 +519,14 @@ mod widening_mul_tests {
     #[test]
     fn test_u256_max_half() {
         let x = &U256::MAX >> 1;
-        let z = (&x).widening_mul(&x);
+        let z = x.widening_mul(&x);
         assert_eq!(z, (U256::ONE, &x >> 1));
     }
 
     #[test]
     fn test_u512_max_half() {
         let x = &U512::MAX >> 1;
-        let z = (&x).widening_mul(&x);
+        let z = x.widening_mul(&x);
         assert_eq!(z, (U512::ONE, &x >> 1));
     }
 }
@@ -546,16 +546,16 @@ mod rounding_div_pow2_tests {
         let v = u.rounding_div_pow2(17);
         assert_eq!(v, &u >> 17);
         let v = u.rounding_div_pow2(129);
-        assert_eq!(v, &(&u >> 129) + &U256::ONE);
+        assert_eq!(v, (&u >> 129) + U256::ONE);
         let u = U256::from_hi_lo(
             U128::from(0x00001f6a7a2955385e583ebeff65cc22_u128),
             U128::from(0x6480ae685c3155a037f22051d5c9f93a_u128),
         );
-        let mut v = u.clone();
+        let mut v = u;
         let n = 12;
         v = v.rounding_div_pow2(n);
-        assert_eq!(v, &(&u >> 12) + &U256::ONE);
-        let mut v = u.clone();
+        assert_eq!(v, (&u >> 12) + U256::ONE);
+        let mut v = u;
         let n = 137;
         v = v.rounding_div_pow2(n);
         assert_eq!(v, &u >> 137);
