@@ -59,10 +59,9 @@
 extern crate alloc;
 extern crate core;
 
-use crate::big_uint::{
-    BigUInt, DivRem, HiLo, Parity, U1024, U128, U256, U512,
-};
 use core::{cmp::Ordering, convert::Into, num::FpCategory, ops::Neg};
+
+use crate::big_uint::{BigUInt, DivRem, HiLo, Parity, U1024, U128, U256, U512};
 
 mod big_uint;
 mod binops;
@@ -491,8 +490,8 @@ impl f256 {
     pub(crate) fn decode(&self) -> (u32, i32, U256) {
         debug_assert!(
             self.is_finite(),
-            "Attempt to extract sign, exponent and significand from \
-             Infinity or NaN."
+            "Attempt to extract sign, exponent and significand from Infinity \
+             or NaN."
         );
         // We have a fraction based representation
         // `(-1)ˢ × 2ᵉ × (1 + m × 2¹⁻ᵖ)`, where `Eₘᵢₙ <= e <= Eₘₐₓ` and
@@ -885,13 +884,16 @@ impl f256 {
     /// For example, they consider negative and positive zero equal, while
     /// `total_cmp` doesn't.
     #[must_use]
-    #[inline]
     pub fn total_cmp(&self, other: &Self) -> Ordering {
         // The internal representation of `f256` values gives - besides their
         // sign - a total ordering following the intended mathematical
-        // ordering. Thus, flipping the sign bit allows to compare the
-        // raw values.
-        self.negated().bits.cmp(&(*other).negated().bits)
+        // ordering.
+        match (self.sign(), other.sign()) {
+            (0, 0) => self.bits.cmp(&other.bits),
+            (1, 0) => Ordering::Less,
+            (0, 1) => Ordering::Greater,
+            _ => other.bits.cmp(&self.bits),
+        }
     }
 
     /// Restrict a value to a certain interval unless it is NaN.
@@ -1349,8 +1351,7 @@ impl f256 {
         // self is finite and non-zero.
         let exp_bits = exp_bits(&abs_bits);
         if exp_bits.saturating_add(n) >= EXP_MAX {
-            return [Self::INFINITY, Self::NEG_INFINITY]
-                [self.sign() as usize];
+            return [Self::INFINITY, Self::NEG_INFINITY][self.sign() as usize];
         }
         if exp_bits == 0 {
             // self is subnornal
@@ -1890,11 +1891,7 @@ mod repr_tests {
         assert_eq!(f.exponent(), EMIN);
         assert_eq!(
             f.significand(),
-            f256::from_sign_exp_signif(
-                0,
-                17 - (FRACTION_BITS as i32),
-                (7, 29)
-            )
+            f256::from_sign_exp_signif(0, 17 - (FRACTION_BITS as i32), (7, 29))
         );
     }
 }
@@ -1967,6 +1964,35 @@ mod raw_bits_tests {
         let bytes = f.to_le_bytes();
         let g = f256::from_le_bytes(bytes);
         assert_eq!(f, g);
+    }
+}
+
+#[cfg(test)]
+mod total_ordering_tests {
+    use super::*;
+
+    #[test]
+    fn test_total_ordering() {
+        let values = [
+            -f256::NAN,
+            f256::NEG_INFINITY,
+            f256::MIN,
+            f256::NEG_ONE,
+            -f256::MIN_POSITIVE,
+            -f256::MIN_GT_ZERO,
+            f256::NEG_ZERO,
+            f256::ZERO,
+            f256::MIN_GT_ZERO,
+            f256::MIN_POSITIVE,
+            f256::ONE,
+            f256::MAX,
+            f256::INFINITY,
+            f256::NAN,
+        ];
+        for idx in 0..values.len() - 1 {
+            let (a, b) = (values[idx], values[idx + 1]);
+            assert!(a.total_cmp(&b).is_lt(), "{:?} !< {:?}", a.bits, b.bits);
+        }
     }
 }
 
@@ -2052,11 +2078,7 @@ mod ulp_tests {
         assert_eq!(f256::MIN_POSITIVE.ulp(), f256::MIN_GT_ZERO);
         assert_eq!(
             f256::MIN.ulp(),
-            f256::from_sign_exp_signif(
-                0,
-                EMAX - FRACTION_BITS as i32,
-                (0, 1),
-            )
+            f256::from_sign_exp_signif(0, EMAX - FRACTION_BITS as i32, (0, 1),)
         );
     }
 
@@ -2362,7 +2384,7 @@ mod rn2sum_tests {
 #[cfg(test)]
 mod rn2mul_tests {
     use super::*;
-    use crate::consts::{FRAC_PI_4, PI};
+    use crate::consts::PI;
 
     #[test]
     fn test_special() {

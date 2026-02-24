@@ -52,7 +52,7 @@ mod partial_eq_tests {
 mod partial_ord_tests {
     use core::cmp::Ordering;
 
-    use f256::f256;
+    use ::f256::f256;
 
     #[test]
     fn test_nan() {
@@ -67,10 +67,7 @@ mod partial_ord_tests {
 
     #[test]
     fn test_zeroes() {
-        assert_eq!(
-            f256::ZERO.partial_cmp(&f256::ZERO),
-            Some(Ordering::Equal)
-        );
+        assert_eq!(f256::ZERO.partial_cmp(&f256::ZERO), Some(Ordering::Equal));
         assert_eq!(
             f256::ZERO.partial_cmp(&f256::NEG_ZERO),
             Some(Ordering::Equal)
@@ -84,9 +81,9 @@ mod partial_ord_tests {
             Some(Ordering::Equal)
         );
     }
+
     #[test]
     fn test_ordering() {
-        assert!(f256::NEG_INFINITY < f256::INFINITY);
         assert!(f256::ONE <= f256::ONE);
         assert!(f256::TWO > f256::ONE);
         assert!(f256::INFINITY > f256::ONE);
@@ -94,6 +91,9 @@ mod partial_ord_tests {
         assert!(f256::NEG_ZERO < f256::ONE);
         assert!(f256::ONE > f256::NEG_INFINITY);
         assert!(f256::ONE <= f256::TWO);
+        assert!(f256::NEG_ONE <= f256::TWO);
+        assert!(f256::ONE >= -f256::TWO);
+        assert!(f256::NEG_ONE >= -f256::TWO);
         assert!(f256::TWO >= f256::ZERO);
         assert!(f256::INFINITY > f256::NEG_INFINITY);
         assert!(f256::NEG_INFINITY < f256::INFINITY);

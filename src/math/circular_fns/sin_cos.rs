@@ -7,14 +7,10 @@
 // $Source$
 // $Revision$
 
-use super::U256;
 use crate::{
     consts::FRAC_PI_2,
     f256,
-    math::circular_fns::{
-        approx_cos::approx_cos, approx_sin::approx_sin,
-        approx_sin_cos::approx_sin_cos, reduce::reduce,
-    },
+    math::circular_fns::{approx_sin_cos::approx_sin_cos, reduce::reduce},
     HI_ABS_MASK,
 };
 
@@ -197,7 +193,7 @@ mod sin_cos_tests {
             g += d;
             assert!(f < g);
             assert!(f.sin() >= g.sin());
-            assert!(f.cos() <= g.cos());
+            assert!(f.cos() >= g.cos());
             f = g;
         }
         let mut f = c;
@@ -222,7 +218,7 @@ mod sin_cos_tests {
             g += d;
             assert!(f < g);
             assert!(f.sin() >= g.sin());
-            assert!(f.cos() <= g.cos());
+            assert!(f.cos() >= g.cos());
             f = g;
         }
     }
@@ -238,8 +234,4 @@ mod sin_cos_tests {
         assert_eq!(f.sin(), f256::ONE);
         assert_eq!((f - FRAC_PI_2).cos(), f256::ONE);
     }
-
-    // f: 140844820278614289426057198173335166586563126037009815346672127671657710 * 2^185461
-    // ε: 5.769198204535869190785720230896528973489817286545990660946235357113661705e-77
-    // -log₂(ε): 253.26
 }
