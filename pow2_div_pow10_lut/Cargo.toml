@@ -2,12 +2,11 @@
 name = "f256_pow2_div_pow10_lut"
 version = "0.2.0"
 edition = "2021"
-authors = ["Michael Amrhein <michael@adrhinum.de>"]
 description = "Lookup table for crate `f256`."
+documentation = "https://docs.rs/f256/"
 readme = "README.md"
 homepage = "https://github.com/mamrhein/f256.rs"
 repository = "https://github.com/mamrhein/f256.rs"
-documentation = "https://docs.rs/f256/"
 license-file = "../LICENSE.TXT"
 
 [dependencies]
