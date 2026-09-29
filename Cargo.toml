@@ -22,14 +22,12 @@ f256_pow2_div_pow5_lut = { path = "pow2_div_pow5_lut", version = "0.1" }
 f256_pow2_div_pow10_lut = { path = "pow2_div_pow10_lut", version = "0.2" }
 f256_pow5_div_pow2_lut = { path = "pow5_div_pow2_lut", version = "0.1" }
 f256_pow10_div_pow2_lut = { path = "pow10_div_pow2_lut", version = "0.1" }
+libm = "0.2"
 num-traits = { version = "0.2", default-features = false, optional = true }
 
 [dev-dependencies]
 csv = "1"
 serde = { version = "1", features = ["derive"] }
-
-[target.'cfg(not(feature = "std"))'.dependencies]
-libm = "0.2"
 
 [features]
 default = ["std"]
