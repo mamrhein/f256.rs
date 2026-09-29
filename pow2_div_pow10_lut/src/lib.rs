@@ -8,6 +8,7 @@
 // $Revision$
 
 #![doc = include_str ! ("../README.md")]
+#![no_std]
 
 const COMPRESSION_RATE: u32 = 32;
 const CHUNK_CUTOFF: u32 = 6;

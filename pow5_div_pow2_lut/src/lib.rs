@@ -8,6 +8,7 @@
 // $Revision$
 
 #![doc = include_str ! ("../README.md")]
+#![no_std]
 
 // ⌊(Eₘᵢₙ - P - 1) × log₁₀(5)⌋ + 1
 const LEN_POW5_DIV_POW2_LUT: usize = 78987;

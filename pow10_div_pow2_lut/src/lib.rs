@@ -8,6 +8,7 @@
 // $Revision$
 
 #![doc = include_str ! ("../README.md")]
+#![no_std]
 
 /// Number of decimal digits per chunk.
 pub const CHUNK_SIZE: u32 = 19;
