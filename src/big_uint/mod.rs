@@ -20,9 +20,10 @@ use core::{
         ShrAssign, Sub, SubAssign,
     },
 };
+
+pub(crate) use uint_generic::{U256, U512, U1024, UInt};
 pub(crate) use uint128::U128;
 use uint128::{u128_hi, u128_lo};
-pub(crate) use uint_generic::{UInt, U1024, U256, U512};
 
 pub(crate) trait HiLo
 where
@@ -70,7 +71,7 @@ where
         + for<'a> BitAndAssign<&'a Self>
         + BitOr<Output = Self>
         + for<'a> BitOrAssign<&'a Self>
-        + for<'a> BitOrAssign<bool>
+        + BitOrAssign<bool>
         + Div<Output = Self>
         + for<'a> DivAssign<&'a Self>
         + DivRem<u128, Output = (Self, u128)>

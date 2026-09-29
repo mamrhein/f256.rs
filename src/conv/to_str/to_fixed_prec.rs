@@ -18,12 +18,12 @@ use core::{
     ops::{AddAssign, Rem},
 };
 
-use f256_pow10_div_pow2_lut::{
-    get_pow10_div_pow2_params, lookup_pow10_div_pow2, CHUNK_BASE,
-    CHUNK_CUTOFF, CHUNK_SIZE, COMPRESSION_RATE, SHIFT,
-};
 use f256_pow2_div_pow10_lut::{
     get_pow2_div_pow10_params, lookup_pow2_div_pow10,
+};
+use f256_pow10_div_pow2_lut::{
+    CHUNK_BASE, CHUNK_CUTOFF, CHUNK_SIZE, COMPRESSION_RATE, SHIFT,
+    get_pow10_div_pow2_params, lookup_pow10_div_pow2,
 };
 
 use super::{
@@ -33,8 +33,8 @@ use super::{
     powers_of_five::{get_power_of_five, is_multiple_of_pow5},
 };
 use crate::{
-    big_uint::rounding_div_pow10, f256, BigUInt, DivRem, HiLo, EMAX, EMIN,
-    FRACTION_BITS, SIGNIFICAND_BITS, U256, U512,
+    BigUInt, DivRem, EMAX, EMIN, FRACTION_BITS, HiLo, SIGNIFICAND_BITS, U256,
+    U512, big_uint::rounding_div_pow10, f256,
 };
 
 #[derive(PartialEq)]
@@ -149,7 +149,7 @@ fn bin_fract_2_dec_str(
 /// Round-Up the given fixed-point string representation of a decimal number.
 #[allow(unsafe_code)]
 #[inline]
-fn round_up_fixed_point_inplace(num: &mut str) {
+const fn round_up_fixed_point_inplace(num: &mut str) {
     let mut idx = num.len() - 1;
     // SAFETY: see comment at str::as_bytes_mut.
     unsafe {
@@ -220,8 +220,7 @@ pub(crate) fn bin_2_dec_fixed_point(f: f256, prec: usize) -> String {
         round = bin_fract_2_dec_str(signif2, exp2, prec, &mut res);
     }
     if round == Round::Up
-        || (round == Round::ToEven
-            && res.ends_with(['1', '3', '5', '7', '9']))
+        || (round == Round::ToEven && res.ends_with(['1', '3', '5', '7', '9']))
     {
         round_up_fixed_point_inplace(&mut res);
     }
@@ -304,9 +303,7 @@ fn bin_small_int_2_scientific(
     prec: usize,
     buf: &mut String,
 ) -> (Round, i32) {
-    debug_assert!(
-        exp2 >= 0 && exp2 <= (U512::BITS - SIGNIFICAND_BITS) as i32
-    );
+    debug_assert!(exp2 >= 0 && exp2 <= (U512::BITS - SIGNIFICAND_BITS) as i32);
     let mut exp10 = floor_log10f(signif2, exp2);
     // Need to calculate the prec+1 left-most decimal digits of the number.
     // 0 <= exp2 <= 275
@@ -435,9 +432,7 @@ fn bin_large_int_2_scientific(
         };
     }
     if n_digits > 0 {
-        buf.push_str(
-            format!("{:01$}", chunk, n_rem_digits as usize).as_str(),
-        );
+        buf.push_str(format!("{:01$}", chunk, n_rem_digits as usize).as_str());
     }
     (round, exp10 as i32)
 }
@@ -532,17 +527,15 @@ fn bin_fract_2_scientific(
         // signif2 * 10 ^ (prec + 1) / 2 ^ -exp2 is an integer.
         // This is the case if the number of trailing zeroes of the numerator
         // is greater than or equal to -exp2.
-        round =
-            if (signif2.trailing_zeros() + prec as u32 + 1) as i32 >= -exp2 {
-                Round::ToEven
-            } else {
-                Round::Up
-            };
+        round = if (signif2.trailing_zeros() + prec as u32 + 1) as i32 >= -exp2
+        {
+            Round::ToEven
+        } else {
+            Round::Up
+        };
     }
     if n_digits > 0 {
-        buf.push_str(
-            format!("{:01$}", chunk, n_rem_digits as usize).as_str(),
-        );
+        buf.push_str(format!("{:01$}", chunk, n_rem_digits as usize).as_str());
     }
     (round, exp10)
 }
@@ -550,7 +543,7 @@ fn bin_fract_2_scientific(
 /// Round-Up the given scientific string representation of a decimal number.
 #[allow(unsafe_code)]
 #[inline]
-fn round_up_scientific_inplace(num: &mut str) -> i32 {
+const fn round_up_scientific_inplace(num: &mut str) -> i32 {
     let mut carry = 0_i32;
     let mut idx = num.len() - 1;
     // SAFETY: see comment at str::as_bytes_mut.
@@ -637,8 +630,7 @@ pub(crate) fn bin_2_dec_scientific(
         }
     }
     if round == Round::Up
-        || (round == Round::ToEven
-            && res.ends_with(['1', '3', '5', '7', '9']))
+        || (round == Round::ToEven && res.ends_with(['1', '3', '5', '7', '9']))
     {
         exp10 += round_up_scientific_inplace(&mut res);
     }

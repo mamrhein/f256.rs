@@ -385,9 +385,9 @@ mod display_tests {
             f,
             g,
             "\nf: {}\n   {:?}\ng: {}\n   {:?}\n",
-            &s,
+            s,
             f.as_sign_exp_signif(),
-            &g.to_string(),
+            g,
             g.as_sign_exp_signif()
         );
         let h = f256::from_str(
@@ -399,9 +399,9 @@ mod display_tests {
             f,
             h,
             "\nf: {}\n   {:?}\nh: {}\n   {:?}\n",
-            &s,
+            s,
             f.as_sign_exp_signif(),
-            &h.to_string(),
+            h,
             h.as_sign_exp_signif()
         );
     }
@@ -427,9 +427,9 @@ mod display_tests {
             f,
             g,
             "\nf: {}\n   {:?}\ng: {}\n   {:?}\n",
-            &s,
+            s,
             f.as_sign_exp_signif(),
-            &g.to_string(),
+            g,
             g.as_sign_exp_signif()
         );
     }
@@ -695,7 +695,7 @@ mod format_exp_tests {
     fn test_shortest_one_half() {
         let f = f256::encode(0, -1, U256::new(0, 1));
         assert_eq!(format!("{f:e}"), "5e-1");
-        assert_eq!(format!("{f:3e}"), "5e-1");
+        assert_eq!(format!("{f:4e}"), "5e-1");
         assert_eq!(format!("{f:_>7.e}"), "___5e-1");
         assert_eq!(format!("{f:~^8e}"), "~~5e-1~~");
     }

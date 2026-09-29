@@ -66,9 +66,9 @@ mod random_f256_to_shortest_str_tests {
             f,
             g,
             "\nf: {}\n   {:?}\ng: {}\n   {:?}\n",
-            &s,
+            s,
             f.as_sign_exp_signif(),
-            &g.to_string(),
+            g,
             g.as_sign_exp_signif()
         );
         let n = s.len();
@@ -77,7 +77,7 @@ mod random_f256_to_shortest_str_tests {
                 rec.lit.starts_with(&s[..n - 1]),
                 "\nlit: {}\nstr: {}\n",
                 &*rec.lit,
-                &s
+                s
             );
         } else {
             assert_eq!(
@@ -85,7 +85,7 @@ mod random_f256_to_shortest_str_tests {
                 s[..60],
                 "\nlit: {}\nstr: {}\n",
                 &*rec.lit,
-                &s
+                s
             );
         }
     }
@@ -127,9 +127,9 @@ mod random_f256_to_shortest_exp_tests {
             f,
             g,
             "\nf: {}\n   {:?}\ng: {}\n   {:?}\n",
-            &s,
+            s,
             f.as_sign_exp_signif(),
-            &g.to_string(),
+            g,
             g.as_sign_exp_signif()
         );
         let mut n = s.len();
@@ -141,16 +141,16 @@ mod random_f256_to_shortest_exp_tests {
                 rec.lit.starts_with(&v[0][..n - 1]),
                 "\nlit: {}\nstr: {}\n",
                 &*rec.lit,
-                &s
+                s
             );
             assert!(
                 rec.lit.ends_with(&v[1]),
                 "\nlit: {}\nstr: {}\n",
                 &*rec.lit,
-                &s
+                s
             );
         } else {
-            assert_eq!(rec.lit, s, "\nlit: {}\nstr: {}\n", &*rec.lit, &s);
+            assert_eq!(rec.lit, s, "\nlit: {}\nstr: {}\n", &*rec.lit, s);
         }
     }
 
@@ -187,7 +187,7 @@ mod random_f256_to_fixed_prec_exp_tests {
         let f = f256::from_sign_exp_signif(rec.s, rec.e, (rec.h, rec.l));
         let p = rec.p;
         let s = format!("{f:.*e}", p);
-        assert_eq!(rec.lit, s, "\nlit: {}\nstr: {}\n", &*rec.lit, &s);
+        assert_eq!(rec.lit, s, "\nlit: {}\nstr: {}\n", &*rec.lit, s);
     }
 
     #[test]
